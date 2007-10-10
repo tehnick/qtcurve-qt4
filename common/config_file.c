@@ -95,6 +95,8 @@ static ELine toLine(const char *str, ELine def)
             return LINE_SUNKEN;
         if(0==memcmp(str, "dots", 4))
             return LINE_DOTS;
+        if(0==memcmp(str, "flat", 4))
+            return LINE_FLAT;
     }
     return def;
 }
@@ -137,6 +139,8 @@ static EAppearance toAppearance(const char *str, EAppearance def)
             return APPEARANCE_RAISED;
         if(0==memcmp(str, "gradient", 8) || 0==memcmp(str, "lightgradient", 13))
             return APPEARANCE_GRADIENT;
+        if(0==memcmp(str, "splitgradient", 13))
+            return APPEARANCE_SPLIT_GRADIENT;
         if(0==memcmp(str, "glass", 5) || 0==memcmp(str, "shinyglass", 10))
             return APPEARANCE_SHINY_GLASS;
         if(0==memcmp(str, "dullglass", 9))
@@ -229,6 +233,36 @@ static EShading toShading(const char * str, EShading def)
             return SHADING_HSL;
         if(0==memcmp(str, "hsv", 3))
             return SHADING_HSV;
+    }
+
+    return def;
+}
+
+static EStripe toStripe(const char * str, EStripe def)
+{
+    if(str)
+    {
+        if(0==memcmp(str, "plain", 5) || 0==memcmp(str, "true", 4))
+            return STRIPE_PLAIN;
+        if(0==memcmp(str, "none", 4) || 0==memcmp(str, "false", 5))
+            return STRIPE_NONE;
+        if(0==memcmp(str, "diagonal", 8))
+            return STRIPE_DIAGONAL;
+    }
+
+    return def;
+}
+
+static ESliderStyle toSlider(const char * str, ESliderStyle def)
+{
+    if(str)
+    {
+        if(0==memcmp(str, "round", 5))
+            return SLIDER_ROUND;
+        if(0==memcmp(str, "plain", 5))
+            return SLIDER_PLAIN;
+        if(0==memcmp(str, "triangular", 10))
+            return SLIDER_TRIANGULAR;
     }
 
     return def;
@@ -557,6 +591,12 @@ static gboolean readBoolEntry(GHashTable *cfg, char *key, gboolean def)
     opts->ENTRY=toAppearance(QTC_LATIN1(readStringEntry(cfg, #ENTRY)), def->ENTRY);
 */
 
+#define QTC_CFG_READ_STRIPE(ENTRY) \
+    opts->ENTRY=toStripe(QTC_LATIN1(readStringEntry(cfg, #ENTRY)), def->ENTRY);
+
+#define QTC_CFG_READ_SLIDER(ENTRY) \
+    opts->ENTRY=toSlider(QTC_LATIN1(readStringEntry(cfg, #ENTRY)), def->ENTRY);
+
 #define QTC_CFG_READ_DEF_BTN(ENTRY) \
     opts->ENTRY=toInd(QTC_LATIN1(readStringEntry(cfg, #ENTRY)), def->ENTRY);
 
@@ -632,7 +672,8 @@ static bool readConfig(const char *file, Options *opts, Options *def)
             QTC_CFG_READ_TB_BORDER(toolbarBorders)
             QTC_CFG_READ_APPEARANCE(appearance, def->appearance)
             QTC_CFG_READ_BOOL(fixParentlessDialogs)
-            QTC_CFG_READ_BOOL(stripedProgress)
+            QTC_CFG_READ_STRIPE(stripedProgress)
+            QTC_CFG_READ_SLIDER(sliderStyle)
             QTC_CFG_READ_BOOL(animatedProgress)
             QTC_CFG_READ_BOOL(lighterPopupMenuBgnd)
             QTC_CFG_READ_BOOL(embolden)
@@ -640,6 +681,7 @@ static bool readConfig(const char *file, Options *opts, Options *def)
             QTC_CFG_READ_LINE(sliderThumbs)
             QTC_CFG_READ_LINE(handles)
             QTC_CFG_READ_BOOL(highlightTab)
+            QTC_CFG_READ_BOOL(colorSelTab)
             QTC_CFG_READ_SHADE(shadeSliders, false)
             QTC_CFG_READ_SHADE(shadeMenubars, true)
             QTC_CFG_READ_SHADE(shadeCheckRadio, false)
@@ -675,6 +717,7 @@ static bool readConfig(const char *file, Options *opts, Options *def)
             QTC_CFG_READ_BOOL(gradientPbGroove)
             QTC_CFG_READ_BOOL(darkerBorders)
             QTC_CFG_READ_BOOL(vArrows)
+            QTC_CFG_READ_BOOL(xCheck)
             QTC_CFG_READ_BOOL(framelessGroupBoxes)
             QTC_CFG_READ_BOOL(inactiveHighlight)
             QTC_CFG_READ_BOOL(colorMenubarMouseOver)
@@ -766,8 +809,10 @@ static void defaultSettings(Options *opts)
     opts->round=ROUND_FULL;
     opts->lighterPopupMenuBgnd=true;
     opts->animatedProgress=true;
-    opts->stripedProgress=true;
+    opts->stripedProgress=STRIPE_DIAGONAL;
+    opts->sliderStyle=SLIDER_TRIANGULAR;
     opts->highlightTab=true;
+    opts->colorSelTab=false;
     opts->embolden=false;
     opts->appearance=APPEARANCE_DULL_GLASS;
     opts->lvAppearance=APPEARANCE_BEVELLED;
@@ -778,14 +823,14 @@ static void defaultSettings(Options *opts)
     opts->toolbarAppearance=APPEARANCE_GRADIENT;
     opts->progressAppearance=APPEARANCE_DULL_GLASS;
     opts->defBtnIndicator=IND_COLORED;
-    opts->sliderThumbs=LINE_DOTS;
+    opts->sliderThumbs=LINE_FLAT;
     opts->handles=LINE_DOTS;
     opts->shadeSliders=SHADE_BLEND_SELECTED;
     opts->shadeMenubars=SHADE_DARKEN;
     opts->shadeCheckRadio=SHADE_NONE;
     opts->toolbarBorders=TB_NONE;
-    opts->toolbarSeparators=LINE_DOTS;
-    opts->splitters=LINE_DOTS;
+    opts->toolbarSeparators=LINE_NONE;
+    opts->splitters=LINE_FLAT;
     opts->fixParentlessDialogs=false;
     opts->customMenuTextColor=false;
     opts->coloredMouseOver=MO_PLASTIK;
@@ -805,6 +850,7 @@ static void defaultSettings(Options *opts)
     opts->gradientPbGroove=true;
     opts->darkerBorders=false;
     opts->vArrows=false;
+    opts->xCheck=false;
     opts->framelessGroupBoxes=false;
     opts->colorMenubarMouseOver=false;
     opts->inactiveHighlight=false;
@@ -876,6 +922,8 @@ static const char *toStr(ELine ind, bool none)
             return "dots";
         case LINE_DASHES:
             return none ? "none" : "dashes";
+        case LINE_FLAT:
+            return "flat";
         default:
             return "sunken";
     }
@@ -921,6 +969,8 @@ static const char *toStr(EAppearance exp)
             return "raised";
         case APPEARANCE_GRADIENT:
             return "gradient";
+        case APPEARANCE_SPLIT_GRADIENT:
+            return "splitgradient";
         case APPEARANCE_DULL_GLASS:
             return "dullglass";
         case APPEARANCE_BEVELLED:
@@ -1019,6 +1069,34 @@ static const char *toStr(EShading s)
     }
 }
 
+static const char *toStr(EStripe s)
+{
+    switch(s)
+    {
+        default:
+        case STRIPE_PLAIN:
+            return "plain";
+        case STRIPE_NONE:
+            return "none";
+        case STRIPE_DIAGONAL:
+            return "diagonal";
+    }
+}
+
+static const char *toStr(ESliderStyle s)
+{
+    switch(s)
+    {
+        case SLIDER_PLAIN:
+            return "plain";
+        case SLIDER_TRIANGULAR:
+            return "triangular";
+        default:
+        case SLIDER_ROUND:
+            return "round";
+    }
+}
+
 #if QT_VERSION >= 0x040000
 #define CFG config
 #else
@@ -1093,6 +1171,7 @@ bool static writeConfig(KConfig *cfg, const Options &opts, const Options &def, b
         CFG_WRITE_ENTRY_FORCE(appearance)
         CFG_WRITE_ENTRY(fixParentlessDialogs)
         CFG_WRITE_ENTRY(stripedProgress)
+        CFG_WRITE_ENTRY(sliderStyle)
         CFG_WRITE_ENTRY(animatedProgress)
         CFG_WRITE_ENTRY(lighterPopupMenuBgnd)
         CFG_WRITE_ENTRY(embolden)
@@ -1100,6 +1179,7 @@ bool static writeConfig(KConfig *cfg, const Options &opts, const Options &def, b
         CFG_WRITE_ENTRY_B(sliderThumbs, true)
         CFG_WRITE_ENTRY_B(handles, false)
         CFG_WRITE_ENTRY(highlightTab)
+        CFG_WRITE_ENTRY(colorSelTab)
         CFG_WRITE_ENTRY_SHADE(shadeSliders, false, false)
         CFG_WRITE_ENTRY_SHADE(shadeMenubars, true, false)
         CFG_WRITE_ENTRY_SHADE(shadeCheckRadio, false, true)
@@ -1135,6 +1215,7 @@ bool static writeConfig(KConfig *cfg, const Options &opts, const Options &def, b
         CFG_WRITE_ENTRY(gradientPbGroove)
         CFG_WRITE_ENTRY(darkerBorders)
         CFG_WRITE_ENTRY(vArrows)
+        CFG_WRITE_ENTRY(xCheck)
         CFG_WRITE_ENTRY(framelessGroupBoxes)
         CFG_WRITE_ENTRY(inactiveHighlight)
 #ifdef __cplusplus

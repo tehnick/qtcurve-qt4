@@ -88,7 +88,14 @@ typedef GdkColor color;
 #endif
 
 #define QTC_GROUP        "Settings"
-#define QTC_DESCR_GROUP  "Description"
+/*#define QTC_DESCR_GROUP  "Description"*/
+
+/* qtc_<theme name>.themerc support */
+#define KDE_PREFIX(V) ((4==(V)) ? KDE4PREFIX : KDE3PREFIX)
+#define QTC_THEME_DIR    "/share/apps/kstyle/themes/"
+#define QTC_THEME_PREFIX "qtc_"
+#define QTC_THEME_SUFFIX ".themerc"
+
 
 #define QTC_CHECK_SIZE   13
 #define QTC_RADIO_SIZE   13
@@ -159,6 +166,7 @@ typedef GdkColor color;
             : shades[SHADING_SIMPLE==shading ? 1 : 0][c][s] )
 
 #define TAB_APPEARANCE(A)   (A) /* (APPEARANCE_GLASS==(A) ? APPEARANCE_GRADIENT : (A)) */
+#define QTC_COLOR_SEL_TAB_FACTOR 1.2
 
 #define QTC_ROUNDED (ROUND_NONE!=opts.round)
 
@@ -185,6 +193,8 @@ typedef GdkColor color;
 
 #define SHADE_BOTTOM_TAB_SEL_LIGHT  1.0
 #define SHADE_BOTTOM_TAB_SEL_DARK   0.96
+
+#define SPLIT_GRADIENT_FACTOR       0.415
 
 #if !defined QTC_GLASS_SHADING || QTC_GLASS_SHADING==0
 
@@ -265,11 +275,12 @@ typedef GdkColor color;
 #define PROGRESS_ANIMATION 100
 #define MIN_SLIDER_SIZE(A) (LINE_DOTS==A ? 24 : 20)
 
-#define QTC_NORM_TAB_APP (APPEARANCE_BEVELLED==opts.tabAppearance ? APPEARANCE_GRADIENT : opts.tabAppearance)
+#define QTC_NORM_TAB_APP (APPEARANCE_BEVELLED==opts.tabAppearance || APPEARANCE_SPLIT_GRADIENT==opts.appearance \
+                            ? APPEARANCE_GRADIENT : opts.tabAppearance)
 #define QTC_SEL_TAB_APP (APPEARANCE_INVERTED==opts.tabAppearance ? APPEARANCE_FLAT : (QTC_NORM_TAB_APP))
 #define QTC_SLIDER_MO_SHADE  (SHADE_SELECTED==opts.shadeSliders ? 1 : (SHADE_BLEND_SELECTED==opts.shadeSliders ? 0 : ORIGINAL_SHADE))
 #define QTC_SLIDER_MO_BORDER (SHADE_SELECTED==opts.shadeSliders || SHADE_BLEND_SELECTED==opts.shadeSliders ? 2 : 1)
-#define QTC_SLIDER_MO_LEN (SHADE_SELECTED==opts.shadeSliders || SHADE_BLEND_SELECTED==opts.shadeSliders ? 4 : 3)
+#define QTC_SLIDER_MO_LEN (SLIDER_TRIANGULAR==opts.sliderStyle ? 2 : (SHADE_SELECTED==opts.shadeSliders || SHADE_BLEND_SELECTED==opts.shadeSliders ? 4 : 3))
 #define QTC_SB_SLIDER_MO_LEN(A) ((A)<22 && ROUND_FULL!=opts.round \
                                     ? 2 \
                                     : ((A)<32 || (SHADE_SELECTED!=opts.shadeSliders && SHADE_BLEND_SELECTED!=opts.shadeSliders) \
@@ -338,11 +349,12 @@ typedef enum
 typedef enum
 {
     APPEARANCE_FLAT,
+    APPEARANCE_RAISED,
     APPEARANCE_DULL_GLASS,
     APPEARANCE_SHINY_GLASS,
     APPEARANCE_GRADIENT,
     APPEARANCE_INVERTED,
-    APPEARANCE_RAISED,
+    APPEARANCE_SPLIT_GRADIENT,
     APPEARANCE_BEVELLED
 } EAppearance;
 
@@ -379,6 +391,7 @@ typedef enum
 typedef enum
 {
     LINE_SUNKEN,
+    LINE_FLAT,
     LINE_DOTS,
     LINE_DASHES
 } ELine;
@@ -437,6 +450,20 @@ typedef enum
     MO_COLORED,
     MO_PLASTIK
 } EMouseOver;
+
+typedef enum
+{
+    STRIPE_NONE,
+    STRIPE_PLAIN,
+    STRIPE_DIAGONAL
+} EStripe;
+
+typedef enum
+{
+    SLIDER_PLAIN,
+    SLIDER_ROUND,
+    SLIDER_TRIANGULAR,
+} ESliderStyle;
 
 #define DEF_IND_STR                "fontcolor"
 #define DEF_LINE_STR               "dots"
@@ -813,7 +840,7 @@ typedef struct
     bool             embolden,
                      lighterPopupMenuBgnd,
                      highlightTab,
-                     stripedProgress,
+                     colorSelTab,
                      animatedProgress,
                      fixParentlessDialogs,
                      customMenuTextColor,
@@ -847,8 +874,11 @@ typedef struct
                      colorMenubarMouseOver,
                      darkerBorders,
                      vArrows,
+                     xCheck,
                      framelessGroupBoxes,
                      inactiveHighlight;
+    EStripe          stripedProgress;
+    ESliderStyle     sliderStyle;
     EMouseOver       coloredMouseOver;
     ETBarBorder      toolbarBorders;
     EDefBtnIndicator defBtnIndicator;

@@ -27,7 +27,9 @@
 #include <QTime>
 #include <QPalette>
 #include <QMap>
+#include <QList>
 #include <QCache>
+#include <QColor>
 #include <QStyleOption>
 #ifdef QTC_INT_CACHE_KEY
 #include <Q_UINT64>
@@ -51,13 +53,6 @@ class QtCurveStyle : public QWindowsStyle
 {
     Q_OBJECT
 
-    enum EBlend
-    {
-        BLEND_NONE,
-        BLEND_BGND,
-        BLEND_BASE
-    };
-
     public:
 
     QtCurveStyle(const QString &name=QString());
@@ -66,6 +61,7 @@ class QtCurveStyle : public QWindowsStyle
     void polish(QApplication *app);
     void polish(QPalette &palette);
     void polish(QWidget *widget);
+    void unpolish(QApplication *app) { QTC_BASE_STYLE::unpolish(app); }
     void unpolish(QWidget *widget);
     bool eventFilter(QObject *object, QEvent *event);
     void timerEvent(QTimerEvent *event);
@@ -76,6 +72,8 @@ class QtCurveStyle : public QWindowsStyle
     void drawPrimitive(PrimitiveElement element, const QStyleOption *option, QPainter *painter, const QWidget *widget) const;
     void drawControl(ControlElement control, const QStyleOption *option, QPainter *painter, const QWidget *widget) const;
     void drawComplexControl(ComplexControl control, const QStyleOptionComplex *option, QPainter *painter, const QWidget *widget) const;
+    void drawItemText(QPainter *painter, const QRect &rect, int flags, const QPalette &pal, bool enabled, const QString &text,
+                      QPalette::ColorRole textRole = QPalette::NoRole) const;
     QSize sizeFromContents(ContentsType type, const QStyleOption *option, const QSize &size, const QWidget *widget) const;
     QRect subElementRect(SubElement element, const QStyleOption *option, const QWidget *widget) const;
     QRect subControlRect(ComplexControl control, const QStyleOptionComplex *option, SubControl subControl, const QWidget *widget) const;
@@ -84,18 +82,26 @@ class QtCurveStyle : public QWindowsStyle
 
     private:
 
+    static QColor shadowColor(const QColor col)
+    {
+        return qGray(col.rgb()) < 100 ? QColor(255, 255, 255, 75) : QColor(0, 0, 0, 75);
+    }
+
     void drawBevelGradient(const QColor &base, bool increase, QPainter *p, QRect const &r,
                            bool horiz, double shadeTop, double shadeBot, bool sel, EAppearance bevApp,
                            EWidget w=WIDGET_OTHER) const;
+#ifdef QTC_USE_CUSTOM_GRADIENT_ROUTINE
     void drawGradient(const QColor &top, const QColor &bot, bool increase, QPainter *p,
                       const QRect &r, bool horiz=true) const;
+#endif
     void drawLightBevel(QPainter *p, const QRect &r, const QStyleOption *option, int round, const QColor &fill,
                         const QColor *custom=0, bool doBorder=true, EWidget w=WIDGET_OTHER) const;
     void drawEtch(QPainter *p, const QRect &r, /*const QStyleOption *option, */bool top, bool bot, bool raised=false) const;
-    void drawBorder(QPainter *p, const QRect &r, const QStyleOption *option,
-                    int round, const QColor *custom=0, EWidget w=WIDGET_OTHER, EBorder borderProfile=BORDER_FLAT,
-                    EBlend blend=BLEND_BGND, int borderVal=QT_STD_BORDER) const;
+    void drawBorder(QPainter *p, const QRect &r, const QStyleOption *option, int round, const QColor *custom=0,
+                    EWidget w=WIDGET_OTHER, EBorder borderProfile=BORDER_FLAT, bool doBlend=true, int borderVal=QT_STD_BORDER) const;
     void drawMdiButton(QPainter *painter, const QRect &r, bool hover, bool sunken, const QColor *cols) const;
+    void drawMdiIcon(QPainter *painter, const QColor &color, const QRect &r, bool sunken, int margin, SubControl button) const;
+    void drawWindowIcon(QPainter *painter, const QColor &color, const QRect &r, bool sunken, int margin, SubControl button) const;
     void drawEntryField(QPainter *p, const QRect &rx, const QStyleOption *option, int round, EWidget w=WIDGET_OTHER) const;
     void drawMenuItem(QPainter *p, const QRect &r, const QStyleOption *option, bool mbi, int round, const QColor *cols) const;
     void drawProgress(QPainter *p, const QRect &r, const QStyleOption *option, int round, bool vertical=false, bool reverse=false) const;
@@ -116,7 +122,8 @@ class QtCurveStyle : public QWindowsStyle
     const QColor * borderColors(const QStyleOption *option, const QColor *use) const;
     const QColor * getSidebarButtons() const;
     void setMenuColors(const QColor &bgnd);
-    const QColor * getMdiColors(const QStyleOptionTitleBar *option) const;
+    const QColor * getMdiColors(const QStyleOption *option, bool active) const;
+    void           readMdiPositions() const;
     const QColor & getFill(const QStyleOption *option, const QColor *use) const;
     const QColor & getTabFill(bool current, bool highlight, const QColor *use) const;
     QPixmap *      getPixmap(const QColor col, EPixmap p, double shade=1.0) const;
@@ -152,6 +159,8 @@ class QtCurveStyle : public QWindowsStyle
                                        itsAnimateStep;
     QTime                              itsTimer;
     mutable QMap<QWidget *, QWidget *> itsReparentedDialogs;
+    mutable QList<int>                 itsMdiButtons[2]; // 0=left, 1=right
+
     // Required for Q3Header hover...
     QPoint                             itsPos;
     QWidget                            *itsHoverWidget;

@@ -39,6 +39,7 @@
 //Konsole:               KTabBar::QWidget
 
 #define WINDOWTITLE_SPACER 0x10000000
+#define QTC_STATE_REVERSE  State_Mini
 
 static enum
 {
@@ -470,17 +471,19 @@ static void parseWindowLine(const QString &line, QList<int> &data)
         }
 }
 
-static bool readQt3(QFile &f, QPalette &pal, QFont &font)
+static bool readQt3(QFile &f, QPalette &pal, QFont &font, int *contrast)
 {
     enum ESect
     {
         SECT_NONE,
         SECT_GEN,
-        SECT_PAL
+        SECT_PAL,
+        SECT_KDE
     } sect=SECT_NONE;
 
     bool gotPal(false),
-         gotFont(false);
+         gotFont(false),
+         gotContrast(false);
 
     if(f.open(QIODevice::ReadOnly))
     {
@@ -500,32 +503,42 @@ static bool readQt3(QFile &f, QPalette &pal, QFont &font)
                 else if(0==line.indexOf("inactive=#"))
                     readPal(line, QPalette::Inactive, pal);
                 else if (0==line.indexOf('['))
-                {
                     sect=SECT_NONE;
-                    if(gotFont)
-                        break;
-                }
             }
             else if(SECT_GEN==sect)
             {
                 if(0==line.indexOf("font="))
                     gotFont=font.fromString(line.mid(5));
                 else if (0==line.indexOf('['))
-                {
                     sect=SECT_NONE;
-                    if(gotPal)
-                        break;
-                }
             }
-            else if(0==line.indexOf("[Palette]"))
-                sect=SECT_PAL;
-            else if(0==line.indexOf("[General]"))
-                sect=SECT_GEN;
+            else if(SECT_KDE==sect)
+            {
+                if(0==line.indexOf("contrast="))
+                {
+                    *contrast=line.mid(9).toInt();
+                    gotContrast=true;
+                }
+                else if (0==line.indexOf('['))
+                    sect=SECT_NONE;
+            }
+
+            if(SECT_NONE==sect)
+            {
+                if(0==line.indexOf("[Palette]"))
+                    sect=SECT_PAL;
+                else if(0==line.indexOf("[General]"))
+                    sect=SECT_GEN;
+                else if(contrast && 0==line.indexOf("[KDE]"))
+                    sect=SECT_KDE;
+                if(gotPal && gotFont && (!contrast || gotContrast))
+                    break;
+            }
         }
         f.close();
     }
 
-    return gotPal && gotFont;
+    return gotPal && gotFont && (!contrast || gotContrast);
 }
 
 static bool useQt3Settings()
@@ -536,19 +549,19 @@ static bool useQt3Settings()
     return full && (!vers || atoi(vers)<4);
 }
 
-static bool readQt3(QPalette &pal, QFont &font)
+static bool readQt3(QPalette &pal, QFont &font, int *contrast)
 {
     if(useQt3Settings())
     {
         QFile file(QDir::homePath()+QLatin1String("/.qt/qtrc"));
 
-        if(!file.exists() || !readQt3(file, pal, font))
+        if(!file.exists() || !readQt3(file, pal, font, contrast))
         {
             file.setFileName("/etc/qt3/qtrc");
-            if(!file.exists() || !readQt3(file, pal,font))
+            if(!file.exists() || !readQt3(file, pal,font, contrast))
             {
                 file.setFileName("/etc/qt/qtrc");
-                if(!file.exists() || !readQt3(file, pal, font))
+                if(!file.exists() || !readQt3(file, pal, font, contrast))
                     return false;
             }
         }
@@ -602,7 +615,7 @@ QtCurveStyle::QtCurveStyle(const QString &name)
     }
 
     readConfig(rcFile, &opts, &opts);
-    opts.contrast=QSettings().value("/Qt/KDE/contrast", 7).toInt();
+    opts.contrast=QSettings(QLatin1String("Trolltech")).value("/Qt/KDE/contrast", 7).toInt();
     if(opts.contrast<0 || opts.contrast>10)
         opts.contrast=7;
 
@@ -696,6 +709,40 @@ static QString getFile(const QString &f)
     return d;
 }
 
+static bool isNvidia() // Read xorg.conf to see if we are using nvidia driver...
+{
+    QFile f("/etc/X11/xorg.conf");
+    bool  nvidia(false);
+
+    if(f.open(QIODevice::ReadOnly))
+    {
+        QTextStream in(&f);
+        bool        inDevice(false);
+
+        while (!in.atEnd())
+        {
+            QString line(in.readLine());
+            int     a, b;
+
+            if(inDevice)
+            {
+                if(-1!=(a=line.indexOf("Driver")) && -1!=(b=line.indexOf("\"nvidia\"")) && a<b)
+                {
+                    nvidia=true;
+                    break;
+                }
+                else if(-1!=line.indexOf("EndSection"))
+                    break;
+            }
+            else if(-1!=(a=line.indexOf("Section")) && -1!=(b=line.indexOf("\"Device\"")) && a<b)
+                inDevice=true;
+        }
+        f.close();
+    }
+
+    return nvidia;
+}
+
 void QtCurveStyle::polish(QApplication *app)
 {
     QString appName(getFile(app->argv()[0]));
@@ -714,11 +761,19 @@ void QtCurveStyle::polish(QApplication *app)
     else
         theThemedApp=APP_OTHER;
 
-    if(APP_OTHER==theThemedApp && EFFECT_NONE!=opts.buttonEffect && "plasma"==appName)
-        theThemedApp=APP_PLASMA;
+    if(APP_OTHER==theThemedApp)
+        if("plasma"==appName || "krunner"==appName)
+            theThemedApp=APP_PLASMA;
+        else if("kwin"==appName)
+            theThemedApp=APP_KWIN;
 
-    if(APP_OTHER==theThemedApp && "kwin"==appName)
-        theThemedApp=APP_KWIN;
+    // If the user has enabled the plasmaHack, but this is not plasma/krunner, or its
+    // not running composite, or user is not using nvidia - then disable the hack.
+    if(opts.plasmaHack && (APP_PLASMA!=theThemedApp || QX11Info::appDefaultColormap() || !isNvidia()))
+        opts.plasmaHack=false;
+
+    if(opts.plasmaHack)
+        qWarning("QtCurve - Working around plasma/krunner re-draw errors on nvidia cards");
 
     QPalette pal(app->palette());
 
@@ -728,26 +783,27 @@ void QtCurveStyle::polish(QApplication *app)
 
 void QtCurveStyle::polish(QPalette &palette)
 {
-    int  c(QSettings().value("/Qt/KDE/contrast", 7).toInt());
-    bool newContrast(false);
-
-    if(c<0 || c>10)
-        c=7;
-
-    if(c!=opts.contrast)
-    {
-        opts.contrast=c;
-        newContrast=true;
-    }
-
+    int      contrast(7);
+    bool     newContrast(false);
     QPalette pal;
     QFont    font;
 
     // Set palette from Qt3 settings.
-    if(readQt3(pal, font))
+    if(readQt3(pal, font, &contrast))
     {
         palette=pal;
         QApplication::setFont(font);
+    }
+    else
+        contrast=QSettings(QLatin1String("Trolltech")).value("/Qt/KDE/contrast", 7).toInt();
+
+    if(contrast<0 || contrast>10)
+        contrast=7;
+
+    if(contrast!=opts.contrast)
+    {
+        opts.contrast=contrast;
+        newContrast=true;
     }
 
     bool newMenu(newContrast ||
@@ -855,7 +911,7 @@ void QtCurveStyle::polish(QWidget *widget)
         qobject_cast<QScrollBar *>(widget) ||
         qobject_cast<QHeaderView *>(widget) ||
         qobject_cast<QTabBar *>(widget) ||
-        qobject_cast<QDockWidget *>(widget) ||
+//        qobject_cast<QDockWidget *>(widget) ||
         widget->inherits("QWorkspaceTitleBar") ||
         widget->inherits("QDockSeparator") ||
         widget->inherits("QDockWidgetSeparator") ||
@@ -979,7 +1035,7 @@ void QtCurveStyle::unpolish(QWidget *widget)
        qobject_cast<QScrollBar *>(widget) ||
        qobject_cast<QHeaderView *>(widget) ||
        qobject_cast<QTabBar *>(widget) ||
-       qobject_cast<QDockWidget *>(widget) ||
+//       qobject_cast<QDockWidget *>(widget) ||
        widget->inherits("QWorkspaceTitleBar") ||
        widget->inherits("QDockSeparator") ||
        widget->inherits("QDockWidgetSeparator") ||
@@ -1213,7 +1269,7 @@ void QtCurveStyle::timerEvent(QTimerEvent *event)
     {
         itsAnimateStep = itsTimer.elapsed() / (1000 / constProgressBarFps);
         foreach (QProgressBar *bar, itsProgressBars)
-            if (opts.animatedProgress || (0==bar->minimum() && 0==bar->maximum()))
+            if ((opts.animatedProgress && 0==itsAnimateStep%2) || (0==bar->minimum() && 0==bar->maximum()))
                 bar->update();
     }
 
@@ -1324,6 +1380,8 @@ int QtCurveStyle::pixelMetric(PixelMetric metric, const QStyleOption *option, co
                                         : 0, 24);
         case QtC_Round:
             return (int)opts.round;
+        case QtC_Appearance:
+            return (int)opts.appearance;
         default:
             return QTC_BASE_STYLE::pixelMetric(metric, option, widget);
     }
@@ -1428,7 +1486,7 @@ QPalette QtCurveStyle::standardPalette() const
     QPalette palette;
     QFont    font;
 
-    if(!readQt3(palette, font))
+    if(!readQt3(palette, font, NULL))
     {
         palette.setBrush(QPalette::Disabled, QPalette::WindowText, QColor(QRgb(0xff808080)));
         palette.setBrush(QPalette::Disabled, QPalette::Button, QColor(QRgb(0xffdddfe4)));
@@ -1926,7 +1984,7 @@ void QtCurveStyle::drawPrimitive(PrimitiveElement element, const QStyleOption *o
                 bool         horiz(opt.state&State_Horizontal);
 
                 painter->save();
-                if((opt.state&State_On ) || opt.state&State_MouseOver)
+                if(opt.state&State_On || opt.state&State_MouseOver)
                 {
                     r2.adjust(-1, -1, 1, 1);
                     drawLightBevel(painter, r2, &opt, ROUNDED_NONE, getFill(&opt, use), use, false, WIDGET_MENU_ITEM);
@@ -2052,6 +2110,7 @@ void QtCurveStyle::drawPrimitive(PrimitiveElement element, const QStyleOption *o
                                 : palette.background().color());
 
             painter->save();
+            checkPlasma(painter, r);
             if(IS_FLAT(opts.appearance))
                 painter->fillRect(QRect(r.x()+1, r.y()+1, r.width()-2, r.height()-2), bgnd);
             else
@@ -2105,7 +2164,8 @@ void QtCurveStyle::drawPrimitive(PrimitiveElement element, const QStyleOption *o
                                            marg(lv->itemMargin);
 
                 if (state & State_Selected && !lv->rootIsDecorated && !(item.features & QStyleOptionQ3ListViewItem::ParentControl))
-                    painter->fillRect(0, 0, x + marg + w + 4, item.height, palette.brush(QPalette::Highlight));
+                    painter->fillRect(0, 0, x + marg + w + 4, item.height, palette.brush(QPalette::Highlight));            checkPlasma(painter, r);
+
             }
 
             r.setX(r.x()+((r.width()-QTC_RADIO_SIZE)/2)-1);
@@ -2131,6 +2191,7 @@ void QtCurveStyle::drawPrimitive(PrimitiveElement element, const QStyleOption *o
 
             painter->save();
             painter->setClipRegion(QRegion(clipRegion));
+            checkPlasma(painter, r);
             if(IS_FLAT(opts.appearance))
                 painter->fillRect(QRect(x+1, y+1, r.width()-2, r.height()-2), bgnd);
             else
@@ -2194,9 +2255,8 @@ void QtCurveStyle::drawPrimitive(PrimitiveElement element, const QStyleOption *o
             const QColor *use(buttonColors(option));
             bool         isDefault(false),
                          isFlat(false),
-                         isDown((state&State_Sunken) || (state&State_On)),
-                         isOnListView(widget && qobject_cast<const QTreeView *>(widget)),
-                         noEtch(isOnListView);
+                         isDown(state&State_Sunken || state&State_On),
+                         isOnListView(widget && qobject_cast<const QTreeView *>(widget));
             QStyleOption opt(*option);
             CEtchCheck   check(widget);
 
@@ -2213,14 +2273,19 @@ void QtCurveStyle::drawPrimitive(PrimitiveElement element, const QStyleOption *o
                 return;
 
             painter->save();
+            checkPlasma(painter, r);
 
             if(isOnListView)
                 opt.state|=State_Horizontal|State_Raised;
 
             drawLightBevel(painter, r, &opt, ROUNDED_ALL, getFill(&opt, use), use,
-                           true, noEtch ? WIDGET_NO_ETCH_BTN : WIDGET_STD_BUTTON);
+                           true, isOnListView
+                                    ? WIDGET_NO_ETCH_BTN
+                                    : isDefault && state&State_Enabled && IND_FONT_COLOR==opts.defBtnIndicator
+                                        ? WIDGET_DEF_BUTTON
+                                        : WIDGET_STD_BUTTON);
 
-            if (isDefault && state & State_Enabled)
+            if (isDefault && state&State_Enabled)
                 switch(opts.defBtnIndicator)
                 {
                     case IND_CORNER:
@@ -2479,7 +2544,7 @@ void QtCurveStyle::drawControl(ControlElement element, const QStyleOption *optio
 #endif
                 QRect handleRect(titleRect);
 
-                if(state&State_MouseOver)
+//                if(state&State_MouseOver)
                 {
     /*
                     if(IS_FLAT(opts.appearance))
@@ -2530,6 +2595,8 @@ void QtCurveStyle::drawControl(ControlElement element, const QStyleOption *optio
 
             opt.state&=~State_MouseOver;
             painter->save();
+            checkPlasma(painter, r);
+
             drawBevelGradient(getFill(&opt, itsBackgroundCols), true, painter, r, horiz,
                               SHADE_BEVEL_GRAD_LIGHT, SHADE_BEVEL_GRAD_DARK,
                               false, opts.lvAppearance, WIDGET_LISTVIEW_HEADER);
@@ -2739,7 +2806,7 @@ void QtCurveStyle::drawControl(ControlElement element, const QStyleOption *optio
 
 /*                            if(reverse || inverted)*/
                                 drawProgress(painter, QRect(cr.x(), cr.y()+(cr.height()-height), cr.width(), height),
-                                             option, height==cr.height() ? ROUNDED_NONE : ROUNDED_TOP, true, WIDGET_PROGRESSBAR);
+                                             option, height==cr.height() ? ROUNDED_NONE : ROUNDED_TOP, true, true);
 //                             else
 //                                 drawProgress(painter, QRect(cr.x(), cr.y(), cr.width(), height), option,
 //                                             height==cr.height() ?  ROUNDED_NONE : ROUNDED_TOP);
@@ -3375,6 +3442,7 @@ void QtCurveStyle::drawControl(ControlElement element, const QStyleOption *optio
                 const QColor &fill(getTabFill(selected, state&State_MouseOver, itsBackgroundCols));
 
                 painter->save();
+                checkPlasma(painter, r);
                 switch(tab->shape)
                 {
                     case QTabBar::RoundedNorth:
@@ -3444,7 +3512,7 @@ void QtCurveStyle::drawControl(ControlElement element, const QStyleOption *optio
                         if(!firstTab)
                             r.adjust(-tabOverlap, 0, 0, 0);
 
-                        fillTab(painter, r, option, fill, true, false, WIDGET_TAB_BOT);
+                        fillTab(painter, r.adjusted(1, 0, -1, 0), option, fill, true, false, WIDGET_TAB_BOT);
 
                         drawBorder(painter, r.adjusted(0, -4, 0, 0), option,
                                     selected || onlyTab
@@ -3504,7 +3572,7 @@ void QtCurveStyle::drawControl(ControlElement element, const QStyleOption *optio
 
                         if(!firstTab)
                             r.adjust(0, -tabOverlap, 0, 0);
-                        fillTab(painter, r.adjusted(0, 1, 0, 0), option, fill, false, true, WIDGET_TAB_TOP);
+                        fillTab(painter, r.adjusted(0, 1, 0, -1), option, fill, false, true, WIDGET_TAB_TOP);
 
                         drawBorder(painter, r.adjusted(0, 0, 4, 0), option,
                                     selected || onlyTab
@@ -3564,7 +3632,7 @@ void QtCurveStyle::drawControl(ControlElement element, const QStyleOption *optio
 
                         if(!firstTab)
                             r.adjust(0, -tabOverlap, 0, 0);
-                        fillTab(painter, r/*.adjusted(0, 1, 0, 0)*/, option, fill, false, false, WIDGET_TAB_BOT);
+                        fillTab(painter, r.adjusted(0, 1, 0, -1), option, fill, false, false, WIDGET_TAB_BOT);
 
                         drawBorder(painter, r.adjusted(-4, 0, 0, 0), option,
                                     selected || onlyTab
@@ -4221,7 +4289,10 @@ void QtCurveStyle::drawComplexControl(ComplexControl control, const QStyleOption
                 painter->save();
 
                 const int    buttonMargin(6);
-                bool         active(titleBar->titleBarState & State_Active);
+                bool         active(state & State_Active),
+                             roundKWinFull(ROUND_FULL==opts.round &&
+                                            ((APP_KWIN==theThemedApp && !(titleBar->titleBarState&State_Raised)) ||
+                                              titleBar->titleBarState&QtC_StateKWin));
                 const QColor *btnCols(theThemedApp==APP_KWIN
                                         ? buttonColors(option)
                                         : getMdiColors(titleBar, active));
@@ -4233,6 +4304,24 @@ void QtCurveStyle::drawComplexControl(ComplexControl control, const QStyleOption
                 QStyleOption opt(*option);
 
                 opt.state=State_Horizontal|State_Enabled|State_Raised;
+
+                if(APP_KWIN!=theThemedApp && roundKWinFull) // Set clipping for preview in kcmshell...
+                {
+                    int     x(r.x()), y(r.y()), w(r.width()), h(r.height());
+                    QRegion mask(x+5, y+0, w-10, h);
+
+                    mask += QRegion(x+0, y+5, 1, h-6);
+                    mask += QRegion(x+1, y+3, 1, h-3);
+                    mask += QRegion(x+2, y+2, 1, h-2);
+                    mask += QRegion(x+3, y+1, 2, h-1);
+
+                    mask += QRegion(x+w-1, y+5, 1, h-6);
+                    mask += QRegion(x+w-2, y+3, 1, h-3);
+                    mask += QRegion(x+w-3, y+2, 1, h-2);
+                    mask += QRegion(x+w-5, y+1, 2, h-1);
+                    painter->setClipRegion(mask);
+                }
+
                 drawLightBevel(painter, r, &opt,
                                titleBar->titleBarState&State_Raised
                                 ? ROUNDED_NONE
@@ -4241,6 +4330,22 @@ void QtCurveStyle::drawComplexControl(ComplexControl control, const QStyleOption
                                     : ROUNDED_TOP,
                                btnCols[2], btnCols, true,
                                titleBar->titleBarState&Qt::WindowMinimized ? WIDGET_MDI_WINDOW : WIDGET_MDI_WINDOW_TITLE);
+
+                if(roundKWinFull)
+                {
+                    painter->setPen(btnCols[QT_STD_BORDER]);
+                    painter->drawLine(r.x()+1, r.y()+4, r.x()+1, r.y()+3);
+                    painter->drawPoint(r.x()+2, r.y()+2);
+                    painter->drawLine(r.x()+3, r.y()+1, r.x()+4, r.y()+1);
+                    painter->drawLine(r.x()+r.width()-2, r.y()+4, r.x()+r.width()-2, r.y()+3);
+                    painter->drawPoint(r.x()+r.width()-3, r.y()+2);
+                    painter->drawLine(r.x()+r.width()-4, r.y()+1, r.x()+r.width()-5, r.y()+1);
+                    painter->setPen(btnCols[0]);
+                    painter->drawLine(r.x()+2, r.y()+4, r.x()+2, r.y()+3);
+                    painter->drawLine(r.x()+3, r.y()+2, r.x()+4, r.y()+2);
+                    //painter->drawLine(r.x()+r.width()-3, r.y()+4, r.x()+r.width()-3, r.y()+3);
+                    painter->drawLine(r.x()+r.width()-4, r.y()+2, r.x()+r.width()-5, r.y()+2);
+                }
 
                 if(!titleBar->text.isEmpty())
                 {
@@ -4476,6 +4581,8 @@ void QtCurveStyle::drawComplexControl(ComplexControl control, const QStyleOption
                 }
 #endif
 
+                painter->save();
+                checkPlasma(painter, r);
 #ifndef QTC_SIMPLE_SCROLLBARS
                 painter->fillRect(sbRect, palette.background().color());
 #endif
@@ -4642,12 +4749,15 @@ void QtCurveStyle::drawComplexControl(ComplexControl control, const QStyleOption
                     if(!(option->subControls&SC_ScrollBarSlider))
                         painter->setClipping(false);
                 }
+                painter->restore();
             }
             break;
         case CC_ComboBox:
             if (const QStyleOptionComboBox *comboBox = qstyleoption_cast<const QStyleOptionComboBox *>(option))
             {
                 painter->save();
+                checkPlasma(painter, r);
+
                 QRect           frame(subControlRect(CC_ComboBox, option, SC_ComboBoxFrame, widget)),
                                 arrow(subControlRect(CC_ComboBox, option, SC_ComboBoxArrow, widget)),
                                 field(subControlRect(CC_ComboBox, option, SC_ComboBoxEditField, widget));
@@ -5457,6 +5567,112 @@ QStyle::SubControl QtCurveStyle::hitTestComplexControl(ComplexControl control, c
     return QTC_BASE_STYLE::hitTestComplexControl(control, option,  pos, widget);
 }
 
+void QtCurveStyle::checkPlasma(QPainter *painter, const QRect &r) const
+{
+    if(opts.plasmaHack)
+    {
+        painter->setCompositionMode(QPainter::CompositionMode_Source);
+        if(ROUND_NONE==opts.round)
+            painter->fillRect(r, Qt::transparent);
+        else
+        {
+            painter->fillRect(r.adjusted(1, 0, -1, 0), Qt::transparent);
+            painter->fillRect(r.adjusted(0, 1, 0, -1), Qt::transparent);
+        }
+        painter->setCompositionMode(QPainter::CompositionMode_SourceOver);
+    }
+}
+
+void QtCurveStyle::drawProgressBevelGradient(QPainter *p, const QRect &origRect, const QStyleOption *option, bool horiz, double shadeTop,
+                                             double shadeBot, EAppearance bevApp) const
+{
+    bool    vertical(!horiz);
+    int     size(STRIPE_DIAGONAL==opts.stripedProgress ? (vertical ? origRect.width() : origRect.height()) : PROGRESS_CHUNK_WIDTH*2);
+    QRect   r(0, 0, horiz ? size : origRect.width(),
+                    horiz ? origRect.height() : size);
+    QtcKey  key(createKey(horiz ? r.height() : r.width(), itsMenuitemCols[ORIGINAL_SHADE].rgb(), horiz, true,
+                          app2App(bevApp, false), WIDGET_PROGRESSBAR, shadeTop, shadeBot));
+    QPixmap *pix(itsPixmapCache.object(key));
+
+    if(!pix)
+    {
+        pix=new QPixmap(r.width(), r.height());
+
+        QPainter pixPainter(pix);
+
+        if(IS_FLAT(bevApp))
+            pixPainter.fillRect(r, itsMenuitemCols[ORIGINAL_SHADE]);
+        else
+            drawBevelGradientReal(itsMenuitemCols[ORIGINAL_SHADE], true, &pixPainter, r, horiz, shadeTop, shadeBot, false,
+                                  bevApp, WIDGET_PROGRESSBAR, true);
+
+        switch(opts.stripedProgress)
+        {
+            default:
+            case STRIPE_NONE:
+                break;
+            case STRIPE_PLAIN:
+                drawBevelGradientReal(itsMenuitemCols[1], true, &pixPainter,
+                                        horiz
+                                        ? QRect(r.x(), r.y(), PROGRESS_CHUNK_WIDTH, r.height())
+                                        : QRect(r.x(), r.y(), r.width(), PROGRESS_CHUNK_WIDTH),
+                                        horiz, shadeTop, shadeBot, false, bevApp, WIDGET_PROGRESSBAR, true);
+                break;
+            case STRIPE_DIAGONAL:
+            {
+                QRegion  reg;
+
+                for(int offset=0; offset<size+2; offset+=(PROGRESS_CHUNK_WIDTH*2))
+                {
+                    QPolygon a;
+
+                    if(vertical)
+                        a.setPoints(4, r.x(),           r.y()+offset,
+                                       r.x()+r.width(), (r.y()+offset)-size,
+                                       r.x()+r.width(), (r.y()+offset+PROGRESS_CHUNK_WIDTH)-size,
+                                       r.x(),           r.y()+offset+PROGRESS_CHUNK_WIDTH);
+                    else
+                        a.setPoints(4, r.x()+offset,                             r.y(),
+                                       r.x()+offset+PROGRESS_CHUNK_WIDTH,        r.y(),
+                                       (r.x()+offset+PROGRESS_CHUNK_WIDTH)-size, r.y()+r.height(),
+                                       (r.x()+offset)-size,                      r.y()+r.height());
+
+                    reg+=QRegion(a);
+                }
+
+                pixPainter.setClipRegion(reg);
+                if(IS_FLAT(bevApp))
+                    pixPainter.fillRect(r, itsMenuitemCols[1]);
+                else
+                    drawBevelGradientReal(itsMenuitemCols[1], true, &pixPainter, r,
+                                          horiz, shadeTop, shadeBot, false, bevApp, WIDGET_PROGRESSBAR, true);
+            }
+        }
+
+        pixPainter.end();
+        itsPixmapCache.insert(key, pix, pix->width()*pix->height()*(pix->depth()/8));
+    }
+    p->setClipRect(origRect);
+    QRect fillRect(origRect);
+
+    if(opts.animatedProgress)
+    {
+        int animShift=vertical || option->state&QTC_STATE_REVERSE ? PROGRESS_CHUNK_WIDTH : -PROGRESS_CHUNK_WIDTH;
+
+        if(vertical || option->state&QTC_STATE_REVERSE)
+            animShift -= (itsAnimateStep/2) % (PROGRESS_CHUNK_WIDTH*2);
+        else
+            animShift += (itsAnimateStep/2) % (PROGRESS_CHUNK_WIDTH*2);
+
+        if(horiz)
+            fillRect.adjust(animShift-PROGRESS_CHUNK_WIDTH, 0, PROGRESS_CHUNK_WIDTH, 0);
+        else
+            fillRect.adjust(0, animShift-PROGRESS_CHUNK_WIDTH, 0, PROGRESS_CHUNK_WIDTH);
+    }
+    p->drawTiledPixmap(fillRect, *pix);
+    p->setClipping(false);
+}
+
 void QtCurveStyle::drawBevelGradient(const QColor &base, bool increase, QPainter *p,
                                      const QRect &origRect, bool horiz, double shadeTop,
                                      double shadeBot, bool sel, EAppearance bevApp, EWidget w) const
@@ -5469,201 +5685,183 @@ void QtCurveStyle::drawBevelGradient(const QColor &base, bool increase, QPainter
                             ? bevApp
                             : APPEARANCE_GRADIENT);
 
-        bool    selected(opts.colorSelTab && (WIDGET_TAB_TOP==w || WIDGET_TAB_BOT==w) ? false : sel);
-        QRect   r(0, 0, horiz ? QTC_PIXMAP_DIMENSION : origRect.width(),
-                        horiz ? origRect.height() : QTC_PIXMAP_DIMENSION);
-        QtcKey  key(createKey(horiz ? r.height() : r.width(), base.rgb(), horiz, increase,
-                              app2App(app, sel), w, shadeTop, shadeBot));
-        QPixmap *pix(itsPixmapCache.object(key));
-
-        if(!pix)
+        if(opts.plasmaHack || WIDGET_PROGRESSBAR==w)
+            drawBevelGradientReal(base, increase, p, origRect, horiz, shadeTop, shadeBot, sel, app, w, false);
+        else
         {
-            pix=new QPixmap(r.width(), r.height());
+            QRect   r(0, 0, horiz ? QTC_PIXMAP_DIMENSION : origRect.width(),
+                            horiz ? origRect.height() : QTC_PIXMAP_DIMENSION);
+            QtcKey  key(createKey(horiz ? r.height() : r.width(), base.rgb(), horiz, increase,
+                                app2App(app, sel), w, shadeTop, shadeBot));
+            QPixmap *pix(itsPixmapCache.object(key));
 
-            QPainter pixPainter(pix);
-
-            if(!selected && (IS_GLASS(app) || APPEARANCE_SPLIT_GRADIENT==app))
+            if(!pix)
             {
-                if(WIDGET_TAB_BOT==w)
-                {
-                    double t(shadeTop);
-                    shadeTop=shadeBot;
-                    shadeBot=t;
-                }
+                pix=new QPixmap(r.width(), r.height());
 
-                double shadeTopA(WIDGET_TAB_BOT==w
-                                    ? 1.0
-                                    : APPEARANCE_SPLIT_GRADIENT==app
-                                        ? shadeTop
-                                        : shadeTop*SHADE_GLASS_TOP_A(app, w)),
-                       shadeTopB(WIDGET_TAB_BOT==w
-                                    ? 1.0
-                                    : APPEARANCE_SPLIT_GRADIENT==app
-                                        ? shadeTop-((shadeTop-shadeBot)*SPLIT_GRADIENT_FACTOR)
-                                        : shadeTop*SHADE_GLASS_TOP_B(app, w)),
-                       shadeBotA(WIDGET_TAB_TOP==w
-                                    ? 1.0
-                                    : APPEARANCE_SPLIT_GRADIENT==app
-                                        ? shadeBot+((shadeTop-shadeBot)*SPLIT_GRADIENT_FACTOR)
-                                        : shadeBot*SHADE_GLASS_BOT_A(app)),
-                       shadeBotB(WIDGET_TAB_TOP==w
-                                    ? 1.0
-                                    : APPEARANCE_SPLIT_GRADIENT==app
-                                        ? shadeBot
-                                        : shadeBot*SHADE_GLASS_BOT_B(app));
+                QPainter pixPainter(pix);
 
-                QColor topA, topB, botA, botB;
-
-                shade(base, &topA, shadeTopA);
-                shade(base, &topB, shadeTopB);
-                shade(base, &botA, shadeBotA);
-                shade(base, &botB, shadeBotB);
-
-#ifdef QTC_USE_CUSTOM_GRADIENT_ROUTINE
-                QRect r1(r), r2(r);
-
-                if(horiz)
-                {
-                    r1.setHeight(r1.height()/2);
-                    r2.setY(r2.y()+r1.height());
-                }
-                else
-                {
-                    r1.setWidth(r1.width()/2);
-                    r2.setX(r2.x()+r1.width());
-                }
-
-                drawGradient(topA, topB, increase, &pixPainter, r1, horiz);
-                drawGradient(botA, botB, increase, &pixPainter, r2, horiz);
-#else
-                QLinearGradient grad(r.topLeft(), horiz ? r.bottomLeft() : r.topRight());
-
-                grad.setColorAt(0, increase ? topA : topB);
-                grad.setColorAt(0.499999999999999999, increase ? topB : topA);
-                grad.setColorAt(0.5, increase ? botA : botB);
-                grad.setColorAt(1, increase ? botB : botA);
-                pixPainter.fillRect(r, QBrush(grad));
-#endif
+                drawBevelGradientReal(base, increase, &pixPainter, r, horiz, shadeTop, shadeBot, sel, app, w, true);
+                pixPainter.end();
+                itsPixmapCache.insert(key, pix, pix->width()*pix->height()*(pix->depth()/8));
             }
-            else if(!selected && APPEARANCE_BEVELLED==app &&
-                    ((horiz ? r.height()
-                            : r.width()) > (((WIDGET_BUTTON(w) ? 2 : 1)*BEVEL_BORDER(w))+4)))
-            {
-                if(WIDGET_LISTVIEW_HEADER==w)
-                {
-                    QColor bot;
-                    QRect  r1(r), r2(r);
-
-                    if(horiz)
-                    {
-                        r2.setHeight(BEVEL_BORDER(w));
-                        r1.setHeight(r.height()-r2.height());
-                        r2.moveTop(r.y()+r1.height());
-                    }
-                    else
-                    {
-                        r2.setWidth(BEVEL_BORDER(w));
-                        r1.setWidth(r.width()-r2.width());
-                        r2.moveLeft(r.x()+r1.width());
-                    }
-                    shade(base, &bot, SHADE_BEVEL_BOT(w));
-                    pixPainter.fillRect(r1, base);
-#ifdef QTC_USE_CUSTOM_GRADIENT_ROUTINE
-                    drawGradient(base, bot, true, &pixPainter, r2, horiz);
-#else
-                    QLinearGradient grad(r2.topLeft(), horiz ? r2.bottomLeft() : r2.topRight());
-
-                    grad.setColorAt(0, base);
-                    grad.setColorAt(1, bot);
-                    pixPainter.fillRect(r2, QBrush(grad));
-#endif
-                }
-                else
-                {
-                    QColor bot, midTop, midBot, top;
-
-                    shade(base, &top, SHADE_BEVEL_TOP);
-                    shade(base, &midTop, SHADE_BEVEL_MID_TOP);
-                    shade(base, &midBot, SHADE_BEVEL_MID_BOT);
-                    shade(base, &bot, SHADE_BEVEL_BOT(w));
-#ifdef QTC_USE_CUSTOM_GRADIENT_ROUTINE
-                    QRect  r1(r), r2(r), r3(r);
-
-                    if(horiz)
-                    {
-                        r1.setHeight(BEVEL_BORDER(w));
-                        r3.setHeight(BEVEL_BORDER(w));
-                        r2.setHeight(r.height()-(r1.height()+r3.height()));
-                        r2.moveTop(r.y()+r1.height());
-                        r3.moveTop(r.y()+r1.height()+r2.height());
-                    }
-                    else
-                    {
-                        r1.setWidth(BEVEL_BORDER(w));
-                        r3.setWidth(BEVEL_BORDER(w));
-                        r2.setWidth(r.width()-(r1.width()+r3.width()));
-                        r2.moveLeft(r.x()+r1.width());
-                        r3.moveLeft(r.x()+r1.width()+r2.width());
-                    }
-
-                    drawGradient(top, midTop, true, &pixPainter, r1, horiz);
-                    drawGradient(midTop, midBot, true, &pixPainter, r2, horiz);
-                    drawGradient(midBot, bot, true, &pixPainter, r3, horiz);
-#else
-                    qreal           borderSize(BEVEL_BORDER(w)/((qreal)(horiz ? r.height() : r.width())));
-                    QLinearGradient grad(r.topLeft(), horiz ? r.bottomLeft() : r.topRight());
-
-                    grad.setColorAt(0, top);
-                    grad.setColorAt(borderSize, midTop);
-                    grad.setColorAt(1.0-borderSize, midBot);
-                    grad.setColorAt(1, bot);
-                    pixPainter.fillRect(r, QBrush(grad));
-#endif
-                }
-            }
-            else
-            {
-                QColor top,
-                       bot,
-                       baseTopCol(opts.colorSelTab && sel && (WIDGET_TAB_TOP==w || WIDGET_TAB_BOT==w)
-                                      ? midColor(base, itsMenuitemCols[0], QTC_COLOR_SEL_TAB_FACTOR) : base);
-
-                if(equal(1.0, shadeTop))
-                    top=baseTopCol;
-                else
-                    shade(baseTopCol, &top, shadeTop);
-                if(equal(1.0, shadeBot))
-                    bot=base;
-                else
-                    shade(base, &bot, shadeBot);
-
-#ifdef QTC_USE_CUSTOM_GRADIENT_ROUTINE
-                drawGradient(top, bot, sel || APPEARANCE_INVERTED!=app ? increase : !increase,
-                             &pixPainter, r, horiz);
-#else
-                bool            inc(sel || APPEARANCE_INVERTED!=app ? increase : !increase);
-                QLinearGradient grad(r.topLeft(), horiz ? r.bottomLeft() : r.topRight());
-
-                grad.setColorAt(0, inc ? top : bot);
-                grad.setColorAt(1, inc ? bot : top);
-                pixPainter.fillRect(r, QBrush(grad));
-#endif
-            }
-            pixPainter.end();
-            itsPixmapCache.insert(key, pix, pix->width()*pix->height()*(pix->depth()/8));
+            p->drawTiledPixmap(origRect, *pix);
         }
-        p->drawTiledPixmap(origRect, *pix);
     }
 }
 
-#ifdef QTC_USE_CUSTOM_GRADIENT_ROUTINE
+void QtCurveStyle::drawBevelGradientReal(const QColor &base, bool increase, QPainter *p,
+                                         const QRect &r, bool horiz, double shadeTop,
+                                         double shadeBot, bool sel, EAppearance app, EWidget w, bool useQt) const
+{
+    bool selected(opts.colorSelTab && (WIDGET_TAB_TOP==w || WIDGET_TAB_BOT==w) ? false : sel);
+
+    if(!selected && (IS_GLASS(app) || APPEARANCE_SPLIT_GRADIENT==app))
+    {
+        if(WIDGET_TAB_BOT==w)
+        {
+            double t(shadeTop);
+            shadeTop=shadeBot;
+            shadeBot=t;
+        }
+
+        double shadeTopA(WIDGET_TAB_BOT==w
+                            ? 1.0
+                            : APPEARANCE_SPLIT_GRADIENT==app
+                                ? shadeTop
+                                : shadeTop*SHADE_GLASS_TOP_A(app, w)),
+                shadeTopB(WIDGET_TAB_BOT==w
+                            ? 1.0
+                            : APPEARANCE_SPLIT_GRADIENT==app
+                                ? shadeTop-((shadeTop-shadeBot)*SPLIT_GRADIENT_FACTOR)
+                                : shadeTop*SHADE_GLASS_TOP_B(app, w)),
+                shadeBotA(WIDGET_TAB_TOP==w
+                            ? 1.0
+                            : APPEARANCE_SPLIT_GRADIENT==app
+                                ? shadeBot+((shadeTop-shadeBot)*SPLIT_GRADIENT_FACTOR)
+                                : shadeBot*SHADE_GLASS_BOT_A(app)),
+                shadeBotB(WIDGET_TAB_TOP==w
+                            ? 1.0
+                            : APPEARANCE_SPLIT_GRADIENT==app
+                                ? shadeBot
+                                : shadeBot*SHADE_GLASS_BOT_B(app));
+
+        QColor topA, topB, botA, botB;
+
+        shade(base, &topA, shadeTopA);
+        shade(base, &topB, shadeTopB);
+        shade(base, &botA, shadeBotA);
+        shade(base, &botB, shadeBotB);
+
+        QRect r1(r), r2(r);
+
+        if(horiz)
+        {
+            r1.setHeight(r1.height()/2);
+            r2.setY(r2.y()+r1.height());
+        }
+        else
+        {
+            r1.setWidth(r1.width()/2);
+            r2.setX(r2.x()+r1.width());
+        }
+
+        drawGradient(topA, topB, increase, p, r1, horiz, useQt);
+        drawGradient(botA, botB, increase, p, r2, horiz, useQt);
+    }
+    else if(!selected && APPEARANCE_BEVELLED==app &&
+            ((horiz ? r.height()
+                    : r.width()) > (((WIDGET_BUTTON(w) ? 2 : 1)*BEVEL_BORDER(w))+4)))
+    {
+        if(WIDGET_LISTVIEW_HEADER==w)
+        {
+            QColor bot;
+            QRect  r1(r), r2(r);
+
+            if(horiz)
+            {
+                r2.setHeight(BEVEL_BORDER(w));
+                r1.setHeight(r.height()-r2.height());
+                r2.moveTop(r.y()+r1.height());
+            }
+            else
+            {
+                r2.setWidth(BEVEL_BORDER(w));
+                r1.setWidth(r.width()-r2.width());
+                r2.moveLeft(r.x()+r1.width());
+            }
+            shade(base, &bot, SHADE_BEVEL_BOT(w));
+            p->fillRect(r1, base);
+            drawGradient(base, bot, true, p, r2, horiz, useQt);
+        }
+        else
+        {
+            QColor bot, midTop, midBot, top;
+
+            shade(base, &top, SHADE_BEVEL_TOP);
+            shade(base, &midTop, SHADE_BEVEL_MID_TOP);
+            shade(base, &midBot, SHADE_BEVEL_MID_BOT);
+            shade(base, &bot, SHADE_BEVEL_BOT(w));
+            QRect  r1(r), r2(r), r3(r);
+
+            if(horiz)
+            {
+                r1.setHeight(BEVEL_BORDER(w));
+                r3.setHeight(BEVEL_BORDER(w));
+                r2.setHeight(r.height()-(r1.height()+r3.height()));
+                r2.moveTop(r.y()+r1.height());
+                r3.moveTop(r.y()+r1.height()+r2.height());
+            }
+            else
+            {
+                r1.setWidth(BEVEL_BORDER(w));
+                r3.setWidth(BEVEL_BORDER(w));
+                r2.setWidth(r.width()-(r1.width()+r3.width()));
+                r2.moveLeft(r.x()+r1.width());
+                r3.moveLeft(r.x()+r1.width()+r2.width());
+            }
+
+            drawGradient(top, midTop, true, p, r1, horiz, useQt);
+            drawGradient(midTop, midBot, true, p, r2, horiz, useQt);
+            drawGradient(midBot, bot, true, p, r3, horiz, useQt);
+        }
+    }
+    else
+    {
+        QColor top,
+                bot,
+                baseTopCol(opts.colorSelTab && sel && (WIDGET_TAB_TOP==w || WIDGET_TAB_BOT==w)
+                                ? midColor(base, itsMenuitemCols[0], QTC_COLOR_SEL_TAB_FACTOR) : base);
+
+        if(equal(1.0, shadeTop))
+            top=baseTopCol;
+        else
+            shade(baseTopCol, &top, shadeTop);
+        if(equal(1.0, shadeBot))
+            bot=base;
+        else
+            shade(base, &bot, shadeBot);
+
+        drawGradient(top, bot, sel || APPEARANCE_INVERTED!=app ? increase : !increase,
+                        p, r, horiz, useQt);
+    }
+}
+
 void QtCurveStyle::drawGradient(const QColor &top, const QColor &bot, bool increase,
-                                QPainter *p, QRect const &r, bool horiz) const
+                                QPainter *p, QRect const &r, bool horiz, bool useQt) const
 {
     if(r.width()>0 && r.height()>0)
     {
         if(top==bot)
             p->fillRect(r, top);
+        else if (useQt)
+        {
+            QLinearGradient grad(r.topLeft(), horiz ? r.bottomLeft() : r.topRight());
+
+            grad.setColorAt(0, increase ? top : bot);
+            grad.setColorAt(1, increase ? bot : top);
+            p->fillRect(r, QBrush(grad));
+        }
         else
         {
             int rh(r.height()), rw(r.width()),
@@ -5727,13 +5925,16 @@ void QtCurveStyle::drawGradient(const QColor &top, const QColor &bot, bool incre
         }
     }
 }
-#endif
 
 void QtCurveStyle::drawLightBevel(QPainter *p, const QRect &rOrig, const QStyleOption *option,
                                   int round, const QColor &fill, const QColor *custom,
                                   bool doBorder, EWidget w) const
 {
     EAppearance  app(widgetApp(w, &opts));
+
+    if(APPEARANCE_RAISED==app && (WIDGET_MDI_WINDOW==w || WIDGET_MDI_WINDOW_TITLE==w))
+        app=APPEARANCE_FLAT;
+
     QRect        r(rOrig),
                  br(r);
     bool         bevelledButton((WIDGET_BUTTON(w) || WIDGET_NO_ETCH_BTN==w) && APPEARANCE_BEVELLED==app),
@@ -5789,8 +5990,13 @@ void QtCurveStyle::drawLightBevel(QPainter *p, const QRect &rOrig, const QStyleO
         {
             //Left & top
             p->drawLine(br.x()+1, br.y()+2, br.x()+1, br.y()+br.height()-(WIDGET_MDI_WINDOW_TITLE==w ? 1 : 2));
-            p->drawLine(br.x()+1, br.y()+1, br.x()+br.width()-2, br.y()+1);
-            br.adjust(2, 2,-1,-1);
+            if((WIDGET_MDI_WINDOW==w || WIDGET_MDI_WINDOW_TITLE==w) && APPEARANCE_SHINY_GLASS==app)
+                br.adjust(2, 1, -1, -1);
+            else
+            {
+                p->drawLine(br.x()+1, br.y()+1, br.x()+br.width()-2, br.y()+1);
+                br.adjust(2, 2,-1,-1);
+            }
         }
     }
     else
@@ -5816,66 +6022,72 @@ void QtCurveStyle::drawLightBevel(QPainter *p, const QRect &rOrig, const QStyleO
     // fill
     if(br.width()>0 && br.height()>0)
     {
-        drawBevelGradient(fill, !sunken, p, WIDGET_MDI_WINDOW_TITLE==w ? br.adjusted(0, 0, 0, 1) : br, horiz,
-                          getWidgetShade(w, true, sunken, app),
-                          getWidgetShade(w, false, sunken, app), sunken, app, w);
-
-        if(plastikMouseOver)
+        if(WIDGET_PROGRESSBAR==w && STRIPE_NONE!=opts.stripedProgress)
+            drawProgressBevelGradient(p, br, option, horiz, getWidgetShade(w, true, sunken, app),
+                                      getWidgetShade(w, false, sunken, app), app);
+        else
         {
-            if(WIDGET_SB_SLIDER==w)
-            {
-                int len(QTC_SB_SLIDER_MO_LEN(horiz ? r.width() : r.height())),
-                    so(lightBorder ? QTC_SLIDER_MO_BORDER : 1),
-                    eo(len+so),
-                    col(QTC_SLIDER_MO_SHADE);
+            drawBevelGradient(fill, !sunken, p, WIDGET_MDI_WINDOW_TITLE==w ? br.adjusted(0, 0, 0, 1) : br, horiz,
+                              getWidgetShade(w, true, sunken, app),
+                              getWidgetShade(w, false, sunken, app), sunken, app, w);
 
-                if(horiz)
-                {
-                    drawBevelGradient(itsMouseOverCols[col], !sunken, p, QRect(r.x()+so, r.y(), len, r.height()), horiz,
-                                      getWidgetShade(w, true, sunken, app),
-                                      getWidgetShade(w, false, sunken, app), sunken, app, w);
-                    drawBevelGradient(itsMouseOverCols[col], !sunken, p, QRect(r.x()+r.width()-eo, r.y(), len, r.height()), horiz,
-                                      getWidgetShade(w, true, sunken, app),
-                                      getWidgetShade(w, false, sunken, app), sunken, app, w);
-                }
-                else
-                {
-                    drawBevelGradient(itsMouseOverCols[col], !sunken, p, QRect(r.x(), r.y()+so, r.width(), len), horiz,
-                                      getWidgetShade(w, true, sunken, app),
-                                      getWidgetShade(w, false, sunken, app), sunken, app, w);
-                    drawBevelGradient(itsMouseOverCols[col], !sunken, p, QRect(r.x(), r.y()+r.height()-eo, r.width(), len), horiz,
-                                      getWidgetShade(w, true, sunken, app),
-                                      getWidgetShade(w, false, sunken, app), sunken, app, w);
-                }
-            }
-            else
+            if(plastikMouseOver)
             {
-                bool horizontal((horiz && WIDGET_SB_BUTTON!=w)|| (!horiz && WIDGET_SB_BUTTON==w)),
-                     thin(WIDGET_SB_BUTTON==w || WIDGET_SPIN==w || ((horiz ? r.height() : r.width())<16));
+                if(WIDGET_SB_SLIDER==w)
+                {
+                    int len(QTC_SB_SLIDER_MO_LEN(horiz ? r.width() : r.height())),
+                        so(lightBorder ? QTC_SLIDER_MO_BORDER : 1),
+                        eo(len+so),
+                        col(QTC_SLIDER_MO_SHADE);
 
-                p->setPen(itsMouseOverCols[QTC_MO_PLASTIK_DARK(w)]);
-                if(horizontal)
-                {
-                    p->drawLine(r.x()+1, r.y()+1, r.x()+r.width()-2, r.y()+1);
-                    p->drawLine(r.x()+1, r.y()+r.height()-2, r.x()+r.width()-2, r.y()+r.height()-2);
-                }
-                else
-                {
-                    p->drawLine(r.x()+1, r.y()+1, r.x()+1, r.y()+r.height()-2);
-                    p->drawLine(r.x()+r.width()-2, r.y()+1, r.x()+r.width()-2, r.y()+r.height()-2);
-                }
-                if(!thin)
-                {
-                    p->setPen(itsMouseOverCols[QTC_MO_PLASTIK_LIGHT(w)]);
-                    if(horizontal)
+                    if(horiz)
                     {
-                        p->drawLine(r.x()+1, r.y()+2, r.x()+r.width()-2, r.y()+2);
-                        p->drawLine(r.x()+1, r.y()+r.height()-3, r.x()+r.width()-2, r.y()+r.height()-3);
+                        drawBevelGradient(itsMouseOverCols[col], !sunken, p, QRect(r.x()+so, r.y(), len, r.height()), horiz,
+                                        getWidgetShade(w, true, sunken, app),
+                                        getWidgetShade(w, false, sunken, app), sunken, app, w);
+                        drawBevelGradient(itsMouseOverCols[col], !sunken, p, QRect(r.x()+r.width()-eo, r.y(), len, r.height()), horiz,
+                                        getWidgetShade(w, true, sunken, app),
+                                        getWidgetShade(w, false, sunken, app), sunken, app, w);
                     }
                     else
                     {
-                        p->drawLine(r.x()+2, r.y()+1, r.x()+2, r.y()+r.height()-2);
-                        p->drawLine(r.x()+r.width()-3, r.y()+1, r.x()+r.width()-3, r.y()+r.height()-2);
+                        drawBevelGradient(itsMouseOverCols[col], !sunken, p, QRect(r.x(), r.y()+so, r.width(), len), horiz,
+                                        getWidgetShade(w, true, sunken, app),
+                                        getWidgetShade(w, false, sunken, app), sunken, app, w);
+                        drawBevelGradient(itsMouseOverCols[col], !sunken, p, QRect(r.x(), r.y()+r.height()-eo, r.width(), len), horiz,
+                                        getWidgetShade(w, true, sunken, app),
+                                        getWidgetShade(w, false, sunken, app), sunken, app, w);
+                    }
+                }
+                else
+                {
+                    bool horizontal((horiz && WIDGET_SB_BUTTON!=w)|| (!horiz && WIDGET_SB_BUTTON==w)),
+                        thin(WIDGET_SB_BUTTON==w || WIDGET_SPIN==w || ((horiz ? r.height() : r.width())<16));
+
+                    p->setPen(itsMouseOverCols[QTC_MO_PLASTIK_DARK(w)]);
+                    if(horizontal)
+                    {
+                        p->drawLine(r.x()+1, r.y()+1, r.x()+r.width()-2, r.y()+1);
+                        p->drawLine(r.x()+1, r.y()+r.height()-2, r.x()+r.width()-2, r.y()+r.height()-2);
+                    }
+                    else
+                    {
+                        p->drawLine(r.x()+1, r.y()+1, r.x()+1, r.y()+r.height()-2);
+                        p->drawLine(r.x()+r.width()-2, r.y()+1, r.x()+r.width()-2, r.y()+r.height()-2);
+                    }
+                    if(!thin)
+                    {
+                        p->setPen(itsMouseOverCols[QTC_MO_PLASTIK_LIGHT(w)]);
+                        if(horizontal)
+                        {
+                            p->drawLine(r.x()+1, r.y()+2, r.x()+r.width()-2, r.y()+2);
+                            p->drawLine(r.x()+1, r.y()+r.height()-3, r.x()+r.width()-2, r.y()+r.height()-3);
+                        }
+                        else
+                        {
+                            p->drawLine(r.x()+2, r.y()+1, r.x()+2, r.y()+r.height()-2);
+                            p->drawLine(r.x()+r.width()-3, r.y()+1, r.x()+r.width()-3, r.y()+r.height()-2);
+                        }
                     }
                 }
             }
@@ -5952,6 +6164,9 @@ void QtCurveStyle::drawBorder(QPainter *p, const QRect &r, const QStyleOption *o
                           ? option->palette.buttonText().color()
                           : cols[!enabled && (WIDGET_BUTTON(w) || WIDGET_SLIDER_TROUGH==w)
                                     ? QT_DISABLED_BORDER : borderVal]);
+
+    if(APPEARANCE_FLAT==app && (WIDGET_MDI_WINDOW==w || WIDGET_MDI_WINDOW_TITLE==w))
+        app=APPEARANCE_RAISED;
 
     switch(borderProfile)
     {
@@ -6030,7 +6245,9 @@ void QtCurveStyle::drawBorder(QPainter *p, const QRect &r, const QStyleOption *o
         QColor largeArcMid(border),
                aaColor(border);
 
-        if(WIDGET_MDI_WINDOW!=w && WIDGET_MDI_WINDOW_TITLE!=w)
+        if(WIDGET_MDI_WINDOW!=w && WIDGET_MDI_WINDOW_TITLE!=w &&
+           !(opts.plasmaHack && (WIDGET_STD_BUTTON==w || WIDGET_DEF_BUTTON==w ||
+                                 WIDGET_TOGGLE_BUTTON==w || WIDGET_ENTRY==w)))
         {
             largeArcMid.setAlphaF(0.50);
             aaColor.setAlphaF(0.30);
@@ -6292,93 +6509,26 @@ void QtCurveStyle::drawMenuItem(QPainter *p, const QRect &r, const QStyleOption 
 
 void QtCurveStyle::drawProgress(QPainter *p, const QRect &r, const QStyleOption *option, int round, bool vertical, bool reverse) const
 {
-    int measure(vertical ? r.height() : r.width());
+    QStyleOption opt(*option);
 
-    if(measure<1)
-        return;
+    opt.state|=State_Raised;
 
-    int     min(3);
-    bool    drawFull(measure>min),
-            drawStripe(measure>(min*1.5));
-    QRegion outer(r);
-
-    if(drawStripe)
-    {
-        int animShift=vertical || reverse ? PROGRESS_CHUNK_WIDTH : -PROGRESS_CHUNK_WIDTH;
-
-        if (opts.animatedProgress)
-            if(vertical || reverse)
-                animShift -= (itsAnimateStep/2) % (PROGRESS_CHUNK_WIDTH*2);
-            else
-                animShift += (itsAnimateStep/2) % (PROGRESS_CHUNK_WIDTH*2);
-
-        switch(opts.stripedProgress)
-        {
-            default:
-            case STRIPE_NONE:
-                break;
-            case STRIPE_PLAIN:
-                for(int offset=0; offset<(measure+PROGRESS_CHUNK_WIDTH); offset+=(PROGRESS_CHUNK_WIDTH*2))
-                {
-                    QRegion inner(vertical
-                                    ? QRect(r.x(), r.y()+offset+animShift, r.width(), PROGRESS_CHUNK_WIDTH)
-                                    : QRect(r.x()+offset+animShift, r.y(), PROGRESS_CHUNK_WIDTH, r.height()));
-
-                    outer=outer.subtract(inner);
-                }
-                break;
-            case STRIPE_DIAGONAL:
-            {
-                QPolygon a;
-                int      shift(vertical ? r.width() : r.height());
-
-                for(int offset=0; offset<(measure+shift+2); offset+=(PROGRESS_CHUNK_WIDTH*2))
-                {
-                    if(vertical)
-                        a.setPoints(4, r.x(),             r.y()+offset+animShift,
-                                       r.x()+r.width()-1, (r.y()+offset+animShift)-shift,
-                                       r.x()+r.width()-1, (r.y()+offset+animShift+PROGRESS_CHUNK_WIDTH)-shift,
-                                       r.x(),             r.y()+offset+animShift+PROGRESS_CHUNK_WIDTH);
-                    else
-                        a.setPoints(4, r.x()+offset+animShift,                              r.y(),
-                                       r.x()+offset+animShift+PROGRESS_CHUNK_WIDTH,         r.y(),
-                                       (r.x()+offset+animShift+PROGRESS_CHUNK_WIDTH)-shift, r.y()+r.height()-1,
-                                       (r.x()+offset+animShift)-shift,                      r.y()+r.height()-1);
-
-                    outer=outer.eor(QRegion(a));
-                }
-            }
-        }
-    }
-
-    if(drawFull)
-    {
-        QStyleOption opt(*option);
-
-        opt.state|=State_Raised;
-
-        if(vertical)
-            opt.state&=~State_Horizontal;
-        else
-            opt.state|=State_Horizontal;
-
-        drawLightBevel(p, r, &opt, round, itsMenuitemCols[ORIGINAL_SHADE], itsMenuitemCols, true, WIDGET_PROGRESSBAR);
-
-        if(drawStripe && opts.stripedProgress)
-        {
-            p->setClipRegion(outer);
-            drawLightBevel(p, r, &opt, round, itsMenuitemCols[1], itsMenuitemCols, true, WIDGET_PROGRESSBAR);
-            p->setClipping(false);
-        }
-    }
+    if(vertical)
+        opt.state&=~State_Horizontal;
     else
-    {
-        p->setPen(itsMenuitemCols[QT_STD_BORDER]);
-        p->setBrush(itsMenuitemCols[ORIGINAL_SHADE]);
-        drawRect(p, r);
-    }
+        opt.state|=State_Horizontal;
+
+    if(reverse)
+        opt.state|=QTC_STATE_REVERSE;
+    else
+        opt.state&=~QTC_STATE_REVERSE;
+
+    drawLightBevel(p, r, &opt, round, itsMenuitemCols[ORIGINAL_SHADE], itsMenuitemCols, true, WIDGET_PROGRESSBAR);
+
     if(QTC_ROUNDED && r.width()>2 && ROUNDED_ALL!=round)
     {
+        bool drawFull((vertical ? r.height() : r.width()) > 3);
+
         p->setPen(midColor(option->palette.background().color(), itsMenuitemCols[QT_STD_BORDER]));
         if(!(round&CORNER_TL) || !drawFull)
             p->drawPoint(r.x(), r.y());

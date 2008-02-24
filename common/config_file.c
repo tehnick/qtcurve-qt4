@@ -1,5 +1,5 @@
 /*
-  QtCurve (C) Craig Drummond, 2003 - 2007 Craig.Drummond@lycos.co.uk
+  QtCurve (C) Craig Drummond, 2003 - 2008 Craig.Drummond@lycos.co.uk
 
   ----
 
@@ -78,6 +78,8 @@ static EDefBtnIndicator toInd(const char *str, EDefBtnIndicator def)
             return IND_CORNER;
         if(0==memcmp(str, "colored", 7))
             return IND_COLORED;
+        if(0==memcmp(str, "tint", 4))
+            return IND_TINT;
     }
 
     return def;
@@ -721,6 +723,9 @@ static bool readConfig(const char *file, Options *opts, Options *def)
             QTC_CFG_READ_BOOL(framelessGroupBoxes)
             QTC_CFG_READ_BOOL(inactiveHighlight)
             QTC_CFG_READ_BOOL(colorMenubarMouseOver)
+#if defined __cplusplus || defined QTC_GTK2_MENU_STRIPE
+            QTC_CFG_READ_BOOL(menuStripe)
+#endif
 #ifdef __cplusplus
             QTC_CFG_READ_BOOL(stdSidebarButtons)
             QTC_CFG_READ_BOOL(gtkScrollViews)
@@ -736,8 +741,15 @@ static bool readConfig(const char *file, Options *opts, Options *def)
 #if defined QTC_CONFIG_DIALOG || (defined QT_VERSION && (QT_VERSION >= 0x040000)) || !defined __cplusplus
             QTC_CFG_READ_BOOL(gtkButtonOrder)
 #endif
-#if defined __cplusplus && defined QT_VERSION && (QT_VERSION >= 0x040000)
+#if defined QT_VERSION && (QT_VERSION >= 0x040000)
             QTC_CFG_READ_BOOL(plasmaHack)
+#endif
+#ifdef __cplusplus
+            QTC_CFG_READ_APPEARANCE(titlebarAppearance, opts->appearance)
+            if(APPEARANCE_BEVELLED==opts->titlebarAppearance)
+                opts->titlebarAppearance=APPEARANCE_GRADIENT;
+            else if(APPEARANCE_RAISED==opts->titlebarAppearance)
+                opts->titlebarAppearance=APPEARANCE_FLAT;
 #endif
             QTC_CFG_READ_SHADING(shading, shading);
 
@@ -814,7 +826,7 @@ static void defaultSettings(Options *opts)
     opts->highlightFactor=DEFAULT_HIGHLIGHT_FACTOR;
     opts->round=ROUND_FULL;
     opts->lighterPopupMenuBgnd=true;
-    opts->animatedProgress=true;
+    opts->animatedProgress=false;
     opts->stripedProgress=STRIPE_DIAGONAL;
     opts->sliderStyle=SLIDER_TRIANGULAR;
     opts->highlightTab=true;
@@ -857,9 +869,12 @@ static void defaultSettings(Options *opts)
     opts->darkerBorders=false;
     opts->vArrows=false;
     opts->xCheck=false;
-    opts->framelessGroupBoxes=false;
+    opts->framelessGroupBoxes=true;
     opts->colorMenubarMouseOver=false;
     opts->inactiveHighlight=false;
+#if defined __cplusplus || defined QTC_GTK2_MENU_STRIPE
+    opts->menuStripe=false;
+#endif
 #ifdef QTC_CONFIG_DIALOG
     opts->shading=SHADING_HSL;
 #endif
@@ -893,6 +908,9 @@ static void defaultSettings(Options *opts)
     opts->plasmaHack=true;
 #endif
 
+#ifdef __cplusplus
+    opts->titlebarAppearance=APPEARANCE_GRADIENT;
+#endif
     /* Read system config file... */
     {
     static const char * systemFilename=NULL;
@@ -918,6 +936,8 @@ static const char *toStr(EDefBtnIndicator ind)
             return "fontcolor";
         case IND_CORNER:
             return "corner";
+        case IND_TINT:
+            return "tint";
         default:
             return "colored";
     }
@@ -1227,9 +1247,9 @@ bool static writeConfig(KConfig *cfg, const Options &opts, const Options &def, b
         CFG_WRITE_ENTRY(xCheck)
         CFG_WRITE_ENTRY(framelessGroupBoxes)
         CFG_WRITE_ENTRY(inactiveHighlight)
-#ifdef __cplusplus
+        CFG_WRITE_ENTRY(menuStripe)
         CFG_WRITE_ENTRY(stdSidebarButtons)
-#endif
+        CFG_WRITE_ENTRY_FORCE(titlebarAppearance)
 
         CFG_WRITE_ENTRY(gtkScrollViews)
         CFG_WRITE_ENTRY(gtkComboMenus)

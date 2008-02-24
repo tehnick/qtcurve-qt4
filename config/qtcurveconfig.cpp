@@ -1,5 +1,5 @@
 /*
-  QtCurve (C) Craig Drummond, 2007 Craig.Drummond@lycos.co.uk
+  QtCurve (C) Craig Drummond, 2007-2008 Craig.Drummond@lycos.co.uk
 
   ----
 
@@ -115,7 +115,7 @@ static void insertShadeEntries(QComboBox *combo, bool withDarken, bool checkRadi
     }
 }
 
-static void insertAppearanceEntries(QComboBox *combo, bool all=true)
+static void insertAppearanceEntries(QComboBox *combo, bool split=true, bool bev=true)
 {
     combo->insertItem(APPEARANCE_FLAT, i18n("Flat"));
     combo->insertItem(APPEARANCE_RAISED, i18n("Raised"));
@@ -123,10 +123,11 @@ static void insertAppearanceEntries(QComboBox *combo, bool all=true)
     combo->insertItem(APPEARANCE_SHINY_GLASS, i18n("Shiny glass"));
     combo->insertItem(APPEARANCE_GRADIENT, i18n("Gradient"));
     combo->insertItem(APPEARANCE_INVERTED, i18n("Inverted gradient"));
-    if(all)
+    if(split)
     {
         combo->insertItem(APPEARANCE_SPLIT_GRADIENT, i18n("Split gradient"));
-        combo->insertItem(APPEARANCE_BEVELLED, i18n("Bevelled"));
+        if(bev)
+            combo->insertItem(APPEARANCE_BEVELLED, i18n("Bevelled"));
     }
 }
 
@@ -143,6 +144,7 @@ static void insertDefBtnEntries(QComboBox *combo)
     combo->insertItem(IND_CORNER, i18n("Corner indicator"));
     combo->insertItem(IND_FONT_COLOR, i18n("Font color thin border"));
     combo->insertItem(IND_COLORED, i18n("Selected background thick border"));
+    combo->insertItem(IND_TINT, i18n("Tint with selected background"));
     combo->insertItem(IND_NONE, i18n("None"));
 }
 
@@ -211,7 +213,7 @@ QtCurveConfig::QtCurveConfig(QWidget *parent)
                exportDialog(NULL)
 {
     setupUi(this);
-    titleLabel->setText("QtCurve " VERSION " - (C) Craig Drummond, 2003-2007");
+    titleLabel->setText("QtCurve " VERSION " - (C) Craig Drummond, 2003-2008");
     insertShadeEntries(shadeSliders, false);
     insertShadeEntries(shadeMenubars, true);
     insertShadeEntries(shadeCheckRadio, false, true);
@@ -223,6 +225,7 @@ QtCurveConfig::QtCurveConfig(QWidget *parent)
     insertAppearanceEntries(tabAppearance, false);
     insertAppearanceEntries(progressAppearance);
     insertAppearanceEntries(menuitemAppearance);
+    insertAppearanceEntries(titlebarAppearance);
     insertLineEntries(handles, false);
     insertLineEntries(sliderThumbs, true);
     insertLineEntries(toolbarSeparators, true);
@@ -241,6 +244,7 @@ QtCurveConfig::QtCurveConfig(QWidget *parent)
     highlightFactor->setValue(((int)(DEFAULT_HIGHLIGHT_FACTOR*100))-100);
 
     connect(lighterPopupMenuBgnd, SIGNAL(toggled(bool)), SLOT(updateChanged()));
+    connect(menuStripe, SIGNAL(toggled(bool)), SLOT(updateChanged()));
     connect(round, SIGNAL(activated(int)), SLOT(updateChanged()));
     connect(toolbarBorders, SIGNAL(activated(int)), SLOT(updateChanged()));
     connect(sliderThumbs, SIGNAL(activated(int)), SLOT(updateChanged()));
@@ -272,6 +276,7 @@ QtCurveConfig::QtCurveConfig(QWidget *parent)
     connect(borderMenuitems, SIGNAL(toggled(bool)), SLOT(updateChanged()));
     connect(progressAppearance, SIGNAL(activated(int)), SLOT(updateChanged()));
     connect(menuitemAppearance, SIGNAL(activated(int)), SLOT(updateChanged()));
+    connect(titlebarAppearance, SIGNAL(activated(int)), SLOT(updateChanged()));
     connect(shadeCheckRadio, SIGNAL(activated(int)), SLOT(shadeCheckRadioChanged()));
     connect(customCheckRadioColor, SIGNAL(changed(const QColor &)), SLOT(updateChanged()));
 
@@ -528,6 +533,7 @@ void QtCurveConfig::setOptions(Options &opts)
     opts.animatedProgress=animatedProgress->isChecked();
     opts.stripedProgress=(EStripe)stripedProgress->currentIndex();
     opts.lighterPopupMenuBgnd=lighterPopupMenuBgnd->isChecked();
+    opts.menuStripe=menuStripe->isChecked();
     opts.embolden=embolden->isChecked();
     opts.scrollbarType=(EScrollbar)scrollbarType->currentIndex();
     opts.defBtnIndicator=(EDefBtnIndicator)defBtnIndicator->currentIndex();
@@ -561,6 +567,7 @@ void QtCurveConfig::setOptions(Options &opts)
     opts.borderMenuitems=borderMenuitems->isChecked();
     opts.progressAppearance=(EAppearance)progressAppearance->currentIndex();
     opts.menuitemAppearance=(EAppearance)menuitemAppearance->currentIndex();
+    opts.titlebarAppearance=(EAppearance)titlebarAppearance->currentIndex();
     opts.shadeCheckRadio=(EShade)shadeCheckRadio->currentIndex();
     opts.customCheckRadioColor=customCheckRadioColor->color();
     opts.shading=(EShading)shading->currentIndex();
@@ -578,6 +585,7 @@ void QtCurveConfig::setWidgetOptions(const Options &opts)
     round->setCurrentIndex(opts.round);
     scrollbarType->setCurrentIndex(opts.scrollbarType);
     lighterPopupMenuBgnd->setChecked(opts.lighterPopupMenuBgnd);
+    menuStripe->setChecked(opts.menuStripe);
     toolbarBorders->setCurrentIndex(opts.toolbarBorders);
     sliderThumbs->setCurrentIndex(opts.sliderThumbs);
     handles->setCurrentIndex(opts.handles);
@@ -634,6 +642,7 @@ void QtCurveConfig::setWidgetOptions(const Options &opts)
     borderMenuitems->setChecked(opts.borderMenuitems);
     progressAppearance->setCurrentIndex(opts.progressAppearance);
     menuitemAppearance->setCurrentIndex(opts.menuitemAppearance);
+    titlebarAppearance->setCurrentIndex(opts.titlebarAppearance);
     shadeCheckRadio->setCurrentIndex(opts.shadeCheckRadio);
     customCheckRadioColor->setColor(opts.customCheckRadioColor);
 
@@ -666,6 +675,7 @@ bool QtCurveConfig::settingsChanged()
          animatedProgress->isChecked()!=currentStyle.animatedProgress ||
          stripedProgress->currentIndex()!=currentStyle.stripedProgress ||
          lighterPopupMenuBgnd->isChecked()!=currentStyle.lighterPopupMenuBgnd ||
+         menuStripe->isChecked()!=currentStyle.menuStripe ||
          embolden->isChecked()!=currentStyle.embolden ||
          fillSlider->isChecked()!=currentStyle.fillSlider ||
          sliderStyle->currentIndex()!=currentStyle.sliderStyle ||
@@ -692,6 +702,7 @@ bool QtCurveConfig::settingsChanged()
          tabAppearance->currentIndex()!=currentStyle.tabAppearance ||
          progressAppearance->currentIndex()!=currentStyle.progressAppearance ||
          menuitemAppearance->currentIndex()!=currentStyle.menuitemAppearance ||
+         titlebarAppearance->currentIndex()!=currentStyle.titlebarAppearance ||
          toolbarSeparators->currentIndex()!=currentStyle.toolbarSeparators ||
          splitters->currentIndex()!=currentStyle.splitters ||
 

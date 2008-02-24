@@ -2,7 +2,7 @@
 #define __COMMON_H__
 
 /*
-  QtCurve (C) Craig Drummond, 2003 - 2007 Craig.Drummond@lycos.co.uk
+  QtCurve (C) Craig Drummond, 2003 - 2008 Craig.Drummond@lycos.co.uk
 
   ----
 
@@ -303,7 +303,7 @@ typedef GdkColor color;
 typedef enum
 {
     QtC_Round = QStyle::PM_CustomBase,
-    QtC_Appearance
+    QtC_TitleBarAppearance
 } QtCMetrics;
 
 #define QtC_StateKWin QStyle::State_Top
@@ -327,6 +327,9 @@ typedef enum
     PIX_SLIDER_LIGHT,
     PIX_SLIDER_V,
     PIX_SLIDER_LIGHT_V
+#if !defined __cplusplus && defined QTC_GTK2_MENU_STRIPE_HACK_MENU
+    , PIX_BLANK
+#endif
 } EPixmap;
 
 typedef enum
@@ -351,9 +354,10 @@ typedef enum
 #endif
     WIDGET_SPIN,
 #ifdef __cplusplus
-    WIDGET_CHECKBUTTON,  // Qt4 only
-    WIDGET_MDI_WINDOW,   // Qt4 only
+    WIDGET_CHECKBUTTON,        // Qt4 only
+    WIDGET_MDI_WINDOW,         // Qt4 only
     WIDGET_MDI_WINDOW_TITLE,   // Qt4 only
+    WIDGET_MDI_WINDOW_BUTTON,  // Qt4 only
     WIDGET_ENTRY,
     WIDGET_FRAME,
     WIDGET_NO_ETCH_BTN,
@@ -400,6 +404,7 @@ typedef enum
     IND_CORNER,
     IND_FONT_COLOR,
     IND_COLORED,
+    IND_TINT,
     IND_NONE
 } EDefBtnIndicator;
 
@@ -891,6 +896,9 @@ typedef struct
                      vArrows,
                      xCheck,
                      framelessGroupBoxes,
+#if defined __cplusplus || defined QTC_GTK2_MENU_STRIPE
+                     menuStripe,
+#endif
                      inactiveHighlight;
     EStripe          stripedProgress;
     ESliderStyle     sliderStyle;
@@ -908,6 +916,9 @@ typedef struct
                      lvAppearance,
                      tabAppearance,
                      sliderAppearance,
+#ifdef __cplusplus
+                     titlebarAppearance,
+#endif
                      progressAppearance;
     EShade           shadeSliders,
                      shadeMenubars,
@@ -919,7 +930,7 @@ typedef struct
                      customMenuNormTextColor,
                      customMenuSelTextColor,
                      customCheckRadioColor;
-#if defined __cplusplus && defined QT_VERSION && (QT_VERSION >= 0x040000)
+#if defined QT_VERSION && (QT_VERSION >= 0x040000)
     bool             plasmaHack;
 #endif
     #ifdef QTC_CONFIG_DIALOG
@@ -949,6 +960,12 @@ static EAppearance widgetApp(EWidget w, const Options *opts)
             return opts->menuitemAppearance;
         case WIDGET_PROGRESSBAR:
             return opts->progressAppearance;
+#ifdef __cplusplus
+        case WIDGET_MDI_WINDOW:
+        case WIDGET_MDI_WINDOW_TITLE:
+        case WIDGET_MDI_WINDOW_BUTTON:
+            return opts->titlebarAppearance;
+#endif
         case WIDGET_SLIDER_TROUGH:
             return APPEARANCE_FLAT==opts->appearance || APPEARANCE_RAISED==opts->appearance
                     ? APPEARANCE_FLAT : APPEARANCE_GRADIENT;

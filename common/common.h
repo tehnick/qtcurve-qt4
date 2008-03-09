@@ -297,6 +297,14 @@ typedef GdkColor color;
 
 #define QTC_DO_EFFECT          (ROUND_FULL==opts.round && EFFECT_NONE!=opts.buttonEffect)
 
+#if !defined __cplusplus || (defined QT_VERSION && (QT_VERSION >= 0x040000))
+#define QTC_BORDER_BLEND_ALPHA       0.7
+#define QTC_ETCH_TOP_MIDDLE_ALPHA    0.055
+#define QTC_ETCH_TOP_SIDES_ALPHA     0.0275
+#define QTC_ETCH_BOTTOM_MIDDLE_ALPHA 0.80
+#define QTC_ETCH_BOTTOM_SIDES_ALPHA  0.45
+#endif
+
 #if defined __cplusplus && defined QT_VERSION && (QT_VERSION >= 0x040000)
 
 #include <qstyle.h>
@@ -930,9 +938,6 @@ typedef struct
                      customMenuNormTextColor,
                      customMenuSelTextColor,
                      customCheckRadioColor;
-#if defined QT_VERSION && (QT_VERSION >= 0x040000)
-    bool             plasmaHack;
-#endif
 #ifndef __cplusplus
     bool             newFirefox,
                      newThunderbird;
@@ -979,6 +984,41 @@ static EAppearance widgetApp(EWidget w, const Options *opts)
 
     return opts->appearance;
 };
+
+#if !defined __cplusplus || (defined QT_VERSION && (QT_VERSION >= 0x040000))
+
+#if defined __cplusplus
+#define QTC_FULL_INNER_RADIUS   1.5
+#define QTC_FULL_OUTER_RADIUS   2.5
+#define QTC_SLIGHT_INNER_RADIUS 0.5
+#define QTC_SLIGHT_OUTER_RADIUS 1.5
+#else
+#define QTC_FULL_INNER_RADIUS   2
+#define QTC_FULL_OUTER_RADIUS   3
+#define QTC_SLIGHT_INNER_RADIUS 1
+#define QTC_SLIGHT_OUTER_RADIUS 2
+#endif
+
+static double getRadius(ERound r, int w, int h, EWidget widget, bool internal)
+{
+    if(WIDGET_CHECKBOX==widget && ROUND_NONE!=r)
+        r=ROUND_SLIGHT;
+
+    switch(r)
+    {
+        case ROUND_FULL:
+            if(w>QTC_MIN_BTN_SIZE && h>QTC_MIN_BTN_SIZE)
+                return internal ? QTC_FULL_INNER_RADIUS : QTC_FULL_OUTER_RADIUS;
+        case ROUND_SLIGHT:
+            return internal ? QTC_SLIGHT_INNER_RADIUS : QTC_SLIGHT_OUTER_RADIUS;
+        case ROUND_NONE:
+            return 0;
+    }
+
+    return 0;
+}
+#endif
+
 #endif
 
 #endif

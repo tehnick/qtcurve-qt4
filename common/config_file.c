@@ -741,9 +741,6 @@ static bool readConfig(const char *file, Options *opts, Options *def)
 #if defined QTC_CONFIG_DIALOG || (defined QT_VERSION && (QT_VERSION >= 0x040000)) || !defined __cplusplus
             QTC_CFG_READ_BOOL(gtkButtonOrder)
 #endif
-#if defined QT_VERSION && (QT_VERSION >= 0x040000)
-            QTC_CFG_READ_BOOL(plasmaHack)
-#endif
 #ifndef __cplusplus
             QTC_CFG_READ_BOOL(newFirefox)
             QTC_CFG_READ_BOOL(newThunderbird)
@@ -844,7 +841,7 @@ static void defaultSettings(Options *opts)
     opts->menuitemAppearance=APPEARANCE_DULL_GLASS;
     opts->toolbarAppearance=APPEARANCE_GRADIENT;
     opts->progressAppearance=APPEARANCE_DULL_GLASS;
-    opts->defBtnIndicator=IND_COLORED;
+    opts->defBtnIndicator=IND_TINT;
     opts->sliderThumbs=LINE_FLAT;
     opts->handles=LINE_DOTS;
     opts->shadeSliders=SHADE_BLEND_SELECTED;
@@ -857,7 +854,7 @@ static void defaultSettings(Options *opts)
     opts->customMenuTextColor=false;
     opts->coloredMouseOver=MO_PLASTIK;
     opts->menubarMouseOver=true;
-    opts->shadeMenubarOnlyWhenActive=true;
+    opts->shadeMenubarOnlyWhenActive=false;
     opts->thinnerMenuItems=false;
     opts->scrollbarType=SCROLLBAR_KDE;
     opts->buttonEffect=EFFECT_NONE;
@@ -907,9 +904,6 @@ static void defaultSettings(Options *opts)
 #endif
 #if defined QTC_CONFIG_DIALOG || (defined QT_VERSION && (QT_VERSION >= 0x040000)) || !defined __cplusplus
     opts->gtkButtonOrder=false;
-#endif
-#if defined __cplusplus && defined QT_VERSION && (QT_VERSION >= 0x040000)
-    opts->plasmaHack=true;
 #endif
 #ifndef __cplusplus
     opts->newFirefox=false;

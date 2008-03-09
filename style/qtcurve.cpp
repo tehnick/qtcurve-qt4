@@ -41,6 +41,8 @@
 #define WINDOWTITLE_SPACER 0x10000000
 #define QTC_STATE_REVERSE  State_Mini
 
+#define M_PI 3.14159265358979323846
+
 static const int constMenuPixmapWidth=22;
 
 static enum
@@ -233,6 +235,16 @@ inline int numButtons(EScrollbar type)
 static inline void drawRect(QPainter *p, const QRect &r)
 {
     p->drawRect(r.x(), r.y(), r.width()-1, r.height()-1);
+}
+
+static inline void drawHLine(QPainter *p, int x1, int y1, int x2, int y2)
+{
+    p->drawLine(QLineF(x1, y1+0.5, x2, y2+0.5));
+}
+
+static inline void drawVLine(QPainter *p, int x1, int y1, int x2, int y2)
+{
+    p->drawLine(QLineF(x1+0.5, y1, x2+0.5, y2));
 }
 
 static void drawLines(QPainter *p, const QRect &r, bool horiz, int nLines, int offset,
@@ -726,40 +738,6 @@ static QString getFile(const QString &f)
     return d;
 }
 
-static bool isNvidia() // Read xorg.conf to see if we are using nvidia driver...
-{
-    QFile f("/etc/X11/xorg.conf");
-    bool  nvidia(false);
-
-    if(f.open(QIODevice::ReadOnly))
-    {
-        QTextStream in(&f);
-        bool        inDevice(false);
-
-        while (!in.atEnd())
-        {
-            QString line(in.readLine());
-            int     a, b;
-
-            if(inDevice)
-            {
-                if(-1!=(a=line.indexOf("Driver")) && -1!=(b=line.indexOf("\"nvidia\"")) && a<b)
-                {
-                    nvidia=true;
-                    break;
-                }
-                else if(-1!=line.indexOf("EndSection"))
-                    break;
-            }
-            else if(-1!=(a=line.indexOf("Section")) && -1!=(b=line.indexOf("\"Device\"")) && a<b)
-                inDevice=true;
-        }
-        f.close();
-    }
-
-    return nvidia;
-}
-
 void QtCurveStyle::polish(QApplication *app)
 {
     QString appName(getFile(app->argv()[0]));
@@ -783,14 +761,6 @@ void QtCurveStyle::polish(QApplication *app)
             theThemedApp=APP_PLASMA;
         else if("kwin"==appName)
             theThemedApp=APP_KWIN;
-
-    // If the user has enabled the plasmaHack, but this is not plasma/krunner, or its
-    // not running composite, or user is not using nvidia - then disable the hack.
-    if(opts.plasmaHack && (APP_PLASMA!=theThemedApp || QX11Info::appDefaultColormap() || !isNvidia()))
-        opts.plasmaHack=false;
-
-    if(opts.plasmaHack)
-        qWarning("QtCurve - Working around plasma/krunner re-draw errors on nvidia cards");
 
     QPalette pal(app->palette());
 
@@ -1404,6 +1374,20 @@ int QtCurveStyle::pixelMetric(PixelMetric metric, const QStyleOption *option, co
             return (int)opts.round;
         case QtC_TitleBarAppearance:
             return (int)opts.titlebarAppearance;
+
+// The following is a somewhat hackyish fix for konqueror's show close button on tab setting...
+// ...its hackish in the way that I'm assuming when KTabBar is positioning the close button and it
+// asks for these options, it only passes in a QStyleOption  not a QStyleOptionTab
+//.........
+        case PM_TabBarBaseHeight:
+            if(widget && widget->inherits("KTabBar") && !qstyleoption_cast<const QStyleOptionTab *>(option))
+                return 10;
+            return QTC_BASE_STYLE::pixelMetric(metric, option, widget);
+        case PM_TabBarBaseOverlap:
+            if(widget && widget->inherits("KTabBar") && !qstyleoption_cast<const QStyleOptionTab *>(option))
+                return 0;
+            // Fall through!
+//.........
         default:
             return QTC_BASE_STYLE::pixelMetric(metric, option, widget);
     }
@@ -1828,9 +1812,7 @@ void QtCurveStyle::drawPrimitive(PrimitiveElement element, const QStyleOption *o
 
                 grad.setColorAt(0, use[QT_STD_BORDER]); // palette.text().color());
                 grad.setColorAt(1, palette.background().color());
-                painter->save();
                 painter->fillRect(QRect(r.x(), (r.y()+r.height())-(constLineHeight+1), r.width(), constLineHeight), QBrush(grad));
-                painter->restore();
             }
             else if(widget && widget->parent() && qobject_cast<const QComboBox *>(widget->parent()))
             {
@@ -1841,7 +1823,6 @@ void QtCurveStyle::drawPrimitive(PrimitiveElement element, const QStyleOption *o
                     const QColor *use(backgroundColors(option));
 
                     painter->save();
-
                     painter->setPen(use[QT_STD_BORDER]);
                     drawRect(painter, r);
                     painter->setPen(palette.base().color());
@@ -2132,7 +2113,6 @@ void QtCurveStyle::drawPrimitive(PrimitiveElement element, const QStyleOption *o
                                 : palette.background().color());
 
             painter->save();
-            checkPlasma(painter, r);
             if(IS_FLAT(opts.appearance))
                 painter->fillRect(QRect(r.x()+1, r.y()+1, r.width()-2, r.height()-2), bgnd);
             else
@@ -2186,8 +2166,7 @@ void QtCurveStyle::drawPrimitive(PrimitiveElement element, const QStyleOption *o
                                            marg(lv->itemMargin);
 
                 if (state & State_Selected && !lv->rootIsDecorated && !(item.features & QStyleOptionQ3ListViewItem::ParentControl))
-                    painter->fillRect(0, 0, x + marg + w + 4, item.height, palette.brush(QPalette::Highlight));            checkPlasma(painter, r);
-
+                    painter->fillRect(0, 0, x + marg + w + 4, item.height, palette.brush(QPalette::Highlight));
             }
 
             r.setX(r.x()+((r.width()-QTC_RADIO_SIZE)/2)-1);
@@ -2213,7 +2192,6 @@ void QtCurveStyle::drawPrimitive(PrimitiveElement element, const QStyleOption *o
 
             painter->save();
             painter->setClipRegion(QRegion(clipRegion));
-            checkPlasma(painter, r);
             if(IS_FLAT(opts.appearance))
                 painter->fillRect(QRect(x+1, y+1, r.width()-2, r.height()-2), bgnd);
             else
@@ -2223,9 +2201,18 @@ void QtCurveStyle::drawPrimitive(PrimitiveElement element, const QStyleOption *o
                                   false, APPEARANCE_GRADIENT, WIDGET_TROUGH);
             painter->setClipping(false);
 
+/*
+            painter->setRenderHint(QPainter::Antialiasing, true);
+            QPainterPath path;
+            path.moveTo(12, 12);
+            path.arcTo(0.5, 6.5, 12, 12, 0, 360);
+            painter->drawPath(path);
+            painter->setRenderHint(QPainter::Antialiasing, false);
+            painter->setPen(use[opts.coloredMouseOver && state&State_MouseOver ? 4 : QT_BORDER(state&State_Enabled)]);
+            painter->drawPath(path);
+*/
             painter->drawPixmap(x, y, *getPixmap(use[opts.coloredMouseOver && state&State_MouseOver ? 4 : QT_BORDER(state&State_Enabled)],
                                 PIX_RADIO_BORDER, 0.8));
-
             if(state&State_On)
                 painter->drawPixmap(x, y, *getPixmap(state&State_Enabled
                                                         ? /*state&State_Selected
@@ -2296,13 +2283,17 @@ void QtCurveStyle::drawPrimitive(PrimitiveElement element, const QStyleOption *o
                 return;
 
             painter->save();
-            checkPlasma(painter, r);
 
             if(isOnListView)
                 opt.state|=State_Horizontal|State_Raised;
 
             if(isDefault && state&State_Enabled && IND_TINT==opts.defBtnIndicator)
                 use=itsDefBtnCols;
+
+            // This section fixes some drawng issues with krunner's buttons on nvidia
+            painter->setRenderHint(QPainter::Antialiasing, true);
+            painter->fillRect(r.adjusted(1, 1, -1, -1), palette.background().color());
+            painter->setRenderHint(QPainter::Antialiasing, false);
 
             drawLightBevel(painter, r, &opt, ROUNDED_ALL, getFill(&opt, use), use,
                            true, isKWin
@@ -2318,16 +2309,21 @@ void QtCurveStyle::drawPrimitive(PrimitiveElement element, const QStyleOption *o
                 {
                     case IND_CORNER:
                     {
-                        QPolygon points;
-                        int      offset(isDown ? 5 : 4),
-                                 etchOffset(QTC_CAN_DO_EFFECT ? 1 : 0);
+                        QPainterPath path;
+                        int          offset(isDown ? 5 : 4),
+                                     etchOffset(QTC_CAN_DO_EFFECT ? 1 : 0);
+                        double       xd(r.x()+0.5),
+                                     yd(r.y()+0.5);
 
-                        points.setPoints(3,r.x()+offset, r.y()+offset+etchOffset, r.x()+offset+6, r.y()+offset+etchOffset,
-                                        r.x()+offset, r.y()+offset+6+etchOffset);
-
+                        path.moveTo(xd+offset, yd+offset+etchOffset);
+                        path.lineTo(xd+offset+6, yd+offset+etchOffset);
+                        path.lineTo(xd+offset, yd+offset+6+etchOffset);
+                        path.lineTo(xd+offset, yd+offset+etchOffset);
                         painter->setBrush(itsMouseOverCols[isDown ? 0 : 4]);
                         painter->setPen(itsMouseOverCols[isDown ? 0 : 4]);
-                        painter->drawPolygon(points);
+                        painter->setRenderHint(QPainter::Antialiasing, true);
+                        painter->drawPath(path);
+                        painter->setRenderHint(QPainter::Antialiasing, false);
                         break;
                     }
                     case IND_COLORED:
@@ -2371,10 +2367,46 @@ void QtCurveStyle::drawPrimitive(PrimitiveElement element, const QStyleOption *o
             break;
         }
         case PE_FrameTabWidget:
+        {
+            int round(ROUNDED_ALL);
+
+            if(opts.round && widget && ::qobject_cast<const QTabWidget *>(widget))
+            {
+                const QTabWidget *tw((const QTabWidget *)widget);
+
+                if(0==tw->currentIndex())
+                    if(const QStyleOptionTabWidgetFrame *twf = qstyleoption_cast<const QStyleOptionTabWidgetFrame *>(option))
+                    {
+                        bool reverse(Qt::RightToLeft==twf->direction);
+
+                        switch(tw->tabPosition())
+                        {
+                            case QTabWidget::North:
+                                if(reverse && twf->rightCornerWidgetSize.isEmpty())
+                                    round-=CORNER_TR;
+                                else if(!reverse && twf->leftCornerWidgetSize.isEmpty())
+                                    round-=CORNER_TL;
+                                break;
+                            case QTabWidget::South:
+                                if(reverse && twf->rightCornerWidgetSize.isEmpty())
+                                    round-=CORNER_BR;
+                                else if(!reverse && twf->leftCornerWidgetSize.isEmpty())
+                                    round-=CORNER_BL;
+                                break;
+                            case QTabWidget::West:
+                                round-=CORNER_TL;
+                                break;
+                            case QTabWidget::East:
+                                round-=CORNER_TR;
+                                break;
+                        }
+                    }
+            }
             painter->save();
-            drawBorder(painter, r, option, ROUNDED_ALL, backgroundColors(option), WIDGET_OTHER, BORDER_RAISED, false);
+            drawBorder(painter, r, option, round, backgroundColors(option), WIDGET_OTHER, BORDER_RAISED, false);
             painter->restore();
             break;
+        }
         default:
             QTC_BASE_STYLE::drawPrimitive(element, option, painter, widget);
             break;
@@ -2391,7 +2423,6 @@ void QtCurveStyle::drawControl(ControlElement element, const QStyleOption *optio
     switch(element)
     {
         case CE_MenuScroller:
-            painter->save();
             painter->fillRect(r, opts.lighterPopupMenuBgnd ? itsLighterPopupMenuBgndCol
                                                            : itsBackgroundCols[ORIGINAL_SHADE]);
                 //QStyleOption arrowOpt = *opt;
@@ -2399,7 +2430,6 @@ void QtCurveStyle::drawControl(ControlElement element, const QStyleOption *optio
 
             painter->setPen(itsBackgroundCols[QT_STD_BORDER]);
             drawRect(painter, r);
-            painter->restore();
             drawPrimitive(((state&State_DownArrow) ? PE_IndicatorArrowDown : PE_IndicatorArrowUp),
                            option, painter, widget);
             break;
@@ -2624,26 +2654,27 @@ void QtCurveStyle::drawControl(ControlElement element, const QStyleOption *optio
 
             opt.state&=~State_MouseOver;
             painter->save();
-            checkPlasma(painter, r);
 
             drawBevelGradient(getFill(&opt, itsBackgroundCols), true, painter, r, horiz,
                               SHADE_BEVEL_GRAD_LIGHT, SHADE_BEVEL_GRAD_DARK,
                               false, opts.lvAppearance, WIDGET_LISTVIEW_HEADER);
 
+            painter->setRenderHint(QPainter::Antialiasing, true);
             if(APPEARANCE_RAISED==opts.lvAppearance)
             {
                 painter->setPen(itsBackgroundCols[4]);
                 if(horiz)
-                    painter->drawLine(r.x(), r.y()+r.height()-2, r.x()+r.width()-1, r.y()+r.height()-2);
+                    drawVLine(painter, r.x(), r.y()+r.height()-2, r.x()+r.width()-1, r.y()+r.height()-2);
                 else
-                    painter->drawLine(r.x()+r.width()-2, r.y(), r.x()+r.width()-2, r.y()+r.height()-1);
+                    drawHLine(painter, r.x()+r.width()-2, r.y(), r.x()+r.width()-2, r.y()+r.height()-1);
             }
 
             painter->setPen(itsBackgroundCols[QT_STD_BORDER]);
             if(horiz)
-                painter->drawLine(r.x(), r.y()+r.height()-1, r.x()+r.width()-1, r.y()+r.height()-1);
+                drawHLine(painter, r.x(), r.y()+r.height()-1, r.x()+r.width()-1, r.y()+r.height()-1);
             else
-                painter->drawLine(r.x()+r.width()-1, r.y(), r.x()+r.width()-1, r.y()+r.height()-1);
+                drawVLine(painter, r.x()+r.width()-1, r.y(), r.x()+r.width()-1, r.y()+r.height()-1);
+            painter->setRenderHint(QPainter::Antialiasing, false);
             painter->restore();
             break;
         }
@@ -2671,13 +2702,14 @@ void QtCurveStyle::drawControl(ControlElement element, const QStyleOption *optio
                                         sunken ? SHADE_BEVEL_GRAD_SEL_DARK : SHADE_BEVEL_GRAD_DARK,
                                         sunken, opts.lvAppearance, WIDGET_LISTVIEW_HEADER);
 
+                    painter->setRenderHint(QPainter::Antialiasing, true);
                     if(APPEARANCE_RAISED==opts.lvAppearance)
                     {
                         painter->setPen(itsBackgroundCols[4]);
                         if(Qt::Horizontal==ho->orientation)
-                            painter->drawLine(r.x(), r.y()+r.height()-2, r.x()+r.width()-1, r.y()+r.height()-2);
+                            drawHLine(painter, r.x(), r.y()+r.height()-2, r.x()+r.width()-1, r.y()+r.height()-2);
                         else
-                            painter->drawLine(r.x()+r.width()-2, r.y(), r.x()+r.width()-2, r.y()+r.height()-1);
+                            drawVLine(painter, r.x()+r.width()-2, r.y(), r.x()+r.width()-2, r.y()+r.height()-1);
                     }
 
                     const QColor *border(borderColors(&opt, NULL));
@@ -2687,21 +2719,21 @@ void QtCurveStyle::drawControl(ControlElement element, const QStyleOption *optio
                         if(border)
                         {
                             painter->setPen(border[ORIGINAL_SHADE]);
-                            painter->drawLine(r.x(), r.y()+r.height()-2, r.x()+r.width()-1,
-                                        r.y()+r.height()-2);
+                            drawHLine(painter, r.x(), r.y()+r.height()-2, r.x()+r.width()-1,
+                                      r.y()+r.height()-2);
                             painter->setPen(border[QT_STD_BORDER]);
                         }
                         else
                             painter->setPen(itsBackgroundCols[QT_STD_BORDER]);
-                        painter->drawLine(r.x(), r.y()+r.height()-1, r.x()+r.width()-1, r.y()+r.height()-1);
+                        drawHLine(painter, r.x(), r.y()+r.height()-1, r.x()+r.width()-1, r.y()+r.height()-1);
 
                         if(q3Header ||
                            (QStyleOptionHeader::End!=ho->position && QStyleOptionHeader::OnlyOneSection!=ho->position))
                         {
                             painter->setPen(itsBackgroundCols[QT_STD_BORDER]);
-                            painter->drawLine(r.x()+r.width()-2, r.y()+5, r.x()+r.width()-2, r.y()+r.height()-6);
+                            drawVLine(painter, r.x()+r.width()-2, r.y()+5, r.x()+r.width()-2, r.y()+r.height()-6);
                             painter->setPen(itsBackgroundCols[0]);
-                            painter->drawLine(r.x()+r.width()-1, r.y()+5, r.x()+r.width()-1, r.y()+r.height()-6);
+                            drawVLine(painter, r.x()+r.width()-1, r.y()+5, r.x()+r.width()-1, r.y()+r.height()-6);
                         }
                     }
                     else
@@ -2709,24 +2741,25 @@ void QtCurveStyle::drawControl(ControlElement element, const QStyleOption *optio
                         if(border)
                         {
                             painter->setPen(border[ORIGINAL_SHADE]);
-                            painter->drawLine(r.x()+r.width()-2, r.y(), r.x()+r.width()-2, r.y()+r.height()-1);
+                            drawVLine(painter, r.x()+r.width()-2, r.y(), r.x()+r.width()-2, r.y()+r.height()-1);
                             painter->setPen(border[QT_STD_BORDER]);
                         }
                         else
                             painter->setPen(itsBackgroundCols[QT_STD_BORDER]);
-                        painter->drawLine(r.x()+r.width()-1, r.y(), r.x()+r.width()-1, r.y()+r.height()-1);
+                        drawVLine(painter, r.x()+r.width()-1, r.y(), r.x()+r.width()-1, r.y()+r.height()-1);
 
                         if(q3Header ||
                            (QStyleOptionHeader::End!=ho->position && QStyleOptionHeader::OnlyOneSection!=ho->position))
                         {
                             painter->setPen(itsBackgroundCols[QT_STD_BORDER]);
-                            painter->drawLine(r.x()+5, r.y()+r.height()-2, r.x()+r.width()-6,
-                                        r.y()+r.height()-2);
+                            drawHLine(painter, r.x()+5, r.y()+r.height()-2, r.x()+r.width()-6,
+                                      r.y()+r.height()-2);
                             painter->setPen(itsBackgroundCols[0]);
-                            painter->drawLine(r.x()+5, r.y()+r.height()-1, r.x()+r.width()-6,
-                                        r.y()+r.height()-1);
+                            drawHLine(painter, r.x()+5, r.y()+r.height()-1, r.x()+r.width()-6,
+                                      r.y()+r.height()-1);
                         }
                     }
+                    painter->setRenderHint(QPainter::Antialiasing, false);
                 }
                 else
                     painter->fillRect(r, getFill(option, itsBackgroundCols));
@@ -3488,7 +3521,6 @@ void QtCurveStyle::drawControl(ControlElement element, const QStyleOption *optio
                 const QColor &fill(getTabFill(selected, state&State_MouseOver, itsBackgroundCols));
 
                 painter->save();
-                checkPlasma(painter, r);
                 switch(tab->shape)
                 {
                     case QTabBar::RoundedNorth:
@@ -3500,6 +3532,9 @@ void QtCurveStyle::drawControl(ControlElement element, const QStyleOption *optio
                             r.adjust(-tabOverlap, 0, 0, 0);
                         fillTab(painter, r.adjusted(1, 0, -1, 0), option, fill, true, true, WIDGET_TAB_TOP);
 
+                        // This slipping helps with plasma's tabs and nvidia
+                        if(selected)
+                            painter->setClipRect(r2.adjusted(0, 0, 0, -1));
                         drawBorder(painter, r.adjusted(0, 0, 0, 4), option,
                                     selected || onlyTab
                                         ? ROUNDED_TOP
@@ -3512,8 +3547,13 @@ void QtCurveStyle::drawControl(ControlElement element, const QStyleOption *optio
 
                         if(selected)
                         {
+                            painter->setClipping(false);
                             painter->setPen(itsBackgroundCols[0]);
-                            if(!fixLeft)
+
+                            // The point drawn below is because of the clipping above...
+                            if(fixLeft)
+                                painter->drawPoint(r2.x()+1, r2.y()+r2.height()-1);
+                            else
                                 painter->drawLine(r2.left()-1, r2.bottom(), r2.left(), r2.bottom());
                             if(!fixRight)
                                 painter->drawLine(r2.right()-1, r2.bottom(), r2.right(), r2.bottom());
@@ -3532,10 +3572,12 @@ void QtCurveStyle::drawControl(ControlElement element, const QStyleOption *optio
                         {
                             if(opts.highlightTab)
                             {
+                                painter->setRenderHint(QPainter::Antialiasing, true);
                                 painter->setPen(itsMenuitemCols[0]);
-                                painter->drawLine(r.left()+1, r.top()+1, r.right()-1, r.top()+1);
+                                drawHLine(painter, r.left()+1, r.top()+1, r.right()-1, r.top()+1);
                                 painter->setPen(midColor(fill, itsMenuitemCols[0], IS_FLAT(opts.tabAppearance) ? 1.0 : 1.2));
-                                painter->drawLine(r.left()+1, r.top()+2, r.right()-1, r.top()+2);
+                                drawHLine(painter, r.left()+1, r.top()+2, r.right()-1, r.top()+2);
+                                painter->setRenderHint(QPainter::Antialiasing, false);
 
                                 painter->setClipRect(QRect(r.x(), r.y(), r.width(), 3));
                                 drawBorder(painter, r, option, ROUNDED_ALL, itsMenuitemCols, WIDGET_TAB_TOP, BORDER_FLAT, false, 3);
@@ -3543,12 +3585,14 @@ void QtCurveStyle::drawControl(ControlElement element, const QStyleOption *optio
                         }
                         else if(state&State_MouseOver && opts.coloredMouseOver)
                         {
+                            painter->setRenderHint(QPainter::Antialiasing, true);
                             painter->setPen(itsMouseOverCols[ORIGINAL_SHADE]);
-                            painter->drawLine(r.x()+(firstTab ? opts.round : 1), r.y()+1,
+                            drawHLine(painter, r.x()+(firstTab ? opts.round : 1), r.y()+1,
                                               r.x()+r.width()-((lastTab ? opts.round : 0)+1), r.y()+1);
                             painter->setPen(itsMouseOverCols[QT_STD_BORDER]);
-                            painter->drawLine(r.x()+(firstTab ? opts.round : 1), r.y(),
+                            drawHLine(painter, r.x()+(firstTab ? opts.round : 1), r.y(),
                                               r.x()+r.width()-((lastTab ? opts.round : 0)+1), r.y());
+                            painter->setRenderHint(QPainter::Antialiasing, false);
                         }
                         break;
                     case QTabBar::RoundedSouth:
@@ -3592,10 +3636,12 @@ void QtCurveStyle::drawControl(ControlElement element, const QStyleOption *optio
                         {
                             if(opts.highlightTab)
                             {
+                                painter->setRenderHint(QPainter::Antialiasing, true);
                                 painter->setPen(itsMenuitemCols[0]);
-                                painter->drawLine(r.left()+1, r.bottom()-1, r.right()-1, r.bottom()-1);
+                                drawHLine(painter, r.left()+1, r.bottom()-1, r.right()-1, r.bottom()-1);
                                 painter->setPen(midColor(fill, itsMenuitemCols[0]));
-                                painter->drawLine(r.left()+1, r.bottom()-2, r.right()-1, r.bottom()-2);
+                                drawHLine(painter, r.left()+1, r.bottom()-2, r.right()-1, r.bottom()-2);
+                                painter->setRenderHint(QPainter::Antialiasing, false);
 
                                 painter->setClipRect(QRect(r.x(), r.y()+r.height()-3, r.width(), r.y()+r.height()-1));
                                 drawBorder(painter, r, option, ROUNDED_ALL, itsMenuitemCols, WIDGET_TAB_BOT, BORDER_FLAT, false, 3);
@@ -3603,12 +3649,14 @@ void QtCurveStyle::drawControl(ControlElement element, const QStyleOption *optio
                         }
                         else if(state&State_MouseOver && opts.coloredMouseOver)
                         {
+                            painter->setRenderHint(QPainter::Antialiasing, true);
                             painter->setPen(itsMouseOverCols[ORIGINAL_SHADE]);
-                            painter->drawLine(r.x()+(firstTab ? opts.round : 1), r.bottom()-1,
+                            drawHLine(painter, r.x()+(firstTab ? opts.round : 1), r.bottom()-1,
                                               r.x()+r.width()-((lastTab ? opts.round : 0)+1), r.bottom()-1);
                             painter->setPen(itsMouseOverCols[QT_STD_BORDER]);
-                            painter->drawLine(r.x()+(firstTab ? opts.round : 1), r.bottom(),
+                            drawHLine(painter, r.x()+(firstTab ? opts.round : 1), r.bottom(),
                                               r.x()+r.width()-((lastTab ? opts.round : 0)+1), r.bottom());
+                            painter->setRenderHint(QPainter::Antialiasing, false);
                         }
                         break;
                     case QTabBar::RoundedWest:
@@ -3652,10 +3700,12 @@ void QtCurveStyle::drawControl(ControlElement element, const QStyleOption *optio
                         {
                             if(opts.highlightTab)
                             {
+                                painter->setRenderHint(QPainter::Antialiasing, true);
                                 painter->setPen(itsMenuitemCols[0]);
-                                painter->drawLine(r.left()+1, r.top()+1, r.left()+1, r.bottom()-1);
+                                drawVLine(painter, r.left()+1, r.top()+1, r.left()+1, r.bottom()-1);
                                 painter->setPen(midColor(fill, itsMenuitemCols[0], IS_FLAT(opts.tabAppearance) ? 1.0 : 1.2));
-                                painter->drawLine(r.left()+2, r.top()+1, r.left()+2, r.bottom()-1);
+                                drawVLine(painter, r.left()+2, r.top()+1, r.left()+2, r.bottom()-1);
+                                painter->setRenderHint(QPainter::Antialiasing, false);
 
                                 painter->setClipRect(QRect(r.x(), r.y(), 3, r.height()));
                                 drawBorder(painter, r, option, ROUNDED_ALL, itsMenuitemCols, WIDGET_TAB_TOP, BORDER_FLAT, false, 3);
@@ -3663,12 +3713,14 @@ void QtCurveStyle::drawControl(ControlElement element, const QStyleOption *optio
                         }
                         else if(state&State_MouseOver && opts.coloredMouseOver)
                         {
+                            painter->setRenderHint(QPainter::Antialiasing, true);
                             painter->setPen(itsMouseOverCols[ORIGINAL_SHADE]);
-                            painter->drawLine(r.x()+1, r.y()+(firstTab ? opts.round : 1),
+                            drawVLine(painter, r.x()+1, r.y()+(firstTab ? opts.round : 1),
                                               r.x()+1, r.y()+r.height()-((lastTab ? opts.round : 0)+1));
                             painter->setPen(itsMouseOverCols[QT_STD_BORDER]);
-                            painter->drawLine(r.x(), r.y()+(firstTab ? opts.round : 1),
+                            drawVLine(painter, r.x(), r.y()+(firstTab ? opts.round : 1),
                                               r.x(), r.y()+r.height()-((lastTab ? opts.round : 0)+1));
+                            painter->setRenderHint(QPainter::Antialiasing, false);
                         }
                         break;
                     case QTabBar::RoundedEast:
@@ -3712,10 +3764,12 @@ void QtCurveStyle::drawControl(ControlElement element, const QStyleOption *optio
                         {
                             if(opts.highlightTab)
                             {
+                                painter->setRenderHint(QPainter::Antialiasing, true);
                                 painter->setPen(itsMenuitemCols[0]);
-                                painter->drawLine(r.right()-1, r.top()+1, r.right()-1, r.bottom()-1);
+                                drawVLine(painter, r.right()-1, r.top()+1, r.right()-1, r.bottom()-1);
                                 painter->setPen(midColor(fill, itsMenuitemCols[0]));
-                                painter->drawLine(r.right()-2, r.top()+1, r.right()-2, r.bottom()-1);
+                                drawVLine(painter, r.right()-2, r.top()+1, r.right()-2, r.bottom()-1);
+                                painter->setRenderHint(QPainter::Antialiasing, false);
 
                                 painter->setClipRect(QRect(r.x()+r.width()-3, r.y(), r.x()+r.width()-1, r.height()));
                                 drawBorder(painter, r, option, ROUNDED_ALL, itsMenuitemCols, WIDGET_TAB_TOP, BORDER_FLAT, false, 3);
@@ -3723,12 +3777,14 @@ void QtCurveStyle::drawControl(ControlElement element, const QStyleOption *optio
                         }
                         else if(state&State_MouseOver && opts.coloredMouseOver)
                         {
+                            painter->setRenderHint(QPainter::Antialiasing, true);
                             painter->setPen(itsMouseOverCols[ORIGINAL_SHADE]);
-                            painter->drawLine(r.right()-1, r.y()+(firstTab ? opts.round : 1),
+                            drawVLine(painter, r.right()-1, r.y()+(firstTab ? opts.round : 1),
                                               r.right()-1, r.y()+r.height()-((lastTab ? opts.round : 0)+1));
                             painter->setPen(itsMouseOverCols[QT_STD_BORDER]);
-                            painter->drawLine(r.right(), r.y()+(firstTab ? opts.round : 1),
+                            drawVLine(painter, r.right(), r.y()+(firstTab ? opts.round : 1),
                                               r.right(), r.y()+r.height()-((lastTab ? opts.round : 0)+1));
+                            painter->setRenderHint(QPainter::Antialiasing, false);
                         }
                         break;
                 }
@@ -4631,7 +4687,6 @@ void QtCurveStyle::drawComplexControl(ComplexControl control, const QStyleOption
 #endif
 
                 painter->save();
-                checkPlasma(painter, r);
 #ifndef QTC_SIMPLE_SCROLLBARS
                 painter->fillRect(sbRect, palette.background().color());
 #endif
@@ -4805,7 +4860,6 @@ void QtCurveStyle::drawComplexControl(ComplexControl control, const QStyleOption
             if (const QStyleOptionComboBox *comboBox = qstyleoption_cast<const QStyleOptionComboBox *>(option))
             {
                 painter->save();
-                checkPlasma(painter, r);
 
                 QRect           frame(subControlRect(CC_ComboBox, option, SC_ComboBoxFrame, widget)),
                                 arrow(subControlRect(CC_ComboBox, option, SC_ComboBoxArrow, widget)),
@@ -4826,6 +4880,11 @@ void QtCurveStyle::drawComplexControl(ComplexControl control, const QStyleOption
 //                     painter->setPen(cg.background());
 //                     drawRect(painter, r);
 //                 }
+
+                // This section fixes some drawng issues with krunner's combo on nvidia
+                painter->setRenderHint(QPainter::Antialiasing, true);
+                painter->fillRect(frame.adjusted(1, 1, -1, -1), palette.background().color());
+                painter->setRenderHint(QPainter::Antialiasing, false);
 
                 if(/*comboBox->frame &&*/ frame.isValid())
                 {
@@ -5616,22 +5675,6 @@ QStyle::SubControl QtCurveStyle::hitTestComplexControl(ComplexControl control, c
     return QTC_BASE_STYLE::hitTestComplexControl(control, option,  pos, widget);
 }
 
-void QtCurveStyle::checkPlasma(QPainter *painter, const QRect &r) const
-{
-    if(opts.plasmaHack)
-    {
-        painter->setCompositionMode(QPainter::CompositionMode_Source);
-        if(ROUND_NONE==opts.round)
-            painter->fillRect(r, Qt::transparent);
-        else
-        {
-            painter->fillRect(r.adjusted(1, 0, -1, 0), Qt::transparent);
-            painter->fillRect(r.adjusted(0, 1, 0, -1), Qt::transparent);
-        }
-        painter->setCompositionMode(QPainter::CompositionMode_SourceOver);
-    }
-}
-
 static int getStripedPbarSize(int width)
 {
     int chunk2(PROGRESS_CHUNK_WIDTH*2);
@@ -5661,7 +5704,7 @@ void QtCurveStyle::drawProgressBevelGradient(QPainter *p, const QRect &origRect,
             pixPainter.fillRect(r, itsMenuitemCols[ORIGINAL_SHADE]);
         else
             drawBevelGradientReal(itsMenuitemCols[ORIGINAL_SHADE], true, &pixPainter, r, horiz, shadeTop, shadeBot, false,
-                                  bevApp, WIDGET_PROGRESSBAR, true);
+                                  bevApp, WIDGET_PROGRESSBAR);
 
         switch(opts.stripedProgress)
         {
@@ -5673,7 +5716,7 @@ void QtCurveStyle::drawProgressBevelGradient(QPainter *p, const QRect &origRect,
                                         horiz
                                         ? QRect(r.x(), r.y(), PROGRESS_CHUNK_WIDTH, r.height())
                                         : QRect(r.x(), r.y(), r.width(), PROGRESS_CHUNK_WIDTH),
-                                        horiz, shadeTop, shadeBot, false, bevApp, WIDGET_PROGRESSBAR, true);
+                                        horiz, shadeTop, shadeBot, false, bevApp, WIDGET_PROGRESSBAR);
                 break;
             case STRIPE_DIAGONAL:
             {
@@ -5702,7 +5745,7 @@ void QtCurveStyle::drawProgressBevelGradient(QPainter *p, const QRect &origRect,
                     pixPainter.fillRect(r, itsMenuitemCols[1]);
                 else
                     drawBevelGradientReal(itsMenuitemCols[1], true, &pixPainter, r,
-                                          horiz, shadeTop, shadeBot, false, bevApp, WIDGET_PROGRESSBAR, true);
+                                          horiz, shadeTop, shadeBot, false, bevApp, WIDGET_PROGRESSBAR);
             }
         }
 
@@ -5742,14 +5785,14 @@ void QtCurveStyle::drawBevelGradient(const QColor &base, bool increase, QPainter
                             ? bevApp
                             : APPEARANCE_GRADIENT);
 
-        if(opts.plasmaHack || WIDGET_PROGRESSBAR==w)
-            drawBevelGradientReal(base, increase, p, origRect, horiz, shadeTop, shadeBot, sel, app, w, false);
+        if(WIDGET_PROGRESSBAR==w)
+            drawBevelGradientReal(base, increase, p, origRect, horiz, shadeTop, shadeBot, sel, app, w);
         else
         {
             QRect   r(0, 0, horiz ? QTC_PIXMAP_DIMENSION : origRect.width(),
                             horiz ? origRect.height() : QTC_PIXMAP_DIMENSION);
             QtcKey  key(createKey(horiz ? r.height() : r.width(), base.rgb(), horiz, increase,
-                                app2App(app, sel), w, shadeTop, shadeBot));
+                                  app2App(app, sel), w, shadeTop, shadeBot));
             QPixmap *pix(itsPixmapCache.object(key));
 
             if(!pix)
@@ -5758,7 +5801,7 @@ void QtCurveStyle::drawBevelGradient(const QColor &base, bool increase, QPainter
 
                 QPainter pixPainter(pix);
 
-                drawBevelGradientReal(base, increase, &pixPainter, r, horiz, shadeTop, shadeBot, sel, app, w, true);
+                drawBevelGradientReal(base, increase, &pixPainter, r, horiz, shadeTop, shadeBot, sel, app, w);
                 pixPainter.end();
                 itsPixmapCache.insert(key, pix, pix->width()*pix->height()*(pix->depth()/8));
             }
@@ -5769,7 +5812,7 @@ void QtCurveStyle::drawBevelGradient(const QColor &base, bool increase, QPainter
 
 void QtCurveStyle::drawBevelGradientReal(const QColor &base, bool increase, QPainter *p,
                                          const QRect &r, bool horiz, double shadeTop,
-                                         double shadeBot, bool sel, EAppearance app, EWidget w, bool useQt) const
+                                         double shadeBot, bool sel, EAppearance app, EWidget w) const
 {
     bool selected(opts.colorSelTab && (WIDGET_TAB_TOP==w || WIDGET_TAB_BOT==w) ? false : sel);
 
@@ -5787,17 +5830,17 @@ void QtCurveStyle::drawBevelGradientReal(const QColor &base, bool increase, QPai
                             : APPEARANCE_SPLIT_GRADIENT==app
                                 ? shadeTop
                                 : shadeTop*SHADE_GLASS_TOP_A(app, w)),
-                shadeTopB(WIDGET_TAB_BOT==w
+               shadeTopB(WIDGET_TAB_BOT==w
                             ? 1.0
                             : APPEARANCE_SPLIT_GRADIENT==app
                                 ? shadeTop-((shadeTop-shadeBot)*SPLIT_GRADIENT_FACTOR)
                                 : shadeTop*SHADE_GLASS_TOP_B(app, w)),
-                shadeBotA(WIDGET_TAB_TOP==w
+               shadeBotA(WIDGET_TAB_TOP==w
                             ? 1.0
                             : APPEARANCE_SPLIT_GRADIENT==app
                                 ? shadeBot+((shadeTop-shadeBot)*SPLIT_GRADIENT_FACTOR)
                                 : shadeBot*SHADE_GLASS_BOT_A(app)),
-                shadeBotB(WIDGET_TAB_TOP==w
+               shadeBotB(WIDGET_TAB_TOP==w
                             ? 1.0
                             : APPEARANCE_SPLIT_GRADIENT==app
                                 ? shadeBot
@@ -5810,21 +5853,13 @@ void QtCurveStyle::drawBevelGradientReal(const QColor &base, bool increase, QPai
         shade(base, &botA, shadeBotA);
         shade(base, &botB, shadeBotB);
 
-        QRect r1(r), r2(r);
+        QLinearGradient grad(r.topLeft(), horiz ? r.bottomLeft() : r.topRight());
 
-        if(horiz)
-        {
-            r1.setHeight(r1.height()/2);
-            r2.setY(r2.y()+r1.height());
-        }
-        else
-        {
-            r1.setWidth(r1.width()/2);
-            r2.setX(r2.x()+r1.width());
-        }
-
-        drawGradient(topA, topB, increase, p, r1, horiz, useQt);
-        drawGradient(botA, botB, increase, p, r2, horiz, useQt);
+        grad.setColorAt(0, increase ? topA : topB);
+        grad.setColorAt(0.499999999999999999, increase ? topB : topA);
+        grad.setColorAt(0.5, increase ? botA : botB);
+        grad.setColorAt(1, increase ? botB : botA);
+        p->fillRect(r, QBrush(grad));
     }
     else if(!selected && APPEARANCE_BEVELLED==app &&
             ((horiz ? r.height()
@@ -5849,7 +5884,12 @@ void QtCurveStyle::drawBevelGradientReal(const QColor &base, bool increase, QPai
             }
             shade(base, &bot, SHADE_BEVEL_BOT(w));
             p->fillRect(r1, base);
-            drawGradient(base, bot, true, p, r2, horiz, useQt);
+
+            QLinearGradient grad(r2.topLeft(), horiz ? r2.bottomLeft() : r2.topRight());
+
+            grad.setColorAt(0, base);
+            grad.setColorAt(1, bot);
+            p->fillRect(r2, QBrush(grad));
         }
         else
         {
@@ -5859,35 +5899,22 @@ void QtCurveStyle::drawBevelGradientReal(const QColor &base, bool increase, QPai
             shade(base, &midTop, SHADE_BEVEL_MID_TOP);
             shade(base, &midBot, SHADE_BEVEL_MID_BOT);
             shade(base, &bot, SHADE_BEVEL_BOT(w));
-            QRect  r1(r), r2(r), r3(r);
 
-            if(horiz)
-            {
-                r1.setHeight(BEVEL_BORDER(w));
-                r3.setHeight(BEVEL_BORDER(w));
-                r2.setHeight(r.height()-(r1.height()+r3.height()));
-                r2.moveTop(r.y()+r1.height());
-                r3.moveTop(r.y()+r1.height()+r2.height());
-            }
-            else
-            {
-                r1.setWidth(BEVEL_BORDER(w));
-                r3.setWidth(BEVEL_BORDER(w));
-                r2.setWidth(r.width()-(r1.width()+r3.width()));
-                r2.moveLeft(r.x()+r1.width());
-                r3.moveLeft(r.x()+r1.width()+r2.width());
-            }
+            qreal           borderSize(BEVEL_BORDER(w)/((qreal)(horiz ? r.height() : r.width())));
+            QLinearGradient grad(r.topLeft(), horiz ? r.bottomLeft() : r.topRight());
 
-            drawGradient(top, midTop, true, p, r1, horiz, useQt);
-            drawGradient(midTop, midBot, true, p, r2, horiz, useQt);
-            drawGradient(midBot, bot, true, p, r3, horiz, useQt);
+            grad.setColorAt(0, top);
+            grad.setColorAt(borderSize, midTop);
+            grad.setColorAt(1.0-borderSize, midBot);
+            grad.setColorAt(1, bot);
+            p->fillRect(r, QBrush(grad));
         }
     }
     else
     {
         QColor top,
-                bot,
-                baseTopCol(opts.colorSelTab && sel && (WIDGET_TAB_TOP==w || WIDGET_TAB_BOT==w)
+               bot,
+               baseTopCol(opts.colorSelTab && sel && (WIDGET_TAB_TOP==w || WIDGET_TAB_BOT==w)
                                 ? midColor(base, itsMenuitemCols[0], QTC_COLOR_SEL_TAB_FACTOR) : base);
 
         if(equal(1.0, shadeTop))
@@ -5899,87 +5926,12 @@ void QtCurveStyle::drawBevelGradientReal(const QColor &base, bool increase, QPai
         else
             shade(base, &bot, shadeBot);
 
-        drawGradient(top, bot, sel || APPEARANCE_INVERTED!=app ? increase : !increase,
-                        p, r, horiz, useQt);
-    }
-}
+        bool            inc(sel || APPEARANCE_INVERTED!=app ? increase : !increase);
+        QLinearGradient grad(r.topLeft(), horiz ? r.bottomLeft() : r.topRight());
 
-void QtCurveStyle::drawGradient(const QColor &top, const QColor &bot, bool increase,
-                                QPainter *p, QRect const &r, bool horiz, bool useQt) const
-{
-    if(r.width()>0 && r.height()>0)
-    {
-        if(top==bot)
-            p->fillRect(r, top);
-        else if (useQt)
-        {
-            QLinearGradient grad(r.topLeft(), horiz ? r.bottomLeft() : r.topRight());
-
-            grad.setColorAt(0, increase ? top : bot);
-            grad.setColorAt(1, increase ? bot : top);
-            p->fillRect(r, QBrush(grad));
-        }
-        else
-        {
-            int rh(r.height()), rw(r.width()),
-                rTop(top.red()), gTop(top.green()), bTop(top.blue()),
-                rx, ry, rx2, ry2,
-                size(horiz ? rh : rw);
-
-            r.getCoords(&rx, &ry, &rx2, &ry2);
-
-            register int rl(rTop << 16);
-            register int gl(gTop << 16);
-            register int bl(bTop << 16);
-            register int i;
-
-            int dr(((1<<16) * (bot.red() - rTop)) / size),
-                dg(((1<<16) * (bot.green() - gTop)) / size),
-                db(((1<<16) * (bot.blue() - bTop)) / size);
-
-            if(increase)
-                if(horiz)
-                {
-                    for (i=0; i < size; i++)
-                    {
-                        p->setPen(QColor(rl>>16, gl>>16, bl>>16));
-                        p->drawLine(rx, ry+i, rx2, ry+i);
-                        rl += dr;
-                        gl += dg;
-                        bl += db;
-                    }
-                }
-                else
-                    for(i=0; i < size; i++)
-                    {
-                        p->setPen(QColor(rl>>16, gl>>16, bl>>16));
-                        p->drawLine(rx+i, ry, rx+i, ry2);
-                        rl += dr;
-                        gl += dg;
-                        bl += db;
-                    }
-            else
-                if(horiz)
-                {
-                    for(i=size-1; i>=0; i--)
-                    {
-                        p->setPen(QColor(rl>>16, gl>>16, bl>>16));
-                        p->drawLine(rx, ry+i, rx2, ry+i);
-                        rl += dr;
-                        gl += dg;
-                        bl += db;
-                    }
-                }
-                else
-                    for(i=size-1; i>=0; i--)
-                    {
-                        p->setPen(QColor(rl>>16, gl>>16, bl>>16));
-                        p->drawLine(rx+i, ry, rx+i, ry2);
-                        rl += dr;
-                        gl += dg;
-                        bl += db;
-                    }
-        }
+        grad.setColorAt(0, inc ? top : bot);
+        grad.setColorAt(1, inc ? bot : top);
+        p->fillRect(r, QBrush(grad));
     }
 }
 
@@ -6099,53 +6051,55 @@ void QtCurveStyle::drawLightBevel(QPainter *p, const QRect &rOrig, const QStyleO
 
                     if(horiz)
                     {
-                        drawBevelGradient(itsMouseOverCols[col], !sunken, p, QRect(r.x()+so, r.y(), len, r.height()), horiz,
-                                        getWidgetShade(w, true, sunken, app),
-                                        getWidgetShade(w, false, sunken, app), sunken, app, w);
-                        drawBevelGradient(itsMouseOverCols[col], !sunken, p, QRect(r.x()+r.width()-eo, r.y(), len, r.height()), horiz,
-                                        getWidgetShade(w, true, sunken, app),
-                                        getWidgetShade(w, false, sunken, app), sunken, app, w);
+                        drawBevelGradient(itsMouseOverCols[col], !sunken, p, QRect(r.x()+so, r.y(), len, r.height()-1), horiz,
+                                         getWidgetShade(w, true, sunken, app),
+                                         getWidgetShade(w, false, sunken, app), sunken, app, w);
+                        drawBevelGradient(itsMouseOverCols[col], !sunken, p, QRect(r.x()+r.width()-eo, r.y(), len, r.height()-1), horiz,
+                                         getWidgetShade(w, true, sunken, app),
+                                         getWidgetShade(w, false, sunken, app), sunken, app, w);
                     }
                     else
                     {
-                        drawBevelGradient(itsMouseOverCols[col], !sunken, p, QRect(r.x(), r.y()+so, r.width(), len), horiz,
-                                        getWidgetShade(w, true, sunken, app),
-                                        getWidgetShade(w, false, sunken, app), sunken, app, w);
-                        drawBevelGradient(itsMouseOverCols[col], !sunken, p, QRect(r.x(), r.y()+r.height()-eo, r.width(), len), horiz,
-                                        getWidgetShade(w, true, sunken, app),
-                                        getWidgetShade(w, false, sunken, app), sunken, app, w);
+                        drawBevelGradient(itsMouseOverCols[col], !sunken, p, QRect(r.x(), r.y()+so, r.width()-1, len), horiz,
+                                         getWidgetShade(w, true, sunken, app),
+                                         getWidgetShade(w, false, sunken, app), sunken, app, w);
+                        drawBevelGradient(itsMouseOverCols[col], !sunken, p, QRect(r.x(), r.y()+r.height()-eo, r.width()-1, len), horiz,
+                                         getWidgetShade(w, true, sunken, app),
+                                         getWidgetShade(w, false, sunken, app), sunken, app, w);
                     }
                 }
                 else
                 {
                     bool horizontal((horiz && WIDGET_SB_BUTTON!=w)|| (!horiz && WIDGET_SB_BUTTON==w)),
-                        thin(WIDGET_SB_BUTTON==w || WIDGET_SPIN==w || ((horiz ? r.height() : r.width())<16));
+                         thin(WIDGET_SB_BUTTON==w || WIDGET_SPIN==w || ((horiz ? r.height() : r.width())<16));
 
                     p->setPen(itsMouseOverCols[QTC_MO_PLASTIK_DARK(w)]);
+                    p->setRenderHint(QPainter::Antialiasing, true);
                     if(horizontal)
                     {
-                        p->drawLine(r.x()+1, r.y()+1, r.x()+r.width()-2, r.y()+1);
-                        p->drawLine(r.x()+1, r.y()+r.height()-2, r.x()+r.width()-2, r.y()+r.height()-2);
+                        drawHLine(p, r.x()+1, r.y()+1, r.x()+r.width()-2, r.y()+1);
+                        drawHLine(p, r.x()+1, r.y()+r.height()-2, r.x()+r.width()-2, r.y()+r.height()-2);
                     }
                     else
                     {
-                        p->drawLine(r.x()+1, r.y()+1, r.x()+1, r.y()+r.height()-2);
-                        p->drawLine(r.x()+r.width()-2, r.y()+1, r.x()+r.width()-2, r.y()+r.height()-2);
+                        drawVLine(p, r.x()+1, r.y()+1, r.x()+1, r.y()+r.height()-2);
+                        drawVLine(p, r.x()+r.width()-2, r.y()+1, r.x()+r.width()-2, r.y()+r.height()-2);
                     }
                     if(!thin)
                     {
                         p->setPen(itsMouseOverCols[QTC_MO_PLASTIK_LIGHT(w)]);
                         if(horizontal)
                         {
-                            p->drawLine(r.x()+1, r.y()+2, r.x()+r.width()-2, r.y()+2);
-                            p->drawLine(r.x()+1, r.y()+r.height()-3, r.x()+r.width()-2, r.y()+r.height()-3);
+                            drawHLine(p, r.x()+1, r.y()+2, r.x()+r.width()-2, r.y()+2);
+                            drawHLine(p, r.x()+1, r.y()+r.height()-3, r.x()+r.width()-2, r.y()+r.height()-3);
                         }
                         else
                         {
-                            p->drawLine(r.x()+2, r.y()+1, r.x()+2, r.y()+r.height()-2);
-                            p->drawLine(r.x()+r.width()-3, r.y()+1, r.x()+r.width()-3, r.y()+r.height()-2);
+                            drawVLine(p, r.x()+2, r.y()+1, r.x()+2, r.y()+r.height()-2);
+                            drawVLine(p, r.x()+r.width()-3, r.y()+1, r.x()+r.width()-3, r.y()+r.height()-2);
                         }
                     }
+                    p->setRenderHint(QPainter::Antialiasing, false);
                 }
             }
         }
@@ -6166,10 +6120,10 @@ void QtCurveStyle::drawEtch(QPainter *p, const QRect &r, /*const QStyleOption *o
     {
         QColor darkCol(Qt::black); // itsBackgroundCols[2]);
 
-        darkCol.setAlphaF(0.055);
+        darkCol.setAlphaF(QTC_ETCH_TOP_MIDDLE_ALPHA);
         p->setPen(darkCol);
         p->drawLine(r.x()+2, r.y(), r.x()+r.width()-3, r.y());
-        darkCol.setAlphaF(0.0275);
+        darkCol.setAlphaF(QTC_ETCH_TOP_SIDES_ALPHA);
         p->setPen(darkCol);
         p->drawPoint(r.x()+1, r.y());
         p->drawPoint(r.x()+r.width()-2, r.y());
@@ -6180,7 +6134,7 @@ void QtCurveStyle::drawEtch(QPainter *p, const QRect &r, /*const QStyleOption *o
     {
         QColor col(raised ? Qt::black /*itsBackgroundCols[2]*/ : Qt::white); // backgroundColors(option)[0]);
 
-        col.setAlphaF(raised ? 0.055 : 0.80);
+        col.setAlphaF(raised ? QTC_ETCH_TOP_MIDDLE_ALPHA : QTC_ETCH_BOTTOM_MIDDLE_ALPHA);
         p->setPen(col);
         p->drawLine(r.x()+2, r.y()+r.height()-1, r.x()+r.width()-3, r.y()+r.height()-1);
 
@@ -6192,7 +6146,7 @@ void QtCurveStyle::drawEtch(QPainter *p, const QRect &r, /*const QStyleOption *o
             p->drawPoint(r.x()+r.width()-2, r.y()+r.height()-2);
         }
 
-        col.setAlphaF(raised ? 0.0275 : 0.45);
+        col.setAlphaF(raised ? QTC_ETCH_TOP_SIDES_ALPHA : QTC_ETCH_BOTTOM_SIDES_ALPHA);
         p->setPen(col);
         p->drawPoint(r.x()+1, r.y()+r.height()-1);
         p->drawPoint(r.x()+r.width()-2, r.y()+r.height()-1);
@@ -6208,7 +6162,8 @@ void QtCurveStyle::drawBorder(QPainter *p, const QRect &r, const QStyleOption *o
     EAppearance  app(widgetApp(w, &opts));
     State        state(option->state);
     bool         enabled(state&State_Enabled),
-                 hasFocus(state&State_HasFocus);
+                 hasFocus(state&State_HasFocus),
+                 window(WIDGET_MDI_WINDOW==w || WIDGET_MDI_WINDOW_TITLE==w);
     const QColor *cols(enabled && hasFocus && (WIDGET_FRAME==w || WIDGET_ENTRY==w)
                         ? itsMenuitemCols
                         : custom
@@ -6221,9 +6176,18 @@ void QtCurveStyle::drawBorder(QPainter *p, const QRect &r, const QStyleOption *o
                           ? option->palette.buttonText().color()
                           : cols[!enabled && (WIDGET_BUTTON(w) || WIDGET_SLIDER_TROUGH==w)
                                     ? QT_DISABLED_BORDER : borderVal]);
+    double       xd(r.x()+0.5),
+                 yd(r.y()+0.5),
+                 radius(getRadius(opts.round, r.width(), r.height(), w, false)),
+                 diameter(radius*2);
+    int          width(r.width()-1),
+                 height(r.height()-1);
 
-    if(APPEARANCE_FLAT==app && (WIDGET_MDI_WINDOW==w || WIDGET_MDI_WINDOW_TITLE==w))
+    if(APPEARANCE_FLAT==app && window)
         app=APPEARANCE_RAISED;
+
+    if(WIDGET_MDI_WINDOW!=w && WIDGET_MDI_WINDOW_TITLE!=w)
+        p->setRenderHint(QPainter::Antialiasing, true);
 
     switch(borderProfile)
     {
@@ -6232,172 +6196,115 @@ void QtCurveStyle::drawBorder(QPainter *p, const QRect &r, const QStyleOption *o
         case BORDER_RAISED:
         case BORDER_SUNKEN:
         {
-            QColor tl(cols[BORDER_RAISED==borderProfile ? 0 : QT_FRAME_DARK_SHADOW]),
-                   br(cols[BORDER_RAISED==borderProfile ? QT_FRAME_DARK_SHADOW : 0]);
+            QColor       tl(cols[BORDER_RAISED==borderProfile ? 0 : QT_FRAME_DARK_SHADOW]),
+                         br(cols[BORDER_RAISED==borderProfile ? QT_FRAME_DARK_SHADOW : 0]);
+            QPainterPath topPath,
+                         botPath;
+            double       radiusi(getRadius(opts.round, r.width(), r.height(), w, true)),
+                         diameteri(radiusi*2),
+                         xdi(window ? r.x()+1 : xd+1),
+                         ydi(window ? r.y()+1 : yd+1);
+            int          widthi(width-2),
+                         heighti(height-2);
 
-            if(doBlend)
+            if(doBlend && !window)
             {
-                tl.setAlphaF(0.7);
-                br.setAlphaF(0.7);
+                tl.setAlphaF(QTC_BORDER_BLEND_ALPHA);
+                br.setAlphaF(QTC_BORDER_BLEND_ALPHA);
             }
 
             p->setPen((enabled || BORDER_SUNKEN==borderProfile) &&
                       (BORDER_RAISED==borderProfile || hasFocus || APPEARANCE_FLAT!=app)
                             ? tl
                             : option->palette.background().color());
-            p->drawLine(r.x()+1, r.y()+1, r.x()+1, r.y()+r.height()-2);
-            p->drawLine(r.x()+1, r.y()+1, r.x()+r.width()-2, r.y()+1);
+
+            if (!window && round&CORNER_TR)
+            {
+                topPath.moveTo(xdi+widthi, ydi+radiusi);
+                topPath.arcTo(xdi+widthi-diameteri, ydi, diameteri, diameteri, 0, 90);
+            }
+            else
+                topPath.moveTo(xdi+widthi, ydi);
+
+            if (!window && round&CORNER_TL)
+                topPath.arcTo(xdi, ydi, diameteri, diameteri, 90, 90);
+            else
+                topPath.lineTo(xdi, ydi);
+
+            topPath.lineTo(xdi, !window && round&CORNER_BL ? ydi+heighti-radiusi : ydi+heighti);
+            botPath.moveTo(xdi, !window && round&CORNER_BL ? ydi+heighti-radiusi : ydi+heighti);
+            if (!window && round&CORNER_BL)
+                botPath.arcTo(xdi, ydi+heighti-diameteri, diameteri, diameteri, 180, 90);
+
+            if (!window && round&CORNER_BR)
+                botPath.arcTo(xdi+widthi-diameteri, ydi+heighti-diameteri, diameteri, diameteri, 270, 90);
+            else
+                botPath.lineTo(xdi+widthi, ydi+heighti);
+
+            botPath.lineTo(xdi+widthi, round&CORNER_TR ? ydi+radiusi : ydi);
+
+            p->drawPath(topPath);
             p->setPen(enabled && (BORDER_SUNKEN==borderProfile || hasFocus || APPEARANCE_FLAT!=app)
                             ? br
                             : option->palette.background().color());
-            p->drawLine(r.x()+r.width()-2, r.y()+1, r.x()+r.width()-2, r.y()+r.height()-2);
-            p->drawLine(r.x()+1, r.y()+r.height()-2, r.x()+r.width()-2, r.y()+r.height()-2);
+            p->drawPath(botPath);
         }
     }
 
-    if(QTC_ROUNDED && ROUNDED_NONE!=round)
-    {
-        bool largeArc(ROUND_FULL==opts.round && WIDGET_CHECKBOX!=w &&
-                      r.width()>=QTC_MIN_BTN_SIZE && r.height()>=QTC_MIN_BTN_SIZE);
+    QPainterPath path;
 
-        p->setPen(border);
-        p->drawLine(r.x()+2, r.y(), r.x()+r.width()-3, r.y());
+    if (WIDGET_MDI_WINDOW_TITLE!=w && round&CORNER_BR)
+        path.moveTo(xd+width, yd+height-radius);
+    else
+        path.moveTo(xd+width, yd+height);
+
+    if (round&CORNER_TR)
+        path.arcTo(xd+width-diameter, yd, diameter, diameter, 0, 90);
+    else
+        path.lineTo(xd+width, yd);
+
+    if (round&CORNER_TL)
+        path.arcTo(xd, yd, diameter, diameter, 90, 90);
+    else
+        path.lineTo(xd, yd);
+
+    if (WIDGET_MDI_WINDOW_TITLE!=w && round&CORNER_BL)
+        path.arcTo(xd, yd+height-diameter, diameter, diameter, 180, 90);
+    else
+        path.lineTo(xd, yd+height);
+
+    if(WIDGET_MDI_WINDOW_TITLE!=w)
+    {
+        if (round&CORNER_BR)
+            path.arcTo(xd+width-diameter, yd+height-diameter, diameter, diameter, 270, 90);
+        else
+            path.lineTo(xd+width, yd+height);
+    }
+
+    p->setPen(border);
+    p->drawPath(path);
+    if(WIDGET_MDI_WINDOW!=w && WIDGET_MDI_WINDOW_TITLE!=w)
+        p->setRenderHint(QPainter::Antialiasing, false);
+
+    if(ROUND_FULL==opts.round && window)
+    {
+        if(WIDGET_MDI_WINDOW==w)
+        {
+            p->drawPoint(r.x(), r.y()+r.height()-2);
+            p->drawPoint(r.x()+1, r.y()+r.height()-1);
+            p->drawPoint(r.x()+r.width()-2, r.y()+r.height()-1);
+            p->drawPoint(r.x()+r.width()-1, r.y()+r.height()-2);
+        }
+
         if(WIDGET_MDI_WINDOW_TITLE==w)
         {
-            p->drawLine(r.x(), r.y()+2, r.x(), r.y()+r.height()-1);
-            p->drawLine(r.x()+r.width()-1, r.y()+2, r.x()+r.width()-1, r.y()+r.height()-1);
-        }
-        else
-        {
-            p->drawLine(r.x()+2, r.y()+r.height()-1, r.x()+r.width()-3, r.y()+r.height()-1);
-            p->drawLine(r.x(), r.y()+2, r.x(), r.y()+r.height()-3);
-            p->drawLine(r.x()+r.width()-1, r.y()+2, r.x()+r.width()-1, r.y()+r.height()-3);
-        }
-
-        // If not rounding a corner need to draw the missing pixels!
-        if(!(round&CORNER_TL) || !largeArc)
-        {
-            p->drawPoint(r.x()+1, r.y());
-            p->drawPoint(r.x(), r.y()+1);
-        }
-        if(!(round&CORNER_TR) || !largeArc)
-        {
-            p->drawPoint(r.x()+r.width()-2, r.y());
-            p->drawPoint(r.x()+r.width()-1, r.y()+1);
-        }
-
-        if(WIDGET_MDI_WINDOW_TITLE!=w)
-        {
-            if(!(round&CORNER_BR) || !largeArc)
-            {
-                p->drawPoint(r.x()+r.width()-2, r.y()+r.height()-1);
-                p->drawPoint(r.x()+r.width()-1, r.y()+r.height()-2);
-            }
-            if(!(round&CORNER_BL) || !largeArc)
-            {
-                p->drawPoint(r.x()+1, r.y()+r.height()-1);
-                p->drawPoint(r.x(), r.y()+r.height()-2);
-            }
-        }
-        QColor largeArcMid(border),
-               aaColor(border);
-
-        if(WIDGET_MDI_WINDOW!=w && WIDGET_MDI_WINDOW_TITLE!=w &&
-           !(opts.plasmaHack && (WIDGET_STD_BUTTON==w || WIDGET_DEF_BUTTON==w ||
-                                 WIDGET_TOGGLE_BUTTON==w || WIDGET_ENTRY==w)))
-        {
-            largeArcMid.setAlphaF(0.50);
-            aaColor.setAlphaF(0.30);
-        }
-
-        if(round&CORNER_TL)
-        {
-            if(largeArc)
-            {
-                p->drawPoint(r.x()+1, r.y()+1);
-                p->setPen(largeArcMid);
-                p->drawPoint(r.x(), r.y()+1);
-                p->drawPoint(r.x()+1, r.y());
-            }
-            else
-            {
-                p->setPen(aaColor);
-                p->drawPoint(r.x(), r.y());
-            }
-        }
-        else
-            p->drawPoint(r.x(), r.y());
-
-        p->setPen(border);
-        if(round&CORNER_TR)
-        {
-            if(largeArc)
-            {
-                p->drawPoint(r.x()+r.width()-2, r.y()+1);
-                p->setPen(largeArcMid);
-                p->drawPoint(r.x()+r.width()-2, r.y());
-                p->drawPoint(r.x()+r.width()-1, r.y()+1);
-            }
-            else
-            {
-                p->setPen(aaColor);
-                p->drawPoint(r.x()+r.width()-1, r.y());
-            }
-        }
-        else
-            p->drawPoint(r.x()+r.width()-1, r.y());
-
-        if(WIDGET_MDI_WINDOW_TITLE!=w)
-        {
-            p->setPen(border);
-            if(round&CORNER_BR)
-            {
-                if(largeArc)
-                {
-                    p->drawPoint(r.x()+r.width()-2, r.y()+r.height()-2);
-                    p->setPen(largeArcMid);
-                    p->drawPoint(r.x()+r.width()-2, r.y()+r.height()-1);
-                    p->drawPoint(r.x()+r.width()-1, r.y()+r.height()-2);
-                }
-                else
-                {
-                    p->setPen(aaColor);
-                    p->drawPoint(r.x()+r.width()-1, r.y()+r.height()-1);
-                }
-            }
-            else
-                p->drawPoint(r.x()+r.width()-1, r.y()+r.height()-1);
-
-            p->setPen(border);
-            if(round&CORNER_BL)
-            {
-                if(largeArc)
-                {
-                    p->drawPoint(r.x()+1, r.y()+r.height()-2);
-                    p->setPen(largeArcMid);
-                    p->drawPoint(r.x(), r.y()+r.height()-2);
-                    p->drawPoint(r.x()+1, r.y()+r.height()-1);
-                }
-                else
-                {
-                    p->setPen(aaColor);
-                    p->drawPoint(r.x(), r.y()+r.height()-1);
-                }
-            }
-            else
-                p->drawPoint(r.x(), r.y()+r.height()-1);
-        }
-    }
-    else
-    {
-        p->setPen(border);
-        if(WIDGET_MDI_WINDOW_TITLE!=w)
-            drawRect(p, r);
-        else
-        {
-            p->drawLine(r.x(), r.y(), r.x()+r.width()-1, r.y());
-            p->drawLine(r.x(), r.y(), r.x(), r.y()+r.height()-1);
-            p->drawLine(r.x()+r.width()-1, r.y(), r.x()+r.width()-1, r.y()+r.height()-1);
+            p->drawPoint(r.x()+2, r.y());
+            p->drawPoint(r.x(), r.y()+2);
+            p->drawPoint(r.x()+r.width()-1, r.y()+2);
+            p->drawPoint(r.x()+r.width()-3, r.y());
+            p->setPen(cols[0]);
+            p->drawPoint(r.x()+1, r.y()+2);
+            p->drawPoint(r.x()+2, r.y()+1);
         }
     }
 }
@@ -6626,7 +6533,8 @@ void QtCurveStyle::drawProgress(QPainter *p, const QRect &r, const QStyleOption 
 
 void QtCurveStyle::drawArrow(QPainter *p, const QRect &r, PrimitiveElement pe, const QColor &col, bool small) const
 {
-    QPolygon a;
+    QPolygon     a;
+    QPainterPath path;
 
     if(small)
         switch(pe)
@@ -6665,12 +6573,24 @@ void QtCurveStyle::drawArrow(QPainter *p, const QRect &r, PrimitiveElement pe, c
                 return;
         }
 
-    p->save();
     a.translate((r.x()+(r.width()>>1)), (r.y()+(r.height()>>1)));
-    p->setBrush(col);
+
+    path.moveTo(a[0].x()+0.5, a[0].y()+0.5);
+    for(int i=1; i<a.size(); ++i)
+        path.lineTo(a[i].x()+0.5, a[i].y()+0.5);
+    path.lineTo(a[0].x()+0.5, a[0].y()+0.5);
+
+    // This all looks like overkill - but seems to fix issues with plasma and nvidia
+    // Just using 'aa' and drawing the arrows would be fine - but this makes them look
+    // slightly blurry, and I dont like that.
+    p->setRenderHint(QPainter::Antialiasing, true);
+    p->fillPath(path, col);
+    p->setRenderHint(QPainter::Antialiasing, false);
+    p->setRenderHint(QPainter::HighQualityAntialiasing, true);
+    p->strokePath(path, col);
     p->setPen(col);
-    p->drawPolygon(a);
-    p->restore();
+    p->drawPath(path);
+    p->setRenderHint(QPainter::HighQualityAntialiasing, false);
 }
 
 void QtCurveStyle::drawArrow(QPainter *p, const QRect &r, const QStyleOption *option,
@@ -6846,41 +6766,88 @@ void QtCurveStyle::drawSliderHandle(QPainter *p, const QRect &r, const QStyleOpt
 
         if(SLIDER_TRIANGULAR==opts.sliderStyle)
         {
-            QPolygon aa,
-                     light;
-            //QColor   aaCol(use[QT_STD_BORDER]);
+            QPainterPath path;
+            double       xd(r.x()+0.5),
+                         yd(r.y()+0.5),
+                         radius(2.5),
+                         diameter(radius*2);
 
             switch(direction)
             {
                 default:
                 case PE_IndicatorArrowDown:
-                    aa.setPoints(8,   x, y+1,    x+1, y,   x+9, y,    x+10, y+1,   x+10, y+10,   x+6, y+14,  x+4, y+14,  x, y+10);
-                    light.setPoints(3, x+1, y+9,   x+1, y+1,  x+8, y+1);
+                    path.moveTo(xd+10-radius, yd);
+                    path.arcTo(xd, yd, diameter, diameter, 90, 90);
+                    path.lineTo(xd, yd+9);
+                    path.lineTo(xd+5, yd+14);
+                    path.lineTo(xd+10, yd+9);
+                    path.arcTo(xd+10-diameter, yd, diameter, diameter, 0, 90);
+                    p->setPen(use[QT_STD_BORDER]);
+                    p->setRenderHint(QPainter::Antialiasing, true);
+                    p->drawPath(path);
+                    p->setRenderHint(QPainter::Antialiasing, false);
+                    if(drawLight)
+                    {
+                        p->setPen(use[APPEARANCE_DULL_GLASS==opts.sliderAppearance ? 1 : 0]);
+                        p->drawLine(r.x()+1, r.y()+2, r.x()+1, r.y()+8);
+                        p->drawLine(r.x()+2, r.y()+1, r.x()+7, r.y()+1);
+                    }
                     break;
                 case PE_IndicatorArrowUp:
-                    aa.setPoints(8,   x, y+13,   x+1, y+14,   x+9, y+14,   x+10, y+13,   x+10, y+4,   x+6, y,  x+4, y,  x, y+4);
-                    light.setPoints(3, x+1, y+13,   x+1, y+5,  x+5, y+1);
+                    path.moveTo(xd, yd+5);
+                    path.arcTo(xd, yd+14-diameter, diameter, diameter, 180, 90);
+                    path.arcTo(xd+10-diameter, yd+14-diameter, diameter, diameter, 270, 90);
+                    path.lineTo(xd+10, yd+5);
+                    path.lineTo(xd+5, yd);
+                    path.lineTo(xd, yd+5);
+                    p->setPen(use[QT_STD_BORDER]);
+                    p->setRenderHint(QPainter::Antialiasing, true);
+                    p->drawPath(path);
+                    p->setRenderHint(QPainter::Antialiasing, false);
+                    if(drawLight)
+                    {
+                        p->setPen(use[APPEARANCE_DULL_GLASS==opts.sliderAppearance ? 1 : 0]);
+                        p->drawLine(r.x()+5, r.y()+1, r.x()+1, r.y()+5);
+                        p->drawLine(r.x()+1, r.y()+5, r.x()+1, r.y()+11);
+                    }
                     break;
                 case PE_IndicatorArrowLeft:
-                    aa.setPoints(8,   x+13, y,   x+14, y+1,   x+14, y+9,   x+13, y+10,   x+4, y+10,   x, y+6,  x, y+4,  x+4, y);
-                    light.setPoints(3, x+1, y+5,   x+5, y+1,  x+13, y+1);
+                    path.moveTo(xd+5, yd+10);
+                    path.arcTo(xd+14-diameter, yd+10-diameter, diameter, diameter, 270, 90);
+                    path.arcTo(xd+14-diameter, yd, diameter, diameter, 0, 90);
+                    path.lineTo(xd+5, yd);
+                    path.lineTo(xd, yd+5);
+                    path.lineTo(xd+5, yd+10);
+                    p->setPen(use[QT_STD_BORDER]);
+                    p->setRenderHint(QPainter::Antialiasing, true);
+                    p->drawPath(path);
+                    p->setRenderHint(QPainter::Antialiasing, false);
+                    if(drawLight)
+                    {
+                        p->setPen(use[APPEARANCE_DULL_GLASS==opts.sliderAppearance ? 1 : 0]);
+                        p->drawLine(r.x()+1, r.y()+5, r.x()+5, r.y()+1);
+                        p->drawLine(r.x()+5, r.y()+1, r.x()+11, r.y()+1);
+                    }
                     break;
                 case PE_IndicatorArrowRight:
-                    aa.setPoints(8,   x+1, y,    x, y+1,   x, y+9,    x+1, y+10,   x+10, y+10,   x+14, y+6, x+14, y+4,  x+10, y);
-                    light.setPoints(3, x+1, y+8,   x+1, y+1,  x+9, y+1);
+                    path.moveTo(xd+9, yd);
+                    path.arcTo(xd, yd, diameter, diameter, 90, 90);
+                    path.arcTo(xd, yd+diameter, diameter, diameter, 180, 90);
+                    path.lineTo(xd+9, yd+10);
+                    path.lineTo(xd+14, yd+5);
+                    path.lineTo(xd+9, yd);
+                    p->setPen(use[QT_STD_BORDER]);
+                    p->setRenderHint(QPainter::Antialiasing, true);
+                    p->drawPath(path);
+                    p->setRenderHint(QPainter::Antialiasing, false);
+                    if(drawLight)
+                    {
+                        p->setPen(use[APPEARANCE_DULL_GLASS==opts.sliderAppearance ? 1 : 0]);
+                        p->drawLine(r.x()+2, r.y()+1, r.x()+7, r.y()+1);
+                        p->drawLine(r.x()+1, r.y()+2, r.x()+1, r.y()+8);
+                    }
+                    break;
             }
-
-            //aaCol.setAlphaF(0.50);
-            //p->setPen(aaCol);
-            p->setPen(midColor(use[QT_STD_BORDER], option->palette.background().color()));
-            p->drawPolygon(aa);
-            if(drawLight)
-            {
-                p->setPen(use[APPEARANCE_DULL_GLASS==opts.sliderAppearance ? 1 : 0]);
-                p->drawPolyline(light);
-            }
-            p->setPen(use[QT_STD_BORDER]);
-            p->drawPolygon(clipRegion);
         }
         else
         {

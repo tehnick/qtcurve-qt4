@@ -3028,6 +3028,7 @@ void QtCurveStyle::drawControl(ControlElement element, const QStyleOption *optio
             if (const QStyleOptionMenuItem *menuItem = qstyleoption_cast<const QStyleOptionMenuItem *>(option))
             {
                 bool comboMenu(qobject_cast<const QComboBox*>(widget));
+                int  checkcol(qMax(menuItem->maxIconWidth, 20));
 
                 painter->save();
 
@@ -3038,7 +3039,7 @@ void QtCurveStyle::drawControl(ControlElement element, const QStyleOption *optio
 
                     if(opts.menuStripe && !comboMenu)
                         drawBevelGradient(itsBackgroundCols[opts.lighterPopupMenuBgnd ? ORIGINAL_SHADE : 3], true, painter,
-                                        QRect(r.x(), r.y(), constMenuPixmapWidth, r.height()), false,
+                                        QRect(r.x(), r.y(), qMax(checkcol, constMenuPixmapWidth), r.height()), false,
                                         getWidgetShade(WIDGET_OTHER, true, false, opts.appearance),
                                         getWidgetShade(WIDGET_OTHER, false, false, opts.appearance),
                                         false, opts.appearance, WIDGET_OTHER);
@@ -3069,7 +3070,6 @@ void QtCurveStyle::drawControl(ControlElement element, const QStyleOption *optio
                      checkable(QStyleOptionMenuItem::NotCheckable!=menuItem->checkType),
                      checked(menuItem->checked),
                      enabled(state&State_Enabled);
-                int  checkcol(qMax(menuItem->maxIconWidth, 20));
 
                 if (selected && enabled)
                     drawMenuItem(painter, r.adjusted(0, 0, -1, 0), option, false, ROUNDED_ALL, itsMenuitemCols);
@@ -3079,7 +3079,7 @@ void QtCurveStyle::drawControl(ControlElement element, const QStyleOption *optio
                                                                                 : itsBackgroundCols[ORIGINAL_SHADE]);
                     if(opts.menuStripe && !comboMenu)
                         drawBevelGradient(itsBackgroundCols[opts.lighterPopupMenuBgnd ? ORIGINAL_SHADE : 3], true, painter,
-                                        QRect(r.x(), r.y(), constMenuPixmapWidth, r.height()), false,
+                                        QRect(r.x(), r.y(), qMax(checkcol, constMenuPixmapWidth), r.height()), false,
                                         getWidgetShade(WIDGET_OTHER, true, false, opts.appearance),
                                         getWidgetShade(WIDGET_OTHER, false, false, opts.appearance),
                                         false, opts.appearance, WIDGET_OTHER);
@@ -5571,6 +5571,7 @@ QRect QtCurveStyle::subControlRect(ComplexControl control, const QStyleOptionCom
                     }
                     return r;
                 }
+        break;
     case CC_TitleBar:
         if (const QStyleOptionTitleBar *tb = qstyleoption_cast<const QStyleOptionTitleBar *>(option))
         {
@@ -6178,6 +6179,9 @@ void QtCurveStyle::drawBorder(QPainter *p, const QRect &r, const QStyleOption *o
                               int round, const QColor *custom, EWidget w,
                               EBorder borderProfile, bool doBlend, int borderVal) const
 {
+    if(ROUND_NONE==opts.round)
+        round=ROUNDED_NONE;
+
     EAppearance  app(widgetApp(w, &opts));
     State        state(option->state);
     bool         enabled(state&State_Enabled),

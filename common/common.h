@@ -157,6 +157,8 @@ typedef GdkColor color;
 
 #define QT_FRAME_DARK_SHADOW 2
 #define QT_FOCUS             3
+#define QTC_MENU_STRIPE_SHADE (opts.lighterPopupMenuBgnd ? ORIGINAL_SHADE : 2)
+#define QTC_MENU_SEP_SHADE    (opts.lighterPopupMenuBgnd ? 4 : 3)
 
 #define QTC_SHADE(c, s) \
     (c>10 || c<0 || s>=NUM_STD_SHADES || s<0 \
@@ -229,8 +231,8 @@ typedef GdkColor color;
 
 #define IS_GLASS(A) (APPEARANCE_DULL_GLASS==A || APPEARANCE_SHINY_GLASS==A)
 #define IS_FLAT(A)  (APPEARANCE_FLAT==A || APPEARANCE_RAISED==A)
-#define SHADE_SELECTION_TOP 1.15
-#define SHADE_SELECTION_BOT 0.9
+#define SHADE_SELECION_LIGHT 1.15
+#define SHADE_SELECION_DARK  0.90
 
 #ifdef __cplusplus
 #define MENUBAR_DARK_LIMIT 160
@@ -369,6 +371,9 @@ typedef enum
     WIDGET_ENTRY,
     WIDGET_FRAME,
     WIDGET_NO_ETCH_BTN,
+#endif
+#if defined QTC_CONFIG_DIALOG || (defined QT_VERSION && (QT_VERSION >= 0x040000)) || !defined __cplusplus
+    WIDGET_SELECTION,
 #endif
     WIDGET_OTHER
 } EWidget;
@@ -513,6 +518,10 @@ static double getWidgetShade(EWidget w, bool light, bool sunken, EAppearance app
             return light ? SHADE_SBAR_LIGHT : SHADE_SBAR_DARK;
         case WIDGET_SLIDER_TROUGH:
             return light ? SHADE_SLIDER_LIGHT : SHADE_SLIDER_DARK;
+#if defined QTC_CONFIG_DIALOG || (defined QT_VERSION && (QT_VERSION >= 0x040000)) || !defined __cplusplus
+        case WIDGET_SELECTION:
+            return light ? SHADE_SELECION_LIGHT : SHADE_SELECION_DARK;
+#endif
         case WIDGET_MENU_ITEM:
             if(APPEARANCE_DULL_GLASS!=app && APPEARANCE_SHINY_GLASS!=app)
                 return light ? SHADE_BEVEL_MENU_ITEM_LIGHT : SHADE_BEVEL_MENU_ITEM_DARK;
@@ -928,6 +937,12 @@ typedef struct
 #ifdef __cplusplus
                      titlebarAppearance,
 #endif
+#if defined QTC_CONFIG_DIALOG || (defined QT_VERSION && (QT_VERSION >= 0x040000)) || !defined __cplusplus
+                     selectionAppearance,
+#endif
+#if defined __cplusplus || defined QTC_GTK2_MENU_STRIPE
+                     menuStripeAppearance,
+#endif
                      progressAppearance;
     EShade           shadeSliders,
                      shadeMenubars,
@@ -970,6 +985,10 @@ static EAppearance widgetApp(EWidget w, const Options *opts)
             return opts->menuitemAppearance;
         case WIDGET_PROGRESSBAR:
             return opts->progressAppearance;
+#if defined QTC_CONFIG_DIALOG || (defined QT_VERSION && (QT_VERSION >= 0x040000)) || !defined __cplusplus
+        case WIDGET_SELECTION:
+            return opts->selectionAppearance;
+#endif
 #ifdef __cplusplus
         case WIDGET_MDI_WINDOW:
         case WIDGET_MDI_WINDOW_TITLE:
@@ -996,8 +1015,8 @@ static EAppearance widgetApp(EWidget w, const Options *opts)
 #else
 #define QTC_FULL_INNER_RADIUS   2
 #define QTC_FULL_OUTER_RADIUS   3
-#define QTC_SLIGHT_INNER_RADIUS 1
-#define QTC_SLIGHT_OUTER_RADIUS 2
+#define QTC_SLIGHT_INNER_RADIUS 0.5
+#define QTC_SLIGHT_OUTER_RADIUS 1.5
 #endif
 
 static double getRadius(ERound r, int w, int h, EWidget widget, bool internal)

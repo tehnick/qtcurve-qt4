@@ -1,3 +1,46 @@
+0.59
+----
+ 1. When drawing gray focus rect, draw only slightly rounded.
+ 2. Etch/shadow effect now applied to widget sides as well as
+    top/bottom.
+ 3. Add etching to checks, radios, slider grooves, and progressbars.
+ 4. Option to have progress fill groove - default to true.
+ 5. Option to display non-editable combo splitter - defaults to true.
+ 6. Dont do coloured mouse over for mdi buttons, dock widget buttons,
+    toolbar buttons, or kwin button.
+ 7. Better colored mouse over for checks and radios.
+ 8. Don't use background colour for non-coloured mouse over of
+    check/radios if highlighting text backgroud.
+ 9. When coloring menubars, correctly draw menubar text colour
+    of inactive windows.
+10. Fix potential crash when using pixmap cache.
+11. Fix menubar tracking when menubarMouseOver set to false.
+12. Fix selection appearance usage.
+13. Round listview selections.
+14. Enable hover effects in all itemviews.
+15. Fix spearator's on dolphin 4.1's info sidebar.
+16. Fix mouseover of disabled menu items - visible when not
+    lightening menu background.
+17. Implement all size grips.
+18. Fix border of non-rounded, selected tabs.
+19. Fix tab coloured mouse-over when not rounded.
+20. New mouse over effect - glow. Only applicable if etching or shadowing.
+21. New default button indicator - glow. Only applicable if etching
+    or shadowing.
+22. Allow up to 10 custom defined gradients.
+23. Allow custom shades to be specified.
+24. Enable shadow for HTML and krunner.
+25. Add option to specify active tab appearance.
+26. Don't do coloured mouse-overs for sunken buttons.
+27. Apply 'border menuitems' only to popup menus.
+28. If lightening popup menus, and not bordering menuitems, then remove 1
+    pix border arund popup menus.
+29. Change default to not border menuitems.
+30. Re-arrange config GUI.
+31. Remove frame from kwrite.
+32. Scrolview options: allow sunken, highlight, and square.
+33. Option to specify progressbar groove appearance.
+
 0.58
 ----
  1. Add a config option for menu stripe appearance - defaults to gradient.

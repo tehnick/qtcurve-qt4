@@ -21,7 +21,8 @@
   Boston, MA 02110-1301, USA.
 */
 
-#define QTC_INT_CACHE_KEY  // Use 64bit ints as cache index - should be faster than strings!
+// Cant use int cache, as not enough bits! :-(
+//#define QTC_INT_CACHE_KEY  // Use 64bit ints as cache index - should be faster than strings!
 
 #include <QProgressBar>
 #include <QTime>
@@ -95,22 +96,28 @@ class QtCurveStyle : public QWindowsStyle
     void drawBevelGradientReal(const QColor &base, bool increase, QPainter *p,
                                const QRect &r, bool horiz, double shadeTop,
                                double shadeBot, bool sel, EAppearance bevApp, EWidget w) const;
-    void drawLightBevel(QPainter *p, const QRect &r, const QStyleOption *option, int round, const QColor &fill,
+    void drawCustomGradient(QPainter *p, const QRect &r, bool horiz, const QColor &base,
+                            CustomGradientCont::const_iterator &cg, bool rev=false) const;
+    void drawLightBevel(QPainter *p, const QRect &r, const QStyleOption *option, const QWidget *widget, int round, const QColor &fill,
                         const QColor *custom=0, bool doBorder=true, EWidget w=WIDGET_OTHER) const;
-    void drawEtch(QPainter *p, const QRect &r, /*const QStyleOption *option, */bool top, bool bot, bool raised=false) const;
+    void drawGlow(QPainter *p, const QRect &r, EWidget w) const;
+    void drawEtch(QPainter *p, const QRect &r, EWidget w, bool raised=false) const;
+    QPainterPath buildPath(const QRect &r, EWidget w, int round, double radius) const;
+    void buildSplitPath(const QRect &r, EWidget w, int round, double radius, QPainterPath &tl, QPainterPath &br) const;
     void drawBorder(QPainter *p, const QRect &r, const QStyleOption *option, int round, const QColor *custom=0,
                     EWidget w=WIDGET_OTHER, EBorder borderProfile=BORDER_FLAT, bool doBlend=true, int borderVal=QT_STD_BORDER) const;
     void drawMdiButton(QPainter *painter, const QRect &r, bool hover, bool sunken, const QColor *cols) const;
     void drawMdiIcon(QPainter *painter, const QColor &color, const QRect &r, bool sunken, int margin, SubControl button) const;
     void drawWindowIcon(QPainter *painter, const QColor &color, const QRect &r, bool sunken, int margin, SubControl button) const;
-    void drawEntryField(QPainter *p, const QRect &rx, const QStyleOption *option, int round, EWidget w=WIDGET_OTHER) const;
+    void drawEntryField(QPainter *p, const QRect &rx, const QStyleOption *option, int round,
+                        bool fill, bool doEtch) const;
     void drawMenuItem(QPainter *p, const QRect &r, const QStyleOption *option, bool mbi, int round, const QColor *cols) const;
     void drawProgress(QPainter *p, const QRect &r, const QStyleOption *option, int round, bool vertical=false, bool reverse=false) const;
     void drawArrow(QPainter *p, const QRect &r, PrimitiveElement pe, const QColor &col, bool small=false) const;
     void drawArrow(QPainter *p, const QRect &r, const QStyleOption *option, PrimitiveElement pe, bool small=false, bool checkActive=false) const;
     void drawSbSliderHandle(QPainter *p, const QRect &r, const QStyleOption *option, bool slider=false) const;
     void drawSliderHandle(QPainter *p, const QRect &r, const QStyleOptionSlider *option) const;
-    void drawSliderGroove(QPainter *p, const QRect &groove, const QRect &handle, const QStyleOptionSlider *slider) const;
+    void drawSliderGroove(QPainter *p, const QRect &groove, const QRect &handle, const QStyleOptionSlider *slider, const QWidget *widget) const;
     void drawMenuOrToolBarBackground(QPainter *p, const QRect &r, const QStyleOption *option, bool menu=true, bool horiz=true) const;
     void drawHandleMarkers(QPainter *p, const QRect &r, const QStyleOption *option, bool tb, ELine handles) const;
     void fillTab(QPainter *p, const QRect &r, const QStyleOption *option, const QColor &fill, bool horiz, bool increase, EWidget tab) const;

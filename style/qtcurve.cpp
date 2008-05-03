@@ -451,10 +451,10 @@ static qulonglong double2int(double d) { return (qulonglong)(d*100); }
 static int double2int(double d) { return (int)(d*100); }
 #endif
 
-static QtcKey createKey(qulonglong size, const QColor &color, bool horiz, bool increase=false, int app=0,
-                        EWidget w=WIDGET_OTHER, double shadeTop=0.0, double shadeBot=0.0)
+static QtcKey createKey(qulonglong size, const QColor &color, bool horiz, bool increase, int app,
+                        EWidget w, double shadeTop, double shadeBot, const Options &opts)
 {
-    if(WIDGET_DEF_BUTTON==w && !IS_GLASS(app)) // Glass uses different shading for def button...
+    if(WIDGET_DEF_BUTTON==w && (!IS_GLASS(app) || IND_COLORED!=opts.defBtnIndicator)) // Glass uses different shading for def button...
         w=WIDGET_STD_BUTTON;
 
 #ifdef QTC_INT_CACHE_KEY
@@ -1250,8 +1250,6 @@ bool QtCurveStyle::eventFilter(QObject *object, QEvent *event)
         case QEvent::Destroy:
         case QEvent::Hide:
         {
-            QProgressBar *bar = qobject_cast<QProgressBar *>(object);
-
             if(itsHoverWidget && object==itsHoverWidget)
             {
                 itsPos.setX(-1);
@@ -1259,9 +1257,12 @@ bool QtCurveStyle::eventFilter(QObject *object, QEvent *event)
                 itsHoverWidget=NULL;
             }
 
-            if(bar && !itsProgressBars.isEmpty())
+            // The Destroy event is sent from ~QWidget, which happens after
+            // ~QProgressBar - therefore, we can't cast to a QProgressBar.
+            // So we have to check on object.
+            if(object && !itsProgressBars.isEmpty())
             {
-                itsProgressBars.removeAll(bar);
+                itsProgressBars.removeAll(reinterpret_cast<QProgressBar*>(object));
                 if (itsProgressBars.isEmpty())
                 {
                     killTimer(itsProgressBarAnimateTimer);
@@ -1611,6 +1612,16 @@ int QtCurveStyle::styleHint(StyleHint hint, const QStyleOption *option, const QW
                     return !cmb->editable;
             }
             return 0;
+#if QT_VERSION >= 0x040400
+        // per HIG, align the contents in a form layout to the left
+        case SH_FormLayoutFormAlignment:
+            return Qt::AlignLeft | Qt::AlignTop;
+        // per HIG, align the labels in a form layout to the right
+        case SH_FormLayoutLabelAlignment:
+            return Qt::AlignRight;
+        case SH_FormLayoutFieldGrowthPolicy:
+            return QFormLayout::ExpandingFieldsGrow;
+#endif
         default:
             return QTC_BASE_STYLE::styleHint(hint, option, widget, returnData);
    }
@@ -2527,7 +2538,7 @@ void QtCurveStyle::drawPrimitive(PrimitiveElement element, const QStyleOption *o
                                     ? WIDGET_MDI_WINDOW_BUTTON
                                     : isOnListView
                                         ? WIDGET_NO_ETCH_BTN
-                                        : isDefault && state&State_Enabled
+                                        : isDefault && state&State_Enabled  && IND_COLORED!=opts.defBtnIndicator
                                             ? WIDGET_DEF_BUTTON
                                             : WIDGET_STD_BUTTON);
 
@@ -6140,7 +6151,7 @@ void QtCurveStyle::drawProgressBevelGradient(QPainter *p, const QRect &origRect,
     QRect   r(0, 0, horiz ? PROGRESS_CHUNK_WIDTH*2 : origRect.width(),
                     horiz ? origRect.height() : PROGRESS_CHUNK_WIDTH*2);
     QtcKey  key(createKey(horiz ? r.height() : r.width(), use[ORIGINAL_SHADE], horiz, true,
-                          app2App(bevApp, false), WIDGET_PROGRESSBAR, shadeTop, shadeBot));
+                          app2App(bevApp, false), WIDGET_PROGRESSBAR, shadeTop, shadeBot, opts));
     QPixmap *pix(itsPixmapCache.object(key));
 
     if(!pix)
@@ -6252,7 +6263,7 @@ void QtCurveStyle::drawBevelGradient(const QColor &base, bool increase, QPainter
             QRect   r(0, 0, horiz ? QTC_PIXMAP_DIMENSION : origRect.width(),
                             horiz ? origRect.height() : QTC_PIXMAP_DIMENSION);
             QtcKey  key(createKey(horiz ? r.height() : r.width(), base, horiz, increase,
-                                  app2App(app, sel), w, shadeTop, shadeBot));
+                                  app2App(app, sel), w, shadeTop, shadeBot, opts));
             QPixmap *pix(itsPixmapCache.object(key));
             bool    inCache(true);
 

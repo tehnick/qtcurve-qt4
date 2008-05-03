@@ -1,3 +1,11 @@
+0.59.1
+------
+1. Fix appearance of shiny glass defult buttons.
+2. Give glass default buttons a light border.
+3. Fix crash when apps delete progressbars before hiding - thanks
+   to Dirk Mueller.
+4. Add QFormLayout settings for Qt >= 4.4
+
 0.59
 ----
  1. When drawing gray focus rect, draw only slightly rounded.

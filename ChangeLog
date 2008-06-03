@@ -1,3 +1,28 @@
+0.59.3
+------
+ 1. Fix Arora location field.
+ 2. Override Qt file dialogs iwth KDE ones. This can be disabled by
+    calling cmake with:
+
+     -DQTC_DISABLE_KDEFILEDIALOG_CALLS=true
+
+ 3. Link to KDE libraries (if KDE4 is installed) to read kwin settings,
+    control the icons on buttons setting, and to load some icons. Disable
+    bycalling cmake with:
+
+     -DQTC_NO_KDE4_LINKING=true
+
+ 4. Fix vertical dockwidget titlebars.
+ 5. Make busy progress thinner.
+ 6. Left align tab text - or right align for RTL.
+ 7. Fix positioning of tab icon for RTL.
+ 8. Allow tabs to be recoloured.
+ 9. Draw arrow on toolbar buttons with menus.
+10. Fix missing pixels on scrollbars when slider is 1 pix away from
+    buttons.
+11. Fix custom itemview background painting.
+12. Fix border of disabled progressbars.
+
 0.59.2
 ------
 1. Also check in share/kde4/apps/kstyle/themes for qtc_*.themerc files.

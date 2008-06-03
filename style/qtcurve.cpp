@@ -26,6 +26,210 @@
 #define CONFIG_READ
 #include "config_file.c"
 
+#if defined KDE4_FOUND && !defined QTC_NO_KDE4_LINKING
+#define QTC_USE_KDE4
+#endif
+
+#ifdef QTC_USE_KDE4
+#include <KDE/KGlobalSettings>
+#include <KDE/KConfig>
+#include <KDE/KConfigGroup>
+#include <KDE/KIconLoader>
+#include <KDE/KIcon>
+#include <KDE/KComponentData>
+
+static KComponentData *theKComponentData=0;
+static int            theInstanceCount=0;
+
+static void checkKComponentData()
+{
+    if(!theKComponentData && !KGlobal::hasMainComponent())
+    {
+        //printf("Creating KComponentData\n");
+
+        QString name(QApplication::applicationName());
+
+        if(name.isEmpty())
+            name=qAppName();
+
+        if(name.isEmpty())
+            name="QtApp";
+
+        theKComponentData=new KComponentData(name.toLatin1(), name.toLatin1());
+    }
+}
+
+#if defined QTC_USE_KDE4 && !defined QTC_DISABLE_KDEFILEDIALOG_CALLS
+#include <KDE/KFileDialog>
+#include <KDE/KDirSelectDialog>
+#include <KDE/KGlobal>
+
+typedef QString (*_qt_filedialog_existing_directory_hook)(QWidget *parent, const QString &caption, const QString &dir, QFileDialog::Options options);
+extern _qt_filedialog_existing_directory_hook qt_filedialog_existing_directory_hook;
+
+typedef QString (*_qt_filedialog_open_filename_hook)(QWidget * parent, const QString &caption, const QString &dir, const QString &filter, QString *selectedFilter, QFileDialog::Options options);
+extern _qt_filedialog_open_filename_hook qt_filedialog_open_filename_hook;
+
+typedef QStringList (*_qt_filedialog_open_filenames_hook)(QWidget * parent, const QString &caption, const QString &dir, const QString &filter, QString *selectedFilter, QFileDialog::Options options);
+extern _qt_filedialog_open_filenames_hook qt_filedialog_open_filenames_hook;
+
+typedef QString (*_qt_filedialog_save_filename_hook)(QWidget * parent, const QString &caption, const QString &dir, const QString &filter, QString *selectedFilter, QFileDialog::Options options);
+extern _qt_filedialog_save_filename_hook qt_filedialog_save_filename_hook;
+
+static QString qt2KdeFilter(const QString &f)
+{
+    QString               filter;
+    QTextStream           str(&filter, QIODevice::WriteOnly);
+    QStringList           list(f.split(";;"));
+    QStringList::Iterator it(list.begin()),
+                          end(list.end());
+    bool                  first=true;
+
+    for(; it!=end; ++it)
+    {
+        int ob=(*it).lastIndexOf('('),
+            cb=(*it).lastIndexOf(')');
+
+        if(-1!=cb && ob<cb)
+        {
+            if(first)
+                first=false;
+            else
+                str << '\n';
+            str << (*it).mid(ob+1, (cb-ob)-1) << '|' << (*it).mid(0, ob);
+        }
+    }
+
+    return filter;
+}
+
+static void kde2QtFilter(const QString &orig, const QString &kde, QString *sel)
+{
+    if(sel)
+    {
+        QStringList           list(orig.split(";;"));
+        QStringList::Iterator it(list.begin()),
+                              end(list.end());
+        int                   pos;
+
+        for(; it!=end; ++it)
+            if(-1!=(pos=(*it).indexOf(kde)) && pos>0 &&
+               ('('==(*it)[pos-1] || ' '==(*it)[pos-1]) &&
+               (*it).length()>=kde.length()+pos &&
+               (')'==(*it)[pos+kde.length()] || ' '==(*it)[pos+kde.length()]))
+            {
+                *sel=*it;
+                return;
+            }
+    }
+}
+
+static QString getExistingDirectory(QWidget *parent, const QString &caption, const QString &dir, QFileDialog::Options)
+{
+    checkKComponentData();
+
+    KUrl url(KDirSelectDialog::selectDirectory(KUrl(dir), true, parent, caption));
+
+    if(url.isLocalFile())
+        return url.pathOrUrl();
+    else
+        return QString();
+}
+
+static QString getOpenFileName(QWidget *parent, const QString &caption, const QString &dir, const QString &filter, QString *selectedFilter,
+                               QFileDialog::Options)
+{
+    checkKComponentData();
+
+    KFileDialog dlg(KUrl(dir), qt2KdeFilter(filter), parent);
+
+    dlg.setOperationMode(KFileDialog::Opening);
+    dlg.setMode(KFile::File|KFile::LocalOnly);
+    dlg.setCaption(caption);
+    dlg.exec();
+
+    QString rv(dlg.selectedFile());
+
+    if(!rv.isEmpty())
+        kde2QtFilter(filter, dlg.currentFilter(), selectedFilter);
+
+    return rv;
+}
+
+static QStringList getOpenFileNames(QWidget *parent, const QString &caption, const QString &dir, const QString &filter,
+                                    QString *selectedFilter, QFileDialog::Options)
+{
+    checkKComponentData();
+
+    KFileDialog dlg(KUrl(dir), qt2KdeFilter(filter), parent);
+
+    dlg.setOperationMode(KFileDialog::Opening);
+    dlg.setMode(KFile::Files|KFile::LocalOnly);
+    dlg.setCaption(caption);
+    dlg.exec();
+
+    QStringList rv(dlg.selectedFiles());
+
+    if(rv.count())
+        kde2QtFilter(filter, dlg.currentFilter(), selectedFilter);
+
+    return rv;
+}
+
+static QString getSaveFileName(QWidget *parent, const QString &caption, const QString &dir, const QString &filter, QString *selectedFilter,
+                               QFileDialog::Options)
+{
+    checkKComponentData();
+
+    KFileDialog dlg(KUrl(dir), qt2KdeFilter(filter), parent);
+
+    dlg.setOperationMode(KFileDialog::Saving);
+    dlg.setMode(KFile::File|KFile::LocalOnly);
+    dlg.setCaption(caption);
+    dlg.exec();
+
+    QString rv(dlg.selectedFile());
+
+    if(!rv.isEmpty())
+        kde2QtFilter(filter, dlg.currentFilter(), selectedFilter);
+
+    return rv;
+}
+
+static void setFileDialogs()
+{
+    if(1==theInstanceCount)
+    {
+        if(!qt_filedialog_existing_directory_hook)
+            qt_filedialog_existing_directory_hook=&getExistingDirectory;
+        if(!qt_filedialog_open_filename_hook)
+            qt_filedialog_open_filename_hook=&getOpenFileName;
+        if(!qt_filedialog_open_filenames_hook)
+            qt_filedialog_open_filenames_hook=&getOpenFileNames;
+        if(!qt_filedialog_save_filename_hook)
+            qt_filedialog_save_filename_hook=&getSaveFileName;
+    }
+}
+
+static void unsetFileDialogs()
+{
+    if(0==theInstanceCount)
+    {
+        if(qt_filedialog_existing_directory_hook==&getExistingDirectory)
+            qt_filedialog_existing_directory_hook=0;
+        if(qt_filedialog_open_filename_hook==&getOpenFileName)
+            qt_filedialog_open_filename_hook=0;
+        if(qt_filedialog_open_filenames_hook==&getOpenFileNames)
+            qt_filedialog_open_filenames_hook=0;
+        if(qt_filedialog_save_filename_hook==&getSaveFileName)
+            qt_filedialog_save_filename_hook=0;
+    }
+}
+
+#endif
+
+#endif // QTC_USE_KDE4
+
 // The tabs used in multi-dock widgets, and KDE's properties dialog, look odd,
 // as the QTabBar is not a child of a QTabWidget! the QTC_STYLE_QTABBAR controls
 // whether we should style this differently.
@@ -529,11 +733,13 @@ static void readPal(QString &line, QPalette::ColorGroup grp, QPalette &pal)
 #endif
 }
 
+#ifndef QTC_USE_KDE4
 static void setRgb(QColor *col, const QStringList &rgb)
 {
     if(3==rgb.size())
         *col=QColor(rgb[0].toInt(), rgb[1].toInt(), rgb[2].toInt());
 }
+#endif
 
 static void parseWindowLine(const QString &line, QList<int> &data)
 {
@@ -718,6 +924,13 @@ QtCurveStyle::QtCurveStyle(const QString &name)
               itsPos(-1, -1),
               itsHoverWidget(NULL)
 {
+#ifdef QTC_USE_KDE4
+    theInstanceCount++;
+#if !defined QTC_DISABLE_KDEFILEDIALOG_CALLS
+    setFileDialogs();
+#endif
+#endif
+
     QString rcFile;
 
     defaultSettings(&opts);
@@ -807,6 +1020,17 @@ QtCurveStyle::QtCurveStyle(const QString &name)
 
 QtCurveStyle::~QtCurveStyle()
 {
+#ifdef QTC_USE_KDE4
+    if(0==--theInstanceCount && theKComponentData)
+    {
+        delete theKComponentData;
+        theKComponentData=0L;
+    }
+#if !defined QTC_DISABLE_KDEFILEDIALOG_CALLS
+    unsetFileDialogs();
+#endif
+#endif
+
     if(itsSidebarButtonsCols &&
        itsSidebarButtonsCols!=itsSliderCols &&
        itsSidebarButtonsCols!=itsDefBtnCols)
@@ -863,11 +1087,6 @@ void QtCurveStyle::polish(QApplication *app)
             theThemedApp=APP_PLASMA;
         else if("krunner"==appName)
             theThemedApp=APP_KRUNNER;
-
-    QPalette pal(app->palette());
-
-    polish(pal);
-    app->setPalette(pal);
 }
 
 void QtCurveStyle::polish(QPalette &palette)
@@ -1507,11 +1726,8 @@ int QtCurveStyle::pixelMetric(PixelMetric metric, const QStyleOption *option, co
         case PM_MaximumDragDistance:
             return -1;
         case PM_TabBarTabHSpace:
-            return 20;
+            return 18;
         case PM_TabBarTabVSpace:
-            if (const QStyleOptionTab *tab = qstyleoption_cast<const QStyleOptionTab *>(option))
-                if (!tab->icon.isNull())
-                    return opts.highlightTab ? 12 : 10;
             return opts.highlightTab ? 10 : 8;
         case PM_TitleBarHeight:
             return qMax(widget ? widget->fontMetrics().lineSpacing()
@@ -1641,6 +1857,11 @@ int QtCurveStyle::styleHint(StyleHint hint, const QStyleOption *option, const QW
         case SH_FormLayoutFieldGrowthPolicy:
             return QFormLayout::ExpandingFieldsGrow;
 #endif
+#ifdef QTC_USE_KDE4
+        case SH_DialogButtonBox_ButtonsHaveIcons:
+            checkKComponentData();
+            return KGlobalSettings::showIconsOnPushButtons();
+#endif
         default:
             return QTC_BASE_STYLE::styleHint(hint, option, widget, returnData);
    }
@@ -1648,81 +1869,292 @@ int QtCurveStyle::styleHint(StyleHint hint, const QStyleOption *option, const QW
 
 QPalette QtCurveStyle::standardPalette() const
 {
-    QPalette palette;
-    QFont    font;
-
-    if(!readQt3(palette, font, NULL))
-    {
-        palette.setBrush(QPalette::Disabled, QPalette::WindowText, QColor(QRgb(0xff808080)));
-        palette.setBrush(QPalette::Disabled, QPalette::Button, QColor(QRgb(0xffdddfe4)));
-        palette.setBrush(QPalette::Disabled, QPalette::Light, QColor(QRgb(0xffffffff)));
-        palette.setBrush(QPalette::Disabled, QPalette::Midlight, QColor(QRgb(0xffffffff)));
-        palette.setBrush(QPalette::Disabled, QPalette::Dark, QColor(QRgb(0xff555555)));
-        palette.setBrush(QPalette::Disabled, QPalette::Mid, QColor(QRgb(0xffc7c7c7)));
-        palette.setBrush(QPalette::Disabled, QPalette::Text, QColor(QRgb(0xffc7c7c7)));
-        palette.setBrush(QPalette::Disabled, QPalette::BrightText, QColor(QRgb(0xffffffff)));
-        palette.setBrush(QPalette::Disabled, QPalette::ButtonText, QColor(QRgb(0xff808080)));
-        palette.setBrush(QPalette::Disabled, QPalette::Base, QColor(QRgb(0xffefefef)));
-#if QT_VERSION >= 0x040300
-        palette.setBrush(QPalette::Disabled, QPalette::AlternateBase, palette.color(QPalette::Disabled, QPalette::Base).darker(110));
-#else
-        palette.setBrush(QPalette::Disabled, QPalette::AlternateBase, palette.color(QPalette::Disabled, QPalette::Base).dark(110));
-#endif
-        palette.setBrush(QPalette::Disabled, QPalette::Window, QColor(QRgb(0xffefefef)));
-        palette.setBrush(QPalette::Disabled, QPalette::Shadow, QColor(QRgb(0xff000000)));
-        palette.setBrush(QPalette::Disabled, QPalette::Highlight, QColor(QRgb(0xff567594)));
-        palette.setBrush(QPalette::Disabled, QPalette::HighlightedText, QColor(QRgb(0xffffffff)));
-        palette.setBrush(QPalette::Disabled, QPalette::Link, QColor(QRgb(0xff0000ee)));
-        palette.setBrush(QPalette::Disabled, QPalette::LinkVisited, QColor(QRgb(0xff52188b)));
-        palette.setBrush(QPalette::Active, QPalette::WindowText, QColor(QRgb(0xff000000)));
-        palette.setBrush(QPalette::Active, QPalette::Button, QColor(QRgb(0xffdddfe4)));
-        palette.setBrush(QPalette::Active, QPalette::Light, QColor(QRgb(0xffffffff)));
-        palette.setBrush(QPalette::Active, QPalette::Midlight, QColor(QRgb(0xffffffff)));
-        palette.setBrush(QPalette::Active, QPalette::Dark, QColor(QRgb(0xff555555)));
-        palette.setBrush(QPalette::Active, QPalette::Mid, QColor(QRgb(0xffc7c7c7)));
-        palette.setBrush(QPalette::Active, QPalette::Text, QColor(QRgb(0xff000000)));
-        palette.setBrush(QPalette::Active, QPalette::BrightText, QColor(QRgb(0xffffffff)));
-        palette.setBrush(QPalette::Active, QPalette::ButtonText, QColor(QRgb(0xff000000)));
-        palette.setBrush(QPalette::Active, QPalette::Base, QColor(QRgb(0xffffffff)));
-#if QT_VERSION >= 0x040300
-        palette.setBrush(QPalette::Active, QPalette::AlternateBase, palette.color(QPalette::Active, QPalette::Base).darker(110));
-#else
-        palette.setBrush(QPalette::Active, QPalette::AlternateBase, palette.color(QPalette::Active, QPalette::Base).dark(110));
-#endif
-        palette.setBrush(QPalette::Active, QPalette::Window, QColor(QRgb(0xffefefef)));
-        palette.setBrush(QPalette::Active, QPalette::Shadow, QColor(QRgb(0xff000000)));
-        palette.setBrush(QPalette::Active, QPalette::Highlight, QColor(QRgb(0xff678db2)));
-        palette.setBrush(QPalette::Active, QPalette::HighlightedText, QColor(QRgb(0xffffffff)));
-        palette.setBrush(QPalette::Active, QPalette::Link, QColor(QRgb(0xff0000ee)));
-        palette.setBrush(QPalette::Active, QPalette::LinkVisited, QColor(QRgb(0xff52188b)));
-        palette.setBrush(QPalette::Inactive, QPalette::WindowText, QColor(QRgb(0xff000000)));
-        palette.setBrush(QPalette::Inactive, QPalette::Button, QColor(QRgb(0xffdddfe4)));
-        palette.setBrush(QPalette::Inactive, QPalette::Light, QColor(QRgb(0xffffffff)));
-        palette.setBrush(QPalette::Inactive, QPalette::Midlight, QColor(QRgb(0xffffffff)));
-        palette.setBrush(QPalette::Inactive, QPalette::Dark, QColor(QRgb(0xff555555)));
-        palette.setBrush(QPalette::Inactive, QPalette::Mid, QColor(QRgb(0xffc7c7c7)));
-        palette.setBrush(QPalette::Inactive, QPalette::Text, QColor(QRgb(0xff000000)));
-        palette.setBrush(QPalette::Inactive, QPalette::BrightText, QColor(QRgb(0xffffffff)));
-        palette.setBrush(QPalette::Inactive, QPalette::ButtonText, QColor(QRgb(0xff000000)));
-        palette.setBrush(QPalette::Inactive, QPalette::Base, QColor(QRgb(0xffffffff)));
-#if QT_VERSION >= 0x040300
-        palette.setBrush(QPalette::Inactive, QPalette::AlternateBase, palette.color(QPalette::Inactive, QPalette::Base).darker(110));
-#else
-        palette.setBrush(QPalette::Inactive, QPalette::AlternateBase, palette.color(QPalette::Inactive, QPalette::Base).dark(110));
-#endif
-        palette.setBrush(QPalette::Inactive, QPalette::Window, QColor(QRgb(0xffefefef)));
-        palette.setBrush(QPalette::Inactive, QPalette::Shadow, QColor(QRgb(0xff000000)));
-        palette.setBrush(QPalette::Inactive, QPalette::Highlight, QColor(QRgb(0xff678db2)));
-        palette.setBrush(QPalette::Inactive, QPalette::HighlightedText, QColor(QRgb(0xffffffff)));
-        palette.setBrush(QPalette::Inactive, QPalette::Link, QColor(QRgb(0xff0000ee)));
-        palette.setBrush(QPalette::Inactive, QPalette::LinkVisited, QColor(QRgb(0xff52188b)));
-    }
-    return palette;
+    return QCommonStyle::standardPalette();
 }
 
-QPixmap QtCurveStyle::standardPixmap(StandardPixmap pix, const QStyleOption *opttion, const QWidget *widget) const
+QPixmap QtCurveStyle::standardPixmap(StandardPixmap pix, const QStyleOption *option, const QWidget *widget) const
 {
-    return QTC_BASE_STYLE::standardPixmap(pix, opttion, widget);
+#ifdef QTC_USE_KDE4
+    checkKComponentData();
+
+    bool fd(widget && qobject_cast<const QFileDialog *>(widget));
+
+    switch(pix)
+    {
+//         case SP_TitleBarMenuButton:
+//         case SP_TitleBarMinButton:
+//         case SP_TitleBarMaxButton:
+//         case SP_TitleBarCloseButton:
+//         case SP_TitleBarNormalButton:
+//         case SP_TitleBarShadeButton:
+//         case SP_TitleBarUnshadeButton:
+//         case SP_TitleBarContextHelpButton:
+//         case SP_DockWidgetCloseButton:
+        case SP_MessageBoxInformation:
+            return KIconLoader::global()->loadIcon("dialog-information", KIconLoader::Dialog, 32);
+        case SP_MessageBoxWarning:
+            return KIconLoader::global()->loadIcon("dialog-warning", KIconLoader::Dialog, 32);
+        case SP_MessageBoxCritical:
+            return KIconLoader::global()->loadIcon("dialog-error", KIconLoader::Dialog, 32);
+        case SP_MessageBoxQuestion:
+            return KIconLoader::global()->loadIcon("dialog-information", KIconLoader::Dialog, 32);
+//         case SP_DesktopIcon:
+//             return KIconLoader::global()->loadIcon("user-desktop", KIconLoader::Small, 16);
+//         case SP_TrashIcon:
+//             return KIconLoader::global()->loadIcon("user-trash", KIconLoader::Small, 16);
+//         case SP_ComputerIcon:
+//             return KIconLoader::global()->loadIcon("computer", KIconLoader::Small, 16);
+//         case SP_DriveFDIcon:
+//             return KIconLoader::global()->loadIcon("media-floppy", KIconLoader::Small, 16);
+//         case SP_DriveHDIcon:
+//             return KIconLoader::global()->loadIcon("drive-harddisk", KIconLoader::Small, 16);
+//         case SP_DriveCDIcon:
+//         case SP_DriveDVDIcon:
+//             return KIconLoader::global()->loadIcon("media-optical", KIconLoader::Small, 16);
+//         case SP_DriveNetIcon:
+//             return KIconLoader::global()->loadIcon("network-server", KIconLoader::Small, 16);
+//         case SP_DirOpenIcon:
+//             return KIconLoader::global()->loadIcon("document-open", KIconLoader::Small, 16);
+//         case SP_DirIcon:
+//         case SP_DirClosedIcon:
+//             return KIconLoader::global()->loadIcon("folder", KIconLoader::Small, 16);
+//         case SP_DirLinkIcon:
+//         case SP_FileIcon:
+//             return KIconLoader::global()->loadIcon("application-x-zerosize", KIconLoader::Small, 16);
+//         case SP_FileLinkIcon:
+//         case SP_ToolBarHorizontalExtensionButton:
+//         case SP_ToolBarVerticalExtensionButton:
+        case SP_FileDialogStart:
+            return KIconLoader::global()->loadIcon(Qt::RightToLeft==QApplication::layoutDirection()
+                                                    ? "go-edn" : "go-first", KIconLoader::Small, 16);
+        case SP_FileDialogEnd:
+            return KIconLoader::global()->loadIcon(Qt::RightToLeft==QApplication::layoutDirection()
+                                                    ? "go-first" : "go-end", KIconLoader::Small, 16);
+        case SP_FileDialogToParent:
+            return KIconLoader::global()->loadIcon("go-up", KIconLoader::Small, 16);
+        case SP_FileDialogNewFolder:
+            return KIconLoader::global()->loadIcon("folder-new", KIconLoader::Small, 16);
+        case SP_FileDialogDetailedView:
+            return KIconLoader::global()->loadIcon("view-list-details", KIconLoader::Small, 16);
+//         case SP_FileDialogInfoView:
+//             return KIconLoader::global()->loadIcon("dialog-ok", KIconLoader::Small, 16);
+//         case SP_FileDialogContentsView:
+//             return KIconLoader::global()->loadIcon("dialog-ok", KIconLoader::Small, 16);
+        case SP_FileDialogListView:
+            return KIconLoader::global()->loadIcon("view-list-icons", KIconLoader::Small, 16);
+        case SP_FileDialogBack:
+            return KIconLoader::global()->loadIcon(Qt::RightToLeft==QApplication::layoutDirection()
+                                                    ? "go-next" : "go-previous", KIconLoader::Small, 16);
+        case SP_DialogOkButton:
+            return KIconLoader::global()->loadIcon("dialog-ok", KIconLoader::Small, 16);
+        case SP_DialogCancelButton:
+            return KIconLoader::global()->loadIcon("dialog-cancel", KIconLoader::Small, 16);
+        case SP_DialogHelpButton:
+            return KIconLoader::global()->loadIcon("help-contents", KIconLoader::Small, 16);
+        case SP_DialogOpenButton:
+            return KIconLoader::global()->loadIcon("document-open", KIconLoader::Small, 16);
+        case SP_DialogSaveButton:
+            return KIconLoader::global()->loadIcon("document-save", KIconLoader::Small, 16);
+        case SP_DialogCloseButton:
+            return KIconLoader::global()->loadIcon("dialog-close", KIconLoader::Small, 16);
+        case SP_DialogApplyButton:
+            return KIconLoader::global()->loadIcon("dialog-ok-apply", KIconLoader::Small, 16);
+        case SP_DialogResetButton:
+            return KIconLoader::global()->loadIcon("document-revert", KIconLoader::Small, 16);
+//         case SP_DialogDiscardButton:
+//              return KIconLoader::global()->loadIcon("dialog-cancel", KIconLoader::Small, 16);
+        case SP_DialogYesButton:
+            return KIconLoader::global()->loadIcon("dialog-ok", KIconLoader::Small, 16);
+        case SP_DialogNoButton:
+            return KIconLoader::global()->loadIcon("dialog-cancel", KIconLoader::Small, 16);
+        case SP_ArrowUp:
+            return KIconLoader::global()->loadIcon("arrow-up", KIconLoader::Dialog, 32);
+        case SP_ArrowDown:
+            return KIconLoader::global()->loadIcon("arrow-down", KIconLoader::Dialog, 32);
+        case SP_ArrowLeft:
+            return KIconLoader::global()->loadIcon("arrow-left", KIconLoader::Dialog, 32);
+        case SP_ArrowRight:
+            return KIconLoader::global()->loadIcon("arrow-right", KIconLoader::Dialog, 32);
+        case SP_ArrowBack:
+            return KIconLoader::global()->loadIcon(Qt::RightToLeft==QApplication::layoutDirection()
+                                                     ? (fd ? "go-next" : "arrow-right")
+                                                     : (fd ? "go-previous" : "arrow-left"), KIconLoader::Dialog, 32);
+        case SP_ArrowForward:
+            return KIconLoader::global()->loadIcon(Qt::RightToLeft==QApplication::layoutDirection()
+                                                     ? (fd ? "go-previous" : "arrow-left")
+                                                     : (fd ? "go-next" : "arrow-right"), KIconLoader::Dialog, 32);
+//         case SP_DirHomeIcon:
+//             return KIconLoader::global()->loadIcon("user-home", KIconLoader::Small, 16);
+//         case SP_CommandLink:
+//         case SP_VistaShield:
+        case SP_BrowserReload:
+            return KIconLoader::global()->loadIcon("view-refresh", KIconLoader::Small, 16);
+        case SP_BrowserStop:
+            return KIconLoader::global()->loadIcon("process-stop", KIconLoader::Small, 16);
+        case SP_MediaPlay:
+            return KIconLoader::global()->loadIcon("media-playback-start", KIconLoader::Small, 16);
+        case SP_MediaStop:
+            return KIconLoader::global()->loadIcon("media-playback-stop", KIconLoader::Small, 16);
+        case SP_MediaPause:
+            return KIconLoader::global()->loadIcon("media-playback-pause", KIconLoader::Small, 16);
+        case SP_MediaSkipForward:
+            return KIconLoader::global()->loadIcon("media-skip-forward", KIconLoader::Small, 16);
+        case SP_MediaSkipBackward:
+            return KIconLoader::global()->loadIcon("media-skip-backward", KIconLoader::Small, 16);
+        case SP_MediaSeekForward:
+            return KIconLoader::global()->loadIcon("media-seek-forward", KIconLoader::Small, 16);
+        case SP_MediaSeekBackward:
+            return KIconLoader::global()->loadIcon("media-seek-backward", KIconLoader::Small, 16);
+        case SP_MediaVolume:
+            return KIconLoader::global()->loadIcon("player-volume", KIconLoader::Small, 16);
+        case SP_MediaVolumeMuted:
+            return KIconLoader::global()->loadIcon("player-volume-muted", KIconLoader::Small, 16);
+        default:
+            break;
+    }
+#endif
+    return QTC_BASE_STYLE::standardPixmap(pix, option, widget);
+}
+
+QIcon QtCurveStyle::standardIconImplementation(StandardPixmap pix, const QStyleOption *option, const QWidget *widget) const
+{
+#ifdef QTC_USE_KDE4
+    checkKComponentData();
+
+    switch(pix)
+    {
+//         case SP_TitleBarMenuButton:
+//         case SP_TitleBarMinButton:
+//         case SP_TitleBarMaxButton:
+//         case SP_TitleBarCloseButton:
+//         case SP_TitleBarNormalButton:
+//         case SP_TitleBarShadeButton:
+//         case SP_TitleBarUnshadeButton:
+//         case SP_TitleBarContextHelpButton:
+//         case SP_DockWidgetCloseButton:
+        case SP_MessageBoxInformation:
+            return KIcon("dialog-information");
+        case SP_MessageBoxWarning:
+            return KIcon("dialog-warning");
+        case SP_MessageBoxCritical:
+            return KIcon("dialog-error");
+        case SP_MessageBoxQuestion:
+            return KIcon("dialog-information");
+//         case SP_DesktopIcon:
+//             return KIcon("user-desktop");
+//         case SP_TrashIcon:
+//             return KIcon("user-trash");
+//         case SP_ComputerIcon:
+//             return KIcon("computer");
+//         case SP_DriveFDIcon:
+//             return KIcon("media-floppy");
+//         case SP_DriveHDIcon:
+//             return KIcon("drive-harddisk");
+//         case SP_DriveCDIcon:
+//         case SP_DriveDVDIcon:
+//             return KIcon("media-optical");
+//         case SP_DriveNetIcon:
+//             return KIcon("network-server");
+//         case SP_DirOpenIcon:
+//             return KIcon("document-open");
+//         case SP_DirIcon:
+//         case SP_DirClosedIcon:
+//             return KIcon("folder");
+//         case SP_DirLinkIcon:
+//         case SP_FileIcon:
+//             return KIcon("application-x-zerosize");
+//         case SP_FileLinkIcon:
+//         case SP_ToolBarHorizontalExtensionButton:
+//         case SP_ToolBarVerticalExtensionButton:
+        case SP_FileDialogStart:
+            return KIcon(Qt::RightToLeft==QApplication::layoutDirection()
+                                                    ? "go-edn" : "go-first");
+        case SP_FileDialogEnd:
+            return KIcon(Qt::RightToLeft==QApplication::layoutDirection()
+                                                    ? "go-first" : "go-end");
+        case SP_FileDialogToParent:
+            return KIcon("go-up");
+        case SP_FileDialogNewFolder:
+            return KIcon("folder-new");
+        case SP_FileDialogDetailedView:
+            return KIcon("view-list-details");
+//         case SP_FileDialogInfoView:
+//             return KIcon("dialog-ok");
+//         case SP_FileDialogContentsView:
+//             return KIcon("dialog-ok");
+        case SP_FileDialogListView:
+            return KIcon("view-list-icons");
+        case SP_FileDialogBack:
+            return KIcon(Qt::RightToLeft==QApplication::layoutDirection()
+                                                    ? "go-next" : "go-previous");
+        case SP_DialogOkButton:
+            return KIcon("dialog-ok");
+        case SP_DialogCancelButton:
+            return KIcon("dialog-cancel");
+        case SP_DialogHelpButton:
+            return KIcon("help-contents");
+        case SP_DialogOpenButton:
+            return KIcon("document-open");
+        case SP_DialogSaveButton:
+            return KIcon("document-save");
+        case SP_DialogCloseButton:
+            return KIcon("dialog-close");
+        case SP_DialogApplyButton:
+            return KIcon("dialog-ok-apply");
+        case SP_DialogResetButton:
+            return KIcon("document-revert");
+//         case SP_DialogDiscardButton:
+//              return KIcon("dialog-cancel");
+        case SP_DialogYesButton:
+            return KIcon("dialog-ok");
+        case SP_DialogNoButton:
+            return KIcon("dialog-cancel");
+        case SP_ArrowUp:
+            return KIcon("arrow-up");
+        case SP_ArrowDown:
+            return KIcon("arrow-down");
+        case SP_ArrowLeft:
+            return KIcon("arrow-left");
+        case SP_ArrowRight:
+            return KIcon("arrow-right");
+        case SP_ArrowBack:
+            return KIcon(Qt::RightToLeft==QApplication::layoutDirection()
+                                                     ? "go-next" : "go-previous");
+        case SP_ArrowForward:
+            return KIcon(Qt::RightToLeft==QApplication::layoutDirection()
+                                                     ? "go-previous"
+                                                     : "go-next");
+//         case SP_DirHomeIcon:
+//             return KIcon("user-home");
+//         case SP_CommandLink:
+//         case SP_VistaShield:
+        case SP_BrowserReload:
+            return KIcon("view-refresh");
+        case SP_BrowserStop:
+            return KIcon("process-stop");
+        case SP_MediaPlay:
+            return KIcon("media-playback-start");
+        case SP_MediaStop:
+            return KIcon("media-playback-stop");
+        case SP_MediaPause:
+            return KIcon("media-playback-pause");
+        case SP_MediaSkipForward:
+            return KIcon("media-skip-forward");
+        case SP_MediaSkipBackward:
+            return KIcon("media-skip-backward");
+        case SP_MediaSeekForward:
+            return KIcon("media-seek-forward");
+        case SP_MediaSeekBackward:
+            return KIcon("media-seek-backward");
+        case SP_MediaVolume:
+            return KIcon("player-volume");
+        case SP_MediaVolumeMuted:
+            return KIcon("player-volume-muted");
+        default:
+            break;
+    }
+#endif
+    return QTC_BASE_STYLE::standardIconImplementation(pix, option, widget);
 }
 
 void QtCurveStyle::drawPrimitive(PrimitiveElement element, const QStyleOption *option, QPainter *painter,
@@ -2242,7 +2674,7 @@ void QtCurveStyle::drawPrimitive(PrimitiveElement element, const QStyleOption *o
         case PE_PanelLineEdit:
             painter->fillRect(QTC_DO_EFFECT
                                 ? r.adjusted(2, 2, -2, -2)
-                                : r.adjusted(1, 1, -1, -1), palette.base());
+                                : r.adjusted(1, 1, -1, -1), palette.brush(QPalette::Base));
         case PE_FrameLineEdit:
             if (const QStyleOptionFrame *lineEdit = qstyleoption_cast<const QStyleOptionFrame *>(option))
             {
@@ -2669,7 +3101,7 @@ void QtCurveStyle::drawPrimitive(PrimitiveElement element, const QStyleOption *o
         {
             const QStyleOptionViewItemV4 *v4Opt(qstyleoption_cast<const QStyleOptionViewItemV4*>(option));
 
-            if (v4Opt && v4Opt->features&QStyleOptionViewItemV2::Alternate)
+            if (v4Opt/* && v4Opt->features&QStyleOptionViewItemV2::Alternate*/)
                 painter->fillRect(option->rect, v4Opt->backgroundBrush);
 
             if (!(state & (State_Selected|State_MouseOver)))
@@ -2942,65 +3374,40 @@ void QtCurveStyle::drawControl(ControlElement element, const QStyleOption *optio
             {
                 painter->save();
 
-#if QT_VERSION >= 0x040300
-                const QStyleOptionDockWidgetV2 *v2 = qstyleoption_cast<const QStyleOptionDockWidgetV2*>(dwOpt);
-                bool verticalTitleBar(v2 == 0 ? false : v2->verticalTitleBar);
-
-                QRect titleRect(subElementRect(SE_DockWidgetTitleBarText, option, widget));
-
-                if (verticalTitleBar)
-                {
-                    QRect rVert(r);
-                    QSize s(rVert.size());
-
-                    s.transpose();
-                    rVert.setSize(s);
-
-                    titleRect = QRect(rVert.left() + r.bottom() - titleRect.bottom(),
-                                      rVert.top() + titleRect.left() - r.left(),
-                                      titleRect.height(), titleRect.width());
-
-                    painter->translate(rVert.left(), rVert.top() + rVert.width());
-                    painter->rotate(-90);
-                    painter->translate(-rVert.left(), -rVert.top());
-                }
-#else
-/*                bool  verticalTitleBar(false);*/
-                const int margin(4);
-                QRect titleRect(visualRect(dwOpt->direction, r, r.adjusted(margin, 0, -margin * 2 - 26, 0)));
-#endif
-                QRect handleRect(titleRect);
-
-//                if(state&State_MouseOver)
-                {
-    /*
-                    if(IS_FLAT(opts.appearance))
-    */
     #if QT_VERSION >= 0x040300
-                        painter->fillRect(r, palette.background().color().darker(105));
+                painter->fillRect(r, palette.background().color().darker(105));
     #else
-                        painter->fillRect(r, palette.background().color().dark(105));
+                painter->fillRect(r, palette.background().color().dark(105));
     #endif
-    /*
-                    else
-                    {
-                        const QColor *use(backgroundColors(option));
 
-                        drawBevelGradient(use[ORIGINAL_SHADE], true, painter, r, true,
-                                        getWidgetShade(WIDGET_STD_BUTTON, true, false, opts.appearance),
-                                        getWidgetShade(WIDGET_STD_BUTTON, false, false, opts.appearance),
-                                        false, opts.appearance, WIDGET_STD_BUTTON);
-                    }
-    */
-                }
                 if (!dwOpt->title.isEmpty())
                 {
-//                     int textWidth=option->fontMetrics.width(dwOpt->title);
-// 
-//                     if(verticalTitleBar)
-//                         handleRect.adjust(0, textWidth+margin, 0, -margin);
-//                     else
-//                         handleRect.adjust(reverse ? margin : textWidth+margin, 0, reversde ? -(textWidth+margin) : -margin, 0);
+#if QT_VERSION >= 0x040300
+                    const QStyleOptionDockWidgetV2 *v2 = qstyleoption_cast<const QStyleOptionDockWidgetV2*>(dwOpt);
+                    bool verticalTitleBar(v2 == 0 ? false : v2->verticalTitleBar);
+
+                    QRect titleRect(subElementRect(SE_DockWidgetTitleBarText, option, widget));
+
+                    if (verticalTitleBar)
+                    {
+                        QRect rVert(r);
+                        QSize s(rVert.size());
+
+                        s.transpose();
+                        rVert.setSize(s);
+
+                        titleRect = QRect(rVert.left() + r.bottom() - titleRect.bottom(),
+                                        rVert.top() + titleRect.left() - r.left(),
+                                        titleRect.height(), titleRect.width());
+
+                        painter->translate(rVert.left(), rVert.top() + rVert.width());
+                        painter->rotate(-90);
+                        painter->translate(-rVert.left(), -rVert.top());
+                    }
+#else
+                    const int margin(4);
+                    QRect titleRect(visualRect(dwOpt->direction, r, r.adjusted(margin, 0, -margin * 2 - 26, 0)));
+#endif
 
                     drawItemText(painter, titleRect, Qt::AlignLeft | Qt::AlignVCenter | Qt::TextShowMnemonic, palette,
                                  dwOpt->state&State_Enabled,
@@ -3008,8 +3415,6 @@ void QtCurveStyle::drawControl(ControlElement element, const QStyleOption *optio
                                  QPalette::WindowText));
                 }
 
-//                 if(handleRect.isValid())
-//                     drawHandleMarkers(painter, handleRect, option, false, opts.handles);
                 painter->restore();
             }
             break;
@@ -3226,7 +3631,7 @@ void QtCurveStyle::drawControl(ControlElement element, const QStyleOption *optio
 
                 if(indeterminate) //Busy indicator
                 {
-                    int chunkSize(PROGRESS_CHUNK_WIDTH*3),
+                    int chunkSize(PROGRESS_CHUNK_WIDTH),
                         measure(vertical ? r.height() : r.width());
 
                     if(chunkSize>(measure/2))
@@ -3852,6 +4257,108 @@ void QtCurveStyle::drawControl(ControlElement element, const QStyleOption *optio
                 painter->restore();
             }
             break;
+        case CE_TabBarTabLabel:
+            if (const QStyleOptionTab *tab = qstyleoption_cast<const QStyleOptionTab *>(option))
+            {
+                QStyleOptionTabV2 tabV2(*tab);
+                bool              verticalTabs(QTabBar::RoundedEast==tabV2.shape || QTabBar::RoundedWest==tabV2.shape ||
+                                               QTabBar::TriangularEast==tabV2.shape || QTabBar::TriangularWest==tabV2.shape),
+                                  selected(state&State_Selected),
+                                  reverse(Qt::RightToLeft==option->direction);
+
+                if (verticalTabs)
+                {
+                    painter->save();
+                    int newX, newY, newRot;
+                    if (QTabBar::RoundedEast==tabV2.shape || QTabBar::TriangularEast==tabV2.shape)
+                    {
+                        newX = r.width();
+                        newY = r.y();
+                        newRot = 90;
+                    }
+                    else
+                    {
+                        newX = 0;
+                        newY = r.y() + r.height();
+                        newRot = -90;
+                    }
+                    r.setRect(0, 0, r.height(), r.width());
+
+                    QTransform m;
+                    m.translate(newX, newY);
+                    m.rotate(newRot);
+                    painter->setTransform(m, true);
+                }
+
+                r.adjust(0, 0, pixelMetric(QStyle::PM_TabBarTabShiftHorizontal, tab, widget),
+                               pixelMetric(QStyle::PM_TabBarTabShiftVertical, tab, widget));
+
+                if (selected)
+                {
+                    r.setBottom(r.bottom() - pixelMetric(QStyle::PM_TabBarTabShiftVertical, tab, widget));
+                    r.setRight(r.right() - pixelMetric(QStyle::PM_TabBarTabShiftHorizontal, tab, widget));
+                }
+
+                int alignment(Qt::AlignLeft | Qt::AlignVCenter | Qt::TextShowMnemonic);
+
+                if (!styleHint(SH_UnderlineShortcut, option, widget))
+                    alignment |= Qt::TextHideMnemonic;
+
+                if (!tabV2.icon.isNull())
+                {
+                    QSize iconSize(tabV2.iconSize);
+                    if (!iconSize.isValid())
+                    {
+                        int iconExtent(pixelMetric(PM_SmallIconSize));
+                        iconSize = QSize(iconExtent, iconExtent);
+                    }
+
+                    QPixmap tabIcon(tabV2.icon.pixmap(iconSize,
+                                                      (state&State_Enabled) ? QIcon::Normal
+                                                                            : QIcon::Disabled));
+
+                    static const int constIconPad=6;
+
+                    if(reverse)
+                    {
+                        painter->drawPixmap(r.right() - (iconSize.width() + constIconPad),
+                                            r.center().y() - tabIcon.height() / 2, tabIcon);
+                        r.setRight(r.right() - (iconSize.width() + constIconPad));
+                    }
+                    else
+                    {
+                        painter->drawPixmap(r.left() + constIconPad, r.center().y() - tabIcon.height() / 2, tabIcon);
+                        r.setLeft(r.left() + iconSize.width() + constIconPad);
+                    }
+                }
+
+                if(!tab->text.isEmpty())
+                {
+                    static const int constBorder=6;
+
+                    r.adjust(constBorder, 0, -constBorder, 0);
+                    drawItemText(painter, r, alignment, tab->palette, tab->state&State_Enabled, tab->text, QPalette::WindowText);
+                }
+
+                if (verticalTabs)
+                    painter->restore();
+
+                if (tabV2.state & State_HasFocus)
+                {
+                    const int constOffset = 1 + pixelMetric(PM_DefaultFrameWidth);
+
+                    int x1, x2;
+                    x1 = tabV2.rect.left();
+                    x2 = tabV2.rect.right() - 1;
+
+                    QStyleOptionFocusRect fropt;
+                    fropt.QStyleOption::operator=(*tab);
+                    fropt.rect.setRect(x1 + 1 + constOffset, tabV2.rect.y() + constOffset,
+                                    x2 - x1 - 2*constOffset, tabV2.rect.height() - 2*constOffset);
+                    drawPrimitive(PE_FrameFocusRect, &fropt, painter, widget);
+                }
+            }
+            break;
         case CE_TabBarTabShape:
             if (const QStyleOptionTab *tab = qstyleoption_cast<const QStyleOptionTab *>(option))
             {
@@ -3907,7 +4414,8 @@ void QtCurveStyle::drawControl(ControlElement element, const QStyleOption *optio
                      fixLeft(!onlyBase && !leftCornerWidget && leftAligned && firstTab),
                      fixRight(!onlyBase && !rightCornerWidget && rightAligned && lastTab),
                      mouseOver(state&State_Enabled && state&State_MouseOver);
-                const QColor &fill(getTabFill(selected, mouseOver, itsBackgroundCols));
+                const QColor *use(backgroundColors(option));
+                const QColor &fill(getTabFill(selected, mouseOver, use));
 
                 painter->save();
                 switch(tab->shape)
@@ -3937,7 +4445,7 @@ void QtCurveStyle::drawControl(ControlElement element, const QStyleOption *optio
                         if(selected)
                         {
                             painter->setClipping(false);
-                            painter->setPen(itsBackgroundCols[0]);
+                            painter->setPen(use[0]);
 
                             // The point drawn below is because of the clipping above...
                             if(fixLeft)
@@ -3951,9 +4459,9 @@ void QtCurveStyle::drawControl(ControlElement element, const QStyleOption *optio
                         {
                             int l(fixLeft ? r2.left()+2 : r2.left()-1),
                                 r(fixRight ? r2.right()-2 : r2.right()+1);
-                            painter->setPen(itsBackgroundCols[QT_STD_BORDER]);
+                            painter->setPen(use[QT_STD_BORDER]);
                             painter->drawLine(l, r2.bottom()-1, r, r2.bottom()-1);
-                            painter->setPen(itsBackgroundCols[0]);
+                            painter->setPen(use[0]);
                             painter->drawLine(l, r2.bottom(), r, r2.bottom());
                         }
 
@@ -4005,7 +4513,7 @@ void QtCurveStyle::drawControl(ControlElement element, const QStyleOption *optio
 
                         if(selected)
                         {
-                            painter->setPen(itsBackgroundCols[QT_FRAME_DARK_SHADOW]);
+                            painter->setPen(use[QT_FRAME_DARK_SHADOW]);
                             if(!fixLeft)
                                 painter->drawPoint(r2.left()-1, r2.top());
                             if(!fixRight)
@@ -4015,9 +4523,9 @@ void QtCurveStyle::drawControl(ControlElement element, const QStyleOption *optio
                         {
                             int l(fixLeft ? r2.left()+2 : r2.left()-1),
                                 r(fixRight ? r2.right()-2 : r2.right());
-                            painter->setPen(itsBackgroundCols[QT_STD_BORDER]);
+                            painter->setPen(use[QT_STD_BORDER]);
                             painter->drawLine(l, r2.top()+1, r, r2.top()+1);
-                            painter->setPen(itsBackgroundCols[QT_FRAME_DARK_SHADOW]);
+                            painter->setPen(use[QT_FRAME_DARK_SHADOW]);
                             painter->drawLine(l, r2.top(), r, r2.top());
                         }
 
@@ -4069,7 +4577,7 @@ void QtCurveStyle::drawControl(ControlElement element, const QStyleOption *optio
 
                         if(selected)
                         {
-                            painter->setPen(itsBackgroundCols[0]);
+                            painter->setPen(use[0]);
                             if(!firstTab)
                                 painter->drawPoint(r2.right(), r2.top()-1);
                             painter->drawLine(r2.right(), r2.bottom()-1, r2.right(), r2.bottom());
@@ -4079,9 +4587,9 @@ void QtCurveStyle::drawControl(ControlElement element, const QStyleOption *optio
                             int t(firstTab ? r2.top()+2 : r2.top()-1),
                                 b(/*lastTab ? r2.bottom()-2 : */ r2.bottom()+1);
 
-                            painter->setPen(itsBackgroundCols[QT_STD_BORDER]);
+                            painter->setPen(use[QT_STD_BORDER]);
                             painter->drawLine(r2.right()-1, t, r2.right()-1, b);
-                            painter->setPen(itsBackgroundCols[0]);
+                            painter->setPen(use[0]);
                             painter->drawLine(r2.right(), t, r2.right(), b);
                         }
 
@@ -4133,7 +4641,7 @@ void QtCurveStyle::drawControl(ControlElement element, const QStyleOption *optio
 
                         if(selected)
                         {
-                            painter->setPen(itsBackgroundCols[QT_FRAME_DARK_SHADOW]);
+                            painter->setPen(use[QT_FRAME_DARK_SHADOW]);
                             if(!firstTab)
                                 painter->drawPoint(r2.left(), r2.top()-1);
                             painter->drawLine(r2.left(), r2.bottom()-1, r2.left(), r2.bottom());
@@ -4143,9 +4651,9 @@ void QtCurveStyle::drawControl(ControlElement element, const QStyleOption *optio
                             int t(firstTab ? r2.top()+2 : r2.top()-1),
                                 b(/*lastTab ? r2.bottom()-2 : */ r2.bottom()+1);
 
-                            painter->setPen(itsBackgroundCols[QT_STD_BORDER]);
+                            painter->setPen(use[QT_STD_BORDER]);
                             painter->drawLine(r2.left()+1, t, r2.left()+1, b);
-                            painter->setPen(itsBackgroundCols[QT_FRAME_DARK_SHADOW]);
+                            painter->setPen(use[QT_FRAME_DARK_SHADOW]);
                             painter->drawLine(r2.left(), t, r2.left(), b);
                         }
 
@@ -4286,12 +4794,30 @@ void QtCurveStyle::drawControl(ControlElement element, const QStyleOption *optio
         case CE_ScrollBarAddPage:
         {
             const QColor *use(itsBackgroundCols); // backgroundColors(option));
+            int          borderAdjust(0);
 
             painter->save();
 #ifndef QTC_SIMPLE_SCROLLBARS
             if(QTC_ROUNDED && SCROLLBAR_NONE==opts.scrollbarType)
                 painter->fillRect(r, palette.background().color());
 #endif
+
+            switch(opts.scrollbarType)
+            {
+                case SCROLLBAR_KDE:
+                case SCROLLBAR_WINDOWS:
+                    borderAdjust=1;
+                    break;
+                case SCROLLBAR_PLATINUM:
+                    if(CE_ScrollBarAddPage==element)
+                        borderAdjust=1;
+                    break;
+                case SCROLLBAR_NEXT:
+                    if(CE_ScrollBarSubPage==element)
+                        borderAdjust=1;
+                default:
+                    break;
+            }
 
             if(state&State_Horizontal)
             {
@@ -4312,18 +4838,10 @@ void QtCurveStyle::drawControl(ControlElement element, const QStyleOption *optio
                 }
                 else
 #endif
-                {
-                    painter->setPen(use[QT_STD_BORDER]);
-                    painter->setRenderHint(QPainter::Antialiasing, true);
-                    drawAaLine(painter, r.left(), r.top(), r.right(), r.top());
-                    drawAaLine(painter, r.left(), r.bottom(), r.right(), r.bottom());
-
-                    if(CE_ScrollBarAddPage==element && SCROLLBAR_NEXT==opts.scrollbarType)
-                        drawAaLine(painter, r.right(), r.top(), r.right(), r.bottom());
-                    else if(CE_ScrollBarSubPage==element && SCROLLBAR_PLATINUM==opts.scrollbarType)
-                        drawAaLine(painter, r.left(), r.top(), r.left(), r.bottom());
-                    painter->setRenderHint(QPainter::Antialiasing, false);
-                }
+                    if(CE_ScrollBarAddPage==element)
+                        drawBorder(painter, r.adjusted(-5, 0, borderAdjust, 0), option, ROUNDED_NONE, use);
+                    else
+                        drawBorder(painter, r.adjusted(-borderAdjust, 0, 5, 0), option, ROUNDED_NONE, use);
             }
             else
             {
@@ -4344,19 +4862,10 @@ void QtCurveStyle::drawControl(ControlElement element, const QStyleOption *optio
                 }
                 else
 #endif
-                {
-
-                    painter->setPen(use[QT_STD_BORDER]);
-                    painter->setRenderHint(QPainter::Antialiasing, true);
-                    drawAaLine(painter, r.left(), r.top(), r.left(), r.bottom());
-                    drawAaLine(painter, r.right(), r.top(), r.right(), r.bottom());
-
-                    if(CE_ScrollBarAddPage==element && (SCROLLBAR_NEXT==opts.scrollbarType || SCROLLBAR_NONE==opts.scrollbarType))
-                        drawAaLine(painter, r.left(), r.bottom(), r.right(), r.bottom());
-                    else if(CE_ScrollBarSubPage==element && (SCROLLBAR_PLATINUM==opts.scrollbarType || SCROLLBAR_NONE==opts.scrollbarType))
-                        drawAaLine(painter, r.left(), r.top(), r.right(), r.top());
-                    painter->setRenderHint(QPainter::Antialiasing, false);
-                }
+                    if(CE_ScrollBarAddPage==element)
+                        drawBorder(painter, r.adjusted(0, -5, 0, borderAdjust), option, ROUNDED_NONE, use);
+                    else
+                        drawBorder(painter, r.adjusted(0, -borderAdjust, 0, 5), option, ROUNDED_NONE, use);
             }
             painter->restore();
             break;
@@ -4467,6 +4976,17 @@ void QtCurveStyle::drawComplexControl(ComplexControl control, const QStyleOption
                     }
 
                     drawPrimitive(PE_IndicatorArrowDown, &tool, painter, widget);
+                }
+                else if (toolbutton->features & QStyleOptionToolButton::HasMenu)
+                {
+                    QRect arrow(r.right()-(SMALL_ARR_WIDTH+(etched ? 3 : 2)),
+                                r.bottom()-(SMALL_ARR_HEIGHT+(etched ? 4 : 3)),
+                                SMALL_ARR_WIDTH, SMALL_ARR_HEIGHT);
+
+                    if(bflags&State_Sunken)
+                        arrow.adjust(1, 1, 0, 0);
+
+                    drawArrow(painter, arrow, option, PE_IndicatorArrowDown, true, false);
                 }
 
                 if (toolbutton->state & State_HasFocus)
@@ -5127,10 +5647,7 @@ void QtCurveStyle::drawComplexControl(ComplexControl control, const QStyleOption
 #endif
 
                 painter->save();
-#ifndef QTC_SIMPLE_SCROLLBARS
-                if(noButtons)
-                    painter->fillRect(sbRect, palette.background().color());
-#endif
+                painter->fillRect(r, palette.background());
 #if 0
                 //painter->setClipRegion(QRegion(s2)+QRegion(addpage));
 
@@ -7044,7 +7561,7 @@ void QtCurveStyle::drawEntryField(QPainter *p, const QRect &rx, const QStyleOpti
         r.adjust(1, 1, -1, -1);
 
     if(fill)
-        p->fillRect(r.adjusted(1, 1, -1, -1), option->palette.base().color());
+        p->fillRect(r.adjusted(1, 1, -1, -1), option->palette.brush(QPalette::Base));
 
     if(doEtch)
         drawEtch(p, rx, WIDGET_ENTRY, false);
@@ -7107,15 +7624,17 @@ void QtCurveStyle::drawProgress(QPainter *p, const QRect &r, const QStyleOption 
 
     int  length(vertical ? r.height() : r.width());
     bool drawFull(length > 3);
+    const QColor *use=option->state&State_Enabled || ECOLOR_BACKGROUND==opts.progressGrooveColor
+                    ? itsMenuitemCols : itsBackgroundCols;
 
     if(opts.fillProgress || drawFull)
-        drawLightBevel(p, r, &opt, 0L, round, itsMenuitemCols[ORIGINAL_SHADE], itsMenuitemCols, !opts.fillProgress, WIDGET_PROGRESSBAR);
+        drawLightBevel(p, r, &opt, 0L, round, use[ORIGINAL_SHADE], use, !opts.fillProgress, WIDGET_PROGRESSBAR);
     else
     {
-        p->setPen(itsMenuitemCols[QT_STD_BORDER]);
+        p->setPen(use[QT_STD_BORDER]);
         if(length>1)
         {
-            p->setBrush(itsMenuitemCols[ORIGINAL_SHADE]);
+            p->setBrush(use[ORIGINAL_SHADE]);
             drawRect(p, r);
         }
         else if(vertical)
@@ -7130,9 +7649,7 @@ void QtCurveStyle::drawProgress(QPainter *p, const QRect &r, const QStyleOption 
 
         if(opts.fillProgress)
         {
-            const QColor *use(backgroundColors(option));
-
-            p->setPen(use[QT_STD_BORDER]);
+            p->setPen(backgroundColors(option)[QT_STD_BORDER]);
             rb.adjust(1, 1, -1, -1);
         }
         else
@@ -7801,6 +8318,29 @@ const QColor * QtCurveStyle::getMdiColors(const QStyleOption *option, bool activ
         }
         else // KDE4
         {
+#ifdef QTC_USE_KDE4
+            checkKComponentData();
+
+            QColor col;
+
+            col=KGlobalSettings::activeTitleColor();
+
+            if(col!=itsMenuitemCols[ORIGINAL_SHADE])
+            {
+                itsActiveMdiColors=new QColor [TOTAL_SHADES+1];
+                shadeColors(col, itsActiveMdiColors);
+            }
+
+            col=KGlobalSettings::inactiveTitleColor();
+            if(col!=itsButtonCols[ORIGINAL_SHADE])
+            {
+                itsMdiColors=new QColor [TOTAL_SHADES+1];
+                shadeColors(col, itsMdiColors);
+            }
+
+            itsActiveMdiTextColor=KGlobalSettings::activeTextColor();
+            itsMdiTextColor=KGlobalSettings::inactiveTextColor();
+#else
             QFile f(kdeHome()+QLatin1String("/share/config/kdeglobals"));
 
             if(f.open(QIODevice::ReadOnly))
@@ -7849,6 +8389,7 @@ const QColor * QtCurveStyle::getMdiColors(const QStyleOption *option, bool activ
                 }
                 f.close();
             }
+#endif
         }
 
         if(!itsActiveMdiColors)
@@ -7874,6 +8415,27 @@ void QtCurveStyle::readMdiPositions() const
         itsMdiButtons[1].append(WINDOWTITLE_SPACER);
         itsMdiButtons[1].append(SC_TitleBarCloseButton);
 
+#ifdef QTC_USE_KDE4
+        checkKComponentData();
+
+        KConfig      cfg("kwinrc");
+        KConfigGroup grp(&cfg, "Style");
+        QString      val;
+
+        val=grp.readEntry("ButtonsOnLeft");
+        if(!val.isEmpty())
+        {
+            itsMdiButtons[0].clear();
+            parseWindowLine(val, itsMdiButtons[0]);
+        }
+
+        val=grp.readEntry("ButtonsOnRight");
+        if(!val.isEmpty())
+        {
+            itsMdiButtons[1].clear();
+            parseWindowLine(val, itsMdiButtons[1]);
+        }
+#else
         // Read in KWin settings...
         QFile f(kdeHome()+QLatin1String("/share/config/kwinrc"));
 
@@ -7906,6 +8468,7 @@ void QtCurveStyle::readMdiPositions() const
             }
             f.close();
         }
+#endif
 
         // Designer uses shade buttons, not min/max - so if we dont have shade in our kwin config. then add this
         // button near the max button...

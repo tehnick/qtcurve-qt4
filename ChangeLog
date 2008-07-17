@@ -1,3 +1,10 @@
+0.59.5
+------
+1. Fix corners of scrolbars in plasma 4.1's folderview.
+2. Fix the dock widget titlebar buttons in KOffice 2
+3. Dont activate menubar when Alt key is pressed alone - matches Gtk.
+4. Make KOffice's dock widget titlebars look the same as Dolphin's.
+
 0.59.4
 ------
 1. If linked against KDE, honour the single/double click setting for

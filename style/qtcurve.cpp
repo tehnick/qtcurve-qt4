@@ -1227,7 +1227,6 @@ void QtCurveStyle::polish(QWidget *widget)
         qobject_cast<QRadioButton *>(widget) ||
         qobject_cast<QSplitterHandle *>(widget) ||
         qobject_cast<QSlider *>(widget) ||
-        qobject_cast<QScrollBar *>(widget) ||
         qobject_cast<QHeaderView *>(widget) ||
         qobject_cast<QTabBar *>(widget) ||
 //        qobject_cast<QDockWidget *>(widget) ||
@@ -1236,6 +1235,13 @@ void QtCurveStyle::polish(QWidget *widget)
         widget->inherits("QDockWidgetSeparator") ||
         widget->inherits("Q3DockWindowResizeHandle")))
         widget->setAttribute(Qt::WA_Hover, true);
+    else if (qobject_cast<QScrollBar *>(widget))
+    {
+        if(enableMouseOver)
+            widget->setAttribute(Qt::WA_Hover, true);
+        if(QTC_ROUNDED)
+            widget->setAttribute(Qt::WA_OpaquePaintEvent, true);
+    }
     else if (qobject_cast<QProgressBar *>(widget))
     {
         if(widget->palette().color(QPalette::Inactive, QPalette::HighlightedText)!=widget->palette().color(QPalette::Active, QPalette::HighlightedText))
@@ -1373,7 +1379,6 @@ void QtCurveStyle::unpolish(QWidget *widget)
        qobject_cast<QRadioButton *>(widget) ||
        qobject_cast<QSplitterHandle *>(widget) ||
        qobject_cast<QSlider *>(widget) ||
-       qobject_cast<QScrollBar *>(widget) ||
        qobject_cast<QHeaderView *>(widget) ||
        qobject_cast<QTabBar *>(widget) ||
 //       qobject_cast<QDockWidget *>(widget) ||
@@ -1382,6 +1387,12 @@ void QtCurveStyle::unpolish(QWidget *widget)
        widget->inherits("QDockWidgetSeparator") ||
        widget->inherits("Q3DockWindowResizeHandle"))
         widget->setAttribute(Qt::WA_Hover, false);
+    else if (qobject_cast<QScrollBar *>(widget))
+    {
+        widget->setAttribute(Qt::WA_Hover, false);
+        if(QTC_ROUNDED)
+            widget->setAttribute(Qt::WA_OpaquePaintEvent, false);
+    }
     else if (qobject_cast<QProgressBar *>(widget))
         widget->removeEventFilter(this);
     else if (widget->inherits("Q3Header"))
@@ -1865,6 +1876,8 @@ int QtCurveStyle::styleHint(StyleHint hint, const QStyleOption *option, const QW
             checkKComponentData();
             return KGlobalSettings::singleClick();
 #endif
+        case SH_MenuBar_AltKeyNavigation:
+            return false;
         default:
             return QTC_BASE_STYLE::styleHint(hint, option, widget, returnData);
    }
@@ -2646,7 +2659,8 @@ void QtCurveStyle::drawPrimitive(PrimitiveElement element, const QStyleOption *o
             }
         case PE_IndicatorButtonDropDown: // This should never be called, but just in case - draw as a normal toolbutton...
         {
-            bool dwt(widget && widget->inherits("QDockWidgetTitleButton"));
+            bool dwt(widget && (widget->inherits("QDockWidgetTitleButton") ||
+                                (widget->parentWidget() && widget->parentWidget()->inherits("KoDockWidgetTitleBar"))));
 
             if( ((state&State_Enabled) || !(state&State_AutoRaise)) &&
                (!widget || !dwt || (state&State_MouseOver)) )
@@ -3375,14 +3389,17 @@ void QtCurveStyle::drawControl(ControlElement element, const QStyleOption *optio
         case CE_DockWidgetTitle:
             if (const QStyleOptionDockWidget *dwOpt = qstyleoption_cast<const QStyleOptionDockWidget *>(option))
             {
+                // This section fixes the look of KOffice's dock widget titlebars...
+                QRect fillRect(r);
+                if(widget && widget->inherits("KoDockWidgetTitleBar"))
+                    fillRect.adjust(-r.x(), -r.y(), r.x(), r.y());
+
                 painter->save();
-
     #if QT_VERSION >= 0x040300
-                painter->fillRect(r, palette.background().color().darker(105));
+                painter->fillRect(fillRect, palette.background().color().darker(105));
     #else
-                painter->fillRect(r, palette.background().color().dark(105));
+                painter->fillRect(fillRect, palette.background().color().dark(105));
     #endif
-
                 if (!dwOpt->title.isEmpty())
                 {
 #if QT_VERSION >= 0x040300
@@ -4767,7 +4784,8 @@ void QtCurveStyle::drawControl(ControlElement element, const QStyleOption *optio
             }
 
             painter->save();
-            painter->fillRect(r, palette.background());
+            if(!widget || !widget->testAttribute(Qt::WA_NoSystemBackground))
+                painter->fillRect(r, palette.brush(QPalette::Background));
 
             QStyleOption opt(*option);
 
@@ -5650,7 +5668,9 @@ void QtCurveStyle::drawComplexControl(ComplexControl control, const QStyleOption
 #endif
 
                 painter->save();
-                painter->fillRect(r, palette.background());
+
+                if(!widget || !widget->testAttribute(Qt::WA_NoSystemBackground))
+                    painter->fillRect(r, palette.brush(QPalette::Background));
 #if 0
                 //painter->setClipRegion(QRegion(s2)+QRegion(addpage));
 

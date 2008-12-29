@@ -130,8 +130,8 @@ void QtCurveButton::drawButton(QPainter *painter)
     QPixmap  buffer(width(), height());
     QPainter bP(&buffer);
 
-    if(CloseButton==type())
-        buttonColor=midColor(QColor(180,64,32), buttonColor);
+//     if(CloseButton==type())
+//         buttonColor=midColor(QColor(180,64,32), buttonColor);
 
     itsClient->drawBtnBgnd(&bP, r, active);
 
@@ -156,6 +156,7 @@ void QtCurveButton::drawButton(QPainter *painter)
     else
     {
         const QBitmap &icon(Handler()->buttonBitmap(itsIconType, size(), decoration()->isToolWindow()));
+        QColor        col(KDecoration::options()->color(KDecoration::ColorFont, active));
         int           dX(r.x()+(r.width()-icon.width())/2),
                       dY(r.y()+(r.height()-icon.height())/2);
 
@@ -166,11 +167,14 @@ void QtCurveButton::drawButton(QPainter *painter)
         }
         else
         {
-            bP.setPen(QtCurveClient::shadowColor(KDecoration::options()->color(KDecoration::ColorFont, active)));
+            bP.setPen(QtCurveClient::shadowColor(col));
             bP.drawPixmap(dX+1, dY+1, icon);
         }
 
-        bP.setPen(KDecoration::options()->color(KDecoration::ColorFont, active));
+        if(CloseButton==type() && itsHover)
+            col=CLOSE_COLOR;
+            
+        bP.setPen(col);
         bP.drawPixmap(dX, dY, icon);
     }
 
@@ -336,12 +340,37 @@ QBitmap IconEngine::icon(ButtonIcon icon, int size, QStyle *style)
         }
         case OnAllDesktopsIcon:
         {
+            int lineWidth = 1;
+            if (r.width() > 16)
+                lineWidth = 3;
+            else if (r.width() > 4)
+                lineWidth = 2;
+
+            int rounding=!style || ROUND_NONE==style->pixelMetric((QStyle::PixelMetric)QtC_Round, NULL, NULL) ? 0 : 1;
+
+            drawObject(p, HorizontalLine, r.x()+rounding, r.top(), r.width()-(2*rounding), lineWidth);
+            drawObject(p, HorizontalLine, r.x()+rounding, r.bottom()-(lineWidth-1), r.width()-(2*rounding), lineWidth);
+            drawObject(p, VerticalLine, r.x(), r.top()+rounding, r.height()-(2*rounding), lineWidth);
+            drawObject(p, VerticalLine, r.right()-(lineWidth-1), r.top()+rounding, r.height()-(2*rounding), lineWidth);
+            
+#if 0
+            // <> style
+            int len=(r.width()/2)+1;
+
+            drawObject(p, DiagonalLine, r.x()+(r.width()/2), r.y(), len, lineWidth);
+            drawObject(p, DiagonalLine, r.x(), r.y()+(r.height()/2), len, lineWidth);
+            drawObject(p, CrossDiagonalLine, r.x()+(r.width()/2), r.bottom(), len, lineWidth);
+            drawObject(p, CrossDiagonalLine, r.x(), r.y()+(r.height()/2), len, lineWidth);
+#endif
+#if 0
+            // original plastik style
             // horizontal bars
             drawObject(p, HorizontalLine, r.x()+lwTitleBar, r.y(), r.width()-2*lwTitleBar, lwTitleBar);
             drawObject(p, HorizontalLine, r.x()+lwTitleBar, r.bottom()-(lwTitleBar-1), r.width()-2*lwTitleBar, lwTitleBar);
             // vertical bars
             drawObject(p, VerticalLine, r.x(), r.y()+lwTitleBar, r.height()-2*lwTitleBar, lwTitleBar);
             drawObject(p, VerticalLine, r.right()-(lwTitleBar-1), r.y()+lwTitleBar, r.height()-2*lwTitleBar, lwTitleBar);
+#endif
             break;
         }
         case NoKeepAboveIcon:
@@ -399,7 +428,7 @@ QBitmap IconEngine::icon(ButtonIcon icon, int size, QStyle *style)
             opt.rect=r;
             opt.state=QStyle::State_Enabled;
 
-            opt.palette.setColor(QPalette::Button, Qt::red);
+            //opt.palette.setColor(QPalette::Button, Qt::red);
             style->drawPrimitive(ShadeIcon==icon ? QStyle::PE_IndicatorArrowUp
                                                  : QStyle::PE_IndicatorArrowDown,
                                  &opt, &p, 0L);

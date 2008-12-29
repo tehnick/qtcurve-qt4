@@ -32,6 +32,7 @@
 #define QTC_MAX_FILENAME_LEN   1024
 #define QTC_MAX_INPUT_LINE_LEN 256
 #define QTC_FILE               "qtcurvestylerc"
+#define QTC_VERSION_KEY        "version"
 
 #ifdef CONFIG_READ
 static int c2h(char ch)
@@ -135,7 +136,7 @@ static EMouseOver toMouseOver(const char *str, EMouseOver def)
     return def;
 }
 
-static EAppearance toAppearance(const char *str, EAppearance def)
+static EAppearance toAppearance(const char *str, EAppearance def, bool allowFade)
 {
     if(str)
     {
@@ -155,6 +156,8 @@ static EAppearance toAppearance(const char *str, EAppearance def)
             return APPEARANCE_INVERTED;
         if(0==memcmp(str, "bevelled", 8))
             return APPEARANCE_BEVELLED;
+        if(allowFade && 0==memcmp(str, "fade", 4))
+            return APPEARANCE_FADE;
 
         if(0==memcmp(str, "customgradient", 14) && strlen(str)>14)
         {
@@ -198,6 +201,8 @@ static ERound toRound(const char *str, ERound def)
             return ROUND_SLIGHT;
         if(0==memcmp(str, "full", 4))
             return ROUND_FULL;
+        if(0==memcmp(str, "extra", 5))
+            return ROUND_EXTRA;
     }
 
     return def;
@@ -275,6 +280,10 @@ static ESliderStyle toSlider(const char *str, ESliderStyle def)
             return SLIDER_ROUND;
         if(0==memcmp(str, "plain", 5))
             return SLIDER_PLAIN;
+        if(0==memcmp(str, "r-round", 7))
+            return SLIDER_ROUND_ROTATED;
+        if(0==memcmp(str, "r-plain", 7))
+            return SLIDER_PLAIN_ROTATED;
         if(0==memcmp(str, "triangular", 10))
             return SLIDER_TRIANGULAR;
     }
@@ -292,6 +301,23 @@ static EColor toEColor(const char *str, EColor def)
             return ECOLOR_DARK;
         if(0==memcmp(str, "background", 10))
             return ECOLOR_BACKGROUND;
+    }
+
+    return def;
+}
+
+static EFocus toFocus(const char *str, EFocus def)
+{
+    if(str)
+    {
+        if(0==memcmp(str, "standard", 8))
+            return FOCUS_STANDARD;
+        if(0==memcmp(str, "highlight", 9))
+            return FOCUS_HIGHLIGHT;
+        if(0==memcmp(str, "background", 10))
+            return FOCUS_BACKGROUND;
+        if(0==memcmp(str, "filled", 6))
+            return FOCUS_FILLED;
     }
 
     return def;
@@ -482,6 +508,15 @@ static int readNumEntry(QtCConfig &cfg, const QString &key, int def)
     return val.isEmpty() ? def : val.toInt();
 }
 
+/*
+static double readDoubleEntry(QtCConfig &cfg, const QString &key, double def)
+{
+    const QString &val(readStringEntry(cfg, key));
+
+    return val.isEmpty() ? def : val.toDouble();
+}
+*/
+
 static bool readBoolEntry(QtCConfig &cfg, const QString &key, bool def)
 {
     const QString &val(readStringEntry(cfg, key));
@@ -574,6 +609,15 @@ static int readNumEntry(GHashTable *cfg, char *key, int def)
     return str ? atoi(str) : def;
 }
 
+/*
+static double readDoubleEntry(GHashTable *cfg, char *key, double def)
+{
+    char *str=readStringEntry(cfg, key);
+
+    return str ? atof(str) : def;
+}
+*/
+
 static gboolean readBoolEntry(GHashTable *cfg, char *key, gboolean def)
 {
     char *str=readStringEntry(cfg, key);
@@ -604,16 +648,22 @@ static gboolean readBoolEntry(GHashTable *cfg, char *key, gboolean def)
     opts->ENTRY=toRound(QTC_LATIN1(readStringEntry(cfg, #ENTRY)), def->ENTRY);
 
 #define QTC_CFG_READ_DI(ENTRY) \
-    opts->ENTRY=((double)(readNumEntry(cfg, #ENTRY, ((int)(def->ENTRY*100))-100)+100))/100.0;
+    opts->ENTRY=((double)(readNumEntry(cfg, #ENTRY, (int)((def->ENTRY*100.0)-99.5))+100))/100.0;
 
+#define QTC_CFG_READ_DI_BOOL(ENTRY) \
+    if(readBoolEntry(cfg, #ENTRY, false)) \
+        opts->ENTRY=def->ENTRY; \
+    else \
+        opts->ENTRY=((double)(readNumEntry(cfg, #ENTRY, (int)((def->ENTRY*100.0)-99.5))+100))/100.0;
+    
 #define QTC_CFG_READ_TB_BORDER(ENTRY) \
     opts->ENTRY=toTBarBorder(QTC_LATIN1(readStringEntry(cfg, #ENTRY)), def->ENTRY);
 
 #define QTC_CFG_READ_MOUSE_OVER(ENTRY) \
     opts->ENTRY=toMouseOver(QTC_LATIN1(readStringEntry(cfg, #ENTRY)), def->ENTRY);
 
-#define QTC_CFG_READ_APPEARANCE(ENTRY, DEF) \
-    opts->ENTRY=toAppearance(QTC_LATIN1(readStringEntry(cfg, #ENTRY)), DEF);
+#define QTC_CFG_READ_APPEARANCE(ENTRY, DEF, ALLOW_FADE) \
+    opts->ENTRY=toAppearance(QTC_LATIN1(readStringEntry(cfg, #ENTRY)), DEF, ALLOW_FADE);
 
 /*
 #define QTC_CFG_READ_APPEARANCE(ENTRY) \
@@ -649,8 +699,11 @@ static gboolean readBoolEntry(GHashTable *cfg, char *key, gboolean def)
     ENTRY=toShading(QTC_LATIN1(readStringEntry(cfg, #ENTRY)), DEF);
 #endif
 
-#define QTC_CFG_READ_ECOLOR(ENTRY, DEF) \
+#define QTC_CFG_READ_ECOLOR(ENTRY) \
     opts->ENTRY=toEColor(QTC_LATIN1(readStringEntry(cfg, #ENTRY)), def->ENTRY);
+
+#define QTC_CFG_READ_FOCUS(ENTRY) \
+    opts->ENTRY=toFocus(QTC_LATIN1(readStringEntry(cfg, #ENTRY)), def->ENTRY);
 
 static void checkAppearance(EAppearance *ap, Options *opts)
 {
@@ -714,18 +767,21 @@ static bool readConfig(const char *file, Options *opts, Options *def)
         if(cfg)
         {
 #endif
-            int i;
-
+            int    i;
+#if 0
+            double version=readDoubleEntry(cfg, QTC_VERSION_KEY, 0.59); /* 0.59 was last version not to sore version number!*/
+TODO: New versions (>0.60) need to handle config changes...
+#endif
             QTC_CFG_READ_NUM(passwordChar)
             QTC_CFG_READ_ROUND(round)
             QTC_CFG_READ_DI(highlightFactor)
             QTC_CFG_READ_TB_BORDER(toolbarBorders)
-            QTC_CFG_READ_APPEARANCE(appearance, def->appearance)
+            QTC_CFG_READ_APPEARANCE(appearance, def->appearance, false)
             QTC_CFG_READ_BOOL(fixParentlessDialogs)
             QTC_CFG_READ_STRIPE(stripedProgress)
             QTC_CFG_READ_SLIDER(sliderStyle)
             QTC_CFG_READ_BOOL(animatedProgress)
-            QTC_CFG_READ_BOOL(lighterPopupMenuBgnd)
+            QTC_CFG_READ_DI_BOOL(lighterPopupMenuBgnd)
             QTC_CFG_READ_BOOL(embolden)
             QTC_CFG_READ_DEF_BTN(defBtnIndicator)
             QTC_CFG_READ_LINE(sliderThumbs)
@@ -735,17 +791,18 @@ static bool readConfig(const char *file, Options *opts, Options *def)
             QTC_CFG_READ_SHADE(shadeSliders, false)
             QTC_CFG_READ_SHADE(shadeMenubars, true)
             QTC_CFG_READ_SHADE(shadeCheckRadio, false)
-            QTC_CFG_READ_APPEARANCE(menubarAppearance, def->menubarAppearance)
-            QTC_CFG_READ_APPEARANCE(menuitemAppearance, opts->appearance)
-            QTC_CFG_READ_APPEARANCE(toolbarAppearance, def->toolbarAppearance)
+            QTC_CFG_READ_APPEARANCE(menubarAppearance, def->menubarAppearance, false)
+            QTC_CFG_READ_APPEARANCE(menuitemAppearance, opts->appearance, true)
+            QTC_CFG_READ_APPEARANCE(toolbarAppearance, def->toolbarAppearance, false)
 #if defined QTC_CONFIG_DIALOG || (defined QT_VERSION && (QT_VERSION >= 0x040000)) || !defined __cplusplus
-            QTC_CFG_READ_APPEARANCE(selectionAppearance, def->selectionAppearance)
+            QTC_CFG_READ_APPEARANCE(selectionAppearance, def->selectionAppearance, false)
 #endif
             QTC_CFG_READ_LINE(toolbarSeparators)
             QTC_CFG_READ_LINE(splitters)
             QTC_CFG_READ_BOOL(customMenuTextColor)
             QTC_CFG_READ_MOUSE_OVER(coloredMouseOver)
             QTC_CFG_READ_BOOL(menubarMouseOver)
+            QTC_CFG_READ_BOOL(useHighlightForMenu)
             QTC_CFG_READ_BOOL(shadeMenubarOnlyWhenActive)
             QTC_CFG_READ_BOOL(thinnerMenuItems)
             QTC_CFG_READ_COLOR(customSlidersColor)
@@ -755,16 +812,14 @@ static bool readConfig(const char *file, Options *opts, Options *def)
             QTC_CFG_READ_COLOR(customCheckRadioColor)
             QTC_CFG_READ_SCROLLBAR(scrollbarType)
             QTC_CFG_READ_EFFECT(buttonEffect)
-            QTC_CFG_READ_APPEARANCE(lvAppearance, opts->appearance)
-            QTC_CFG_READ_APPEARANCE(tabAppearance, def->tabAppearance)
-            QTC_CFG_READ_APPEARANCE(activeTabAppearance, opts->tabAppearance)
-            QTC_CFG_READ_APPEARANCE(sliderAppearance, opts->appearance)
-            QTC_CFG_READ_APPEARANCE(progressAppearance, opts->appearance)
-            QTC_CFG_READ_APPEARANCE(progressGrooveAppearance, APPEARANCE_INVERTED)
-            QTC_CFG_READ_ECOLOR(progressGrooveColor, opts->progressGrooveColor)
-#ifndef QTC_PLAIN_FOCUS_ONLY
-            QTC_CFG_READ_BOOL(stdFocus)
-#endif
+            QTC_CFG_READ_APPEARANCE(lvAppearance, opts->appearance, false)
+            QTC_CFG_READ_APPEARANCE(tabAppearance, def->tabAppearance, false)
+            QTC_CFG_READ_APPEARANCE(activeTabAppearance, opts->tabAppearance, false)
+            QTC_CFG_READ_APPEARANCE(sliderAppearance, opts->appearance, false)
+            QTC_CFG_READ_APPEARANCE(progressAppearance, opts->appearance, false)
+            QTC_CFG_READ_APPEARANCE(progressGrooveAppearance, APPEARANCE_INVERTED, false)
+            QTC_CFG_READ_ECOLOR(progressGrooveColor)
+            QTC_CFG_READ_FOCUS(focus)
             QTC_CFG_READ_BOOL(lvLines)
             QTC_CFG_READ_BOOL(drawStatusBarFrames)
             QTC_CFG_READ_BOOL(fillSlider)
@@ -777,19 +832,22 @@ static bool readConfig(const char *file, Options *opts, Options *def)
             QTC_CFG_READ_BOOL(inactiveHighlight)
             QTC_CFG_READ_BOOL(colorMenubarMouseOver)
             QTC_CFG_READ_BOOL(crHighlight)
+            QTC_CFG_READ_BOOL(crButton)
             QTC_CFG_READ_BOOL(fillProgress)
             QTC_CFG_READ_BOOL(comboSplitter)
             QTC_CFG_READ_BOOL(squareScrollViews)
             QTC_CFG_READ_BOOL(highlightScrollViews)
             QTC_CFG_READ_BOOL(sunkenScrollViews)
+            QTC_CFG_READ_BOOL(flatSbarButtons)
 #if defined __cplusplus || defined QTC_GTK2_MENU_STRIPE
             QTC_CFG_READ_BOOL(menuStripe)
-            QTC_CFG_READ_APPEARANCE(menuStripeAppearance, def->menuStripeAppearance)
+            QTC_CFG_READ_APPEARANCE(menuStripeAppearance, def->menuStripeAppearance, false)
 #endif
             QTC_CFG_READ_BOOL(gtkScrollViews)
 #ifdef __cplusplus
             QTC_CFG_READ_BOOL(stdSidebarButtons)
             QTC_CFG_READ_BOOL(gtkComboMenus)
+            QTC_CFG_READ_BOOL(colorTitlebarOnly)
 /*
 #else
             QTC_CFG_READ_BOOL(setDialogButtonOrder)
@@ -801,16 +859,20 @@ static bool readConfig(const char *file, Options *opts, Options *def)
 #if defined QTC_CONFIG_DIALOG || (defined QT_VERSION && (QT_VERSION >= 0x040000)) || !defined __cplusplus
             QTC_CFG_READ_BOOL(gtkButtonOrder)
 #endif
-#ifndef __cplusplus
-            QTC_CFG_READ_BOOL(newFirefox)
-            QTC_CFG_READ_BOOL(newThunderbird)
-#endif
 #ifdef __cplusplus
-            QTC_CFG_READ_APPEARANCE(titlebarAppearance, opts->appearance)
+            QTC_CFG_READ_APPEARANCE(titlebarAppearance, opts->appearance, false)
+            QTC_CFG_READ_APPEARANCE(inactiveTitlebarAppearance, opts->titlebarAppearance, false)
+            QTC_CFG_READ_APPEARANCE(titlebarButtonAppearance, opts->titlebarAppearance, false)
+
             if(APPEARANCE_BEVELLED==opts->titlebarAppearance)
                 opts->titlebarAppearance=APPEARANCE_GRADIENT;
             else if(APPEARANCE_RAISED==opts->titlebarAppearance)
                 opts->titlebarAppearance=APPEARANCE_FLAT;
+
+            if(APPEARANCE_BEVELLED==opts->inactiveTitlebarAppearance)
+                opts->inactiveTitlebarAppearance=APPEARANCE_GRADIENT;
+            else if(APPEARANCE_RAISED==opts->inactiveTitlebarAppearance)
+                opts->inactiveTitlebarAppearance=APPEARANCE_FLAT;
 #endif
             QTC_CFG_READ_SHADING(shading, shading);
 
@@ -1031,6 +1093,8 @@ static bool readConfig(const char *file, Options *opts, Options *def)
             checkAppearance(&opts->sliderAppearance, opts);
 #ifdef __cplusplus
             checkAppearance(&opts->titlebarAppearance, opts);
+            checkAppearance(&opts->inactiveTitlebarAppearance, opts);
+            checkAppearance(&opts->titlebarButtonAppearance, opts);
 #endif
 #if defined QTC_CONFIG_DIALOG || (defined QT_VERSION && (QT_VERSION >= 0x040000)) || !defined __cplusplus
             checkAppearance(&opts->selectionAppearance, opts);
@@ -1086,6 +1150,9 @@ static bool readConfig(const char *file, Options *opts, Options *def)
                opts->highlightFactor>((100.0+MAX_HIGHLIGHT_FACTOR)/100.0))
                 opts->highlightFactor=DEFAULT_HIGHLIGHT_FACTOR;
 
+            if(opts->lighterPopupMenuBgnd>((100.0+MAX_LIGHTER_POPUP_MENU)/100.0))
+                opts->lighterPopupMenuBgnd=DEF_POPUPMENU_LIGHT_FACTOR;
+
             if(opts->animatedProgress && !opts->stripedProgress)
                 opts->animatedProgress=false;
 
@@ -1093,13 +1160,16 @@ static bool readConfig(const char *file, Options *opts, Options *def)
                                     APPEARANCE_INVERTED!=opts->activeTabAppearance)
                 opts->colorSelTab=false;
 
+/*
+??
             if(SHADE_CUSTOM==opts->shadeMenubars || SHADE_BLEND_SELECTED==opts->shadeMenubars || !opts->borderMenuitems)
                 opts->colorMenubarMouseOver=true;
+*/
 
-            if(MO_GLOW==opts->coloredMouseOver && (EFFECT_NONE==opts->buttonEffect || ROUND_FULL!=opts->round))
+            if(MO_GLOW==opts->coloredMouseOver && (EFFECT_NONE==opts->buttonEffect || opts->round<ROUND_FULL))
                 opts->coloredMouseOver=MO_COLORED;
 
-            if(IND_GLOW==opts->defBtnIndicator && (EFFECT_NONE==opts->buttonEffect || ROUND_FULL!=opts->round))
+            if(IND_GLOW==opts->defBtnIndicator && (EFFECT_NONE==opts->buttonEffect || opts->round<ROUND_FULL))
                 opts->defBtnIndicator=IND_TINT;
 
             if(opts->squareScrollViews || EFFECT_NONE==opts->buttonEffect)
@@ -1150,7 +1220,7 @@ static void defaultSettings(Options *opts)
     opts->passwordChar=0x25CF;
     opts->highlightFactor=DEFAULT_HIGHLIGHT_FACTOR;
     opts->round=ROUND_FULL;
-    opts->lighterPopupMenuBgnd=true;
+    opts->lighterPopupMenuBgnd=DEF_POPUPMENU_LIGHT_FACTOR;
     opts->animatedProgress=false;
     opts->stripedProgress=STRIPE_DIAGONAL;
     opts->sliderStyle=SLIDER_TRIANGULAR;
@@ -1181,13 +1251,12 @@ static void defaultSettings(Options *opts)
     opts->customMenuTextColor=false;
     opts->coloredMouseOver=MO_PLASTIK;
     opts->menubarMouseOver=true;
+    opts->useHighlightForMenu=true;
     opts->shadeMenubarOnlyWhenActive=false;
     opts->thinnerMenuItems=false;
     opts->scrollbarType=SCROLLBAR_KDE;
     opts->buttonEffect=EFFECT_NONE;
-#ifndef QTC_PLAIN_FOCUS_ONLY
-    opts->stdFocus=true;
-#endif
+    opts->focus=FOCUS_STANDARD;
     opts->lvLines=false;
     opts->drawStatusBarFrames=false;
     opts->fillSlider=true;
@@ -1197,14 +1266,16 @@ static void defaultSettings(Options *opts)
     opts->vArrows=false;
     opts->xCheck=false;
     opts->framelessGroupBoxes=true;
-    opts->colorMenubarMouseOver=false;
+    opts->colorMenubarMouseOver=true;
     opts->inactiveHighlight=false;
     opts->crHighlight=false;
+    opts->crButton=false;
     opts->fillProgress=true;
     opts->comboSplitter=true;
     opts->squareScrollViews=false;
     opts->highlightScrollViews=false;
     opts->sunkenScrollViews=false;
+    opts->flatSbarButtons=false;
 #if defined __cplusplus || defined QTC_GTK2_MENU_STRIPE
     opts->menuStripe=false;
     opts->menuStripeAppearance=APPEARANCE_GRADIENT;
@@ -1221,6 +1292,7 @@ static void defaultSettings(Options *opts)
     opts->stdSidebarButtons=false;
     opts->gtkScrollViews=false;
     opts->gtkComboMenus=false;
+    opts->colorTitlebarOnly=false;
     opts->customMenubarsColor.setRgb(0, 0, 0);
     opts->customSlidersColor.setRgb(0, 0, 0);
     opts->customMenuNormTextColor.setRgb(0, 0, 0);
@@ -1244,16 +1316,11 @@ static void defaultSettings(Options *opts)
     opts->gtkButtonOrder=false;
 #endif
 #ifndef __cplusplus
-#ifdef QTC_NEW_MOZILLA
-    opts->newFirefox=true;
-    opts->newThunderbird=true;
-#else
-    opts->newFirefox=false;
-    opts->newThunderbird=false;
-#endif
 #endif
 #ifdef __cplusplus
     opts->titlebarAppearance=APPEARANCE_GRADIENT;
+    opts->inactiveTitlebarAppearance=APPEARANCE_GRADIENT;
+    opts->titlebarButtonAppearance=APPEARANCE_GRADIENT;
 #endif
     /* Read system config file... */
     {
@@ -1265,6 +1332,11 @@ static void defaultSettings(Options *opts)
     if(systemFilename)
         readConfig(systemFilename, opts, opts);
     }
+
+#if !defined QTC_CONFIG_DIALOG && defined QT_VERSION && (QT_VERSION < 0x040000)
+    if(FOCUS_FILLED==opts->focus)
+        opts->focus=FOCUS_HIGHLIGHT;
+#endif
 }
 
 #endif
@@ -1356,6 +1428,8 @@ static QString toStr(EAppearance exp)
             return "inverted";
         case APPEARANCE_SHINY_GLASS:
             return "shinyglass";
+        case APPEARANCE_FADE:
+            return "fade";
         default:
         {
             QString app;
@@ -1391,6 +1465,8 @@ static const char *toStr(ERound exp)
             return "none";
         case ROUND_SLIGHT:
             return "slight";
+        case ROUND_EXTRA:
+            return "extra";
         default:
         case ROUND_FULL:
             return "full";
@@ -1475,6 +1551,10 @@ static const char *toStr(ESliderStyle s)
             return "plain";
         case SLIDER_TRIANGULAR:
             return "triangular";
+        case SLIDER_ROUND_ROTATED:
+            return "r-round";
+        case SLIDER_PLAIN_ROTATED:
+            return "r-plain";
         default:
         case SLIDER_ROUND:
             return "round";
@@ -1492,6 +1572,22 @@ static const char *toStr(EColor s)
         default:
         case ECOLOR_BASE:
             return "base";
+    }
+}
+
+static const char *toStr(EFocus f)
+{
+    switch(f)
+    {
+        default:
+        case FOCUS_STANDARD:
+            return "standard";
+        case FOCUS_HIGHLIGHT:
+            return "highlight";
+        case FOCUS_BACKGROUND:
+            return "background";
+        case FOCUS_FILLED:
+            return "filled";
     }
 }
 
@@ -1527,7 +1623,7 @@ static const char *toStr(EColor s)
     if (!exportingStyle && def.ENTRY==opts.ENTRY) \
         CFG.deleteEntry(#ENTRY); \
     else \
-        CFG.writeEntry(#ENTRY, ((int)(opts.ENTRY*100))-100);
+        CFG.writeEntry(#ENTRY, (int)((opts.ENTRY*100.0)-99.5));
 
 #define CFG_WRITE_ENTRY_NUM(ENTRY) \
     if (!exportingStyle && def.ENTRY==opts.ENTRY) \
@@ -1563,6 +1659,7 @@ bool static writeConfig(KConfig *cfg, const Options &opts, const Options &def, b
 #else
         cfg->setGroup(QTC_GROUP);
 #endif
+        CFG.writeEntry(QTC_VERSION_KEY, VERSION);
         CFG_WRITE_ENTRY_NUM(passwordChar)
         CFG_WRITE_ENTRY(round)
         CFG_WRITE_ENTRY_D(highlightFactor)
@@ -1572,7 +1669,7 @@ bool static writeConfig(KConfig *cfg, const Options &opts, const Options &def, b
         CFG_WRITE_ENTRY(stripedProgress)
         CFG_WRITE_ENTRY(sliderStyle)
         CFG_WRITE_ENTRY(animatedProgress)
-        CFG_WRITE_ENTRY(lighterPopupMenuBgnd)
+        CFG_WRITE_ENTRY_D(lighterPopupMenuBgnd)
         CFG_WRITE_ENTRY(embolden)
         CFG_WRITE_ENTRY(defBtnIndicator)
         CFG_WRITE_ENTRY_B(sliderThumbs, true)
@@ -1592,6 +1689,7 @@ bool static writeConfig(KConfig *cfg, const Options &opts, const Options &def, b
         CFG_WRITE_ENTRY(customMenuTextColor)
         CFG_WRITE_ENTRY(coloredMouseOver)
         CFG_WRITE_ENTRY(menubarMouseOver)
+        CFG_WRITE_ENTRY(useHighlightForMenu)
         CFG_WRITE_ENTRY(shadeMenubarOnlyWhenActive)
         CFG_WRITE_ENTRY(thinnerMenuItems)
         CFG_WRITE_ENTRY(customSlidersColor)
@@ -1608,9 +1706,7 @@ bool static writeConfig(KConfig *cfg, const Options &opts, const Options &def, b
         CFG_WRITE_ENTRY_FORCE(progressAppearance)
         CFG_WRITE_ENTRY_FORCE(progressGrooveAppearance)
         CFG_WRITE_ENTRY(progressGrooveColor)
-#ifndef QTC_PLAIN_FOCUS_ONLY
-        CFG_WRITE_ENTRY(stdFocus)
-#endif
+        CFG_WRITE_ENTRY(focus)
         CFG_WRITE_ENTRY(lvLines)
         CFG_WRITE_ENTRY(drawStatusBarFrames)
         CFG_WRITE_ENTRY(fillSlider)
@@ -1622,17 +1718,22 @@ bool static writeConfig(KConfig *cfg, const Options &opts, const Options &def, b
         CFG_WRITE_ENTRY(framelessGroupBoxes)
         CFG_WRITE_ENTRY(inactiveHighlight)
         CFG_WRITE_ENTRY(crHighlight)
+        CFG_WRITE_ENTRY(crButton)
         CFG_WRITE_ENTRY(fillProgress)
         CFG_WRITE_ENTRY(comboSplitter)
         CFG_WRITE_ENTRY(squareScrollViews)
         CFG_WRITE_ENTRY(highlightScrollViews)
         CFG_WRITE_ENTRY(sunkenScrollViews)
+        CFG_WRITE_ENTRY(flatSbarButtons)
         CFG_WRITE_ENTRY(menuStripe)
         CFG_WRITE_ENTRY(stdSidebarButtons)
         CFG_WRITE_ENTRY_FORCE(titlebarAppearance)
+        CFG_WRITE_ENTRY_FORCE(inactiveTitlebarAppearance)
+        CFG_WRITE_ENTRY_FORCE(titlebarButtonAppearance)
 
         CFG_WRITE_ENTRY(gtkScrollViews)
         CFG_WRITE_ENTRY(gtkComboMenus)
+        CFG_WRITE_ENTRY(colorTitlebarOnly)
         CFG_WRITE_ENTRY(gtkButtonOrder)
         CFG_WRITE_ENTRY(mapKdeIcons)
         CFG_WRITE_ENTRY(shading)

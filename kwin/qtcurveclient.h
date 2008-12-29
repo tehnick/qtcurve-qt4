@@ -27,18 +27,24 @@
 #ifndef QTCURVECLIENT_H
 #define QTCURVECLIENT_H
 
+#include <kdeversion.h>
 #include <kcommondecoration.h>
 #include <QtGui/QPixmap>
 #include <QtGui/QColor>
+#include "config.h"
 
 namespace KWinQtCurve
 {
 
+#if KDE_IS_VERSION(4,1,80)
+class QtCurveClient : public KCommonDecorationUnstable
+#else
 class QtCurveClient : public KCommonDecoration
+#endif
 {
     public:
 
-    static QColor shadowColor(const QColor col)
+    static QColor shadowColor(const QColor &col)
     {
         return qGray(col.rgb()) < 100 ? QColor(255, 255, 255, 75) : QColor(0, 0, 0, 75);
     }
@@ -56,8 +62,14 @@ class QtCurveClient : public KCommonDecoration
     void                      drawBtnBgnd(QPainter *p, const QRect &r, bool active);
     void                      paintEvent(QPaintEvent *e);
     void                      updateWindowShape();
+    QRegion                   getMask(int round, int w, int h, bool maximised=false) const;
     void                      updateCaption();
     bool                      eventFilter(QObject *o, QEvent *e);
+
+#if KDE_IS_VERSION(4,1,80)
+    virtual QList<QRect>      shadowQuads(ShadowType type) const;
+    virtual double            shadowOpacity(ShadowType type) const;
+#endif
 
     private:
 

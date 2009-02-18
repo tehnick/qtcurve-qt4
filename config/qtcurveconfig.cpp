@@ -1,5 +1,5 @@
 /*
-  QtCurve (C) Craig Drummond, 2007-2008 Craig.Drummond@lycos.co.uk
+  QtCurve (C) Craig Drummond, 2007-2009 craig_p_drummond@yahoo.co.uk
 
   ----
 
@@ -249,12 +249,14 @@ static void insertAppearanceEntries(QComboBox *combo, bool split=true, bool bev=
     }
 }
 
-static void insertLineEntries(QComboBox *combo, bool none)
+static void insertLineEntries(QComboBox *combo, bool dashes)
 {
+    combo->insertItem(LINE_NONE, i18n("None"));
     combo->insertItem(LINE_SUNKEN, i18n("Sunken lines"));
     combo->insertItem(LINE_FLAT, i18n("Flat lines"));
     combo->insertItem(LINE_DOTS, i18n("Dots"));
-    combo->insertItem(LINE_DASHES, none ? i18n("None") : i18n("Dashes"));
+    if(dashes)
+        combo->insertItem(LINE_DASHES, i18n("Dashes"));
 }
 
 static void insertDefBtnEntries(QComboBox *combo)
@@ -351,7 +353,7 @@ QtCurveConfig::QtCurveConfig(QWidget *parent)
                exportDialog(NULL)
 {
     setupUi(this);
-    titleLabel->setText("QtCurve " VERSION " - (C) Craig Drummond, 2003-2008");
+    titleLabel->setText("QtCurve " VERSION " - (C) Craig Drummond, 2003-2009");
     insertShadeEntries(shadeSliders, false);
     insertShadeEntries(shadeMenubars, true);
     insertShadeEntries(shadeCheckRadio, false, true);
@@ -370,10 +372,10 @@ QtCurveConfig::QtCurveConfig(QWidget *parent)
     insertAppearanceEntries(titlebarButtonAppearance);
     insertAppearanceEntries(selectionAppearance, true, false);
     insertAppearanceEntries(menuStripeAppearance, true, false);
-    insertLineEntries(handles, false);
-    insertLineEntries(sliderThumbs, true);
-    insertLineEntries(toolbarSeparators, true);
-    insertLineEntries(splitters, false);
+    insertLineEntries(handles, true);
+    insertLineEntries(sliderThumbs, false);
+    insertLineEntries(toolbarSeparators, false);
+    insertLineEntries(splitters, true);
     insertDefBtnEntries(defBtnIndicator);
     insertScrollbarEntries(scrollbarType);
     insertRoundEntries(round);
@@ -387,36 +389,36 @@ QtCurveConfig::QtCurveConfig(QWidget *parent)
     insertFocusEntries(focus);
 
     highlightFactor->setRange(MIN_HIGHLIGHT_FACTOR, MAX_HIGHLIGHT_FACTOR);
-    highlightFactor->setValue(((int)(DEFAULT_HIGHLIGHT_FACTOR*100))-100);
+    highlightFactor->setValue(DEFAULT_HIGHLIGHT_FACTOR);
 
     lighterPopupMenuBgnd->setRange(MIN_LIGHTER_POPUP_MENU, MAX_LIGHTER_POPUP_MENU);
-    lighterPopupMenuBgnd->setValue(((int)(DEF_POPUPMENU_LIGHT_FACTOR*100))-100);
+    lighterPopupMenuBgnd->setValue(DEF_POPUPMENU_LIGHT_FACTOR);
 
     connect(lighterPopupMenuBgnd, SIGNAL(valueChanged(int)), SLOT(updateChanged()));
     connect(menuStripe, SIGNAL(toggled(bool)), SLOT(updateChanged()));
-    connect(menuStripeAppearance, SIGNAL(activated(int)), SLOT(updateChanged()));
-    connect(round, SIGNAL(activated(int)), SLOT(updateChanged()));
-    connect(toolbarBorders, SIGNAL(activated(int)), SLOT(updateChanged()));
-    connect(sliderThumbs, SIGNAL(activated(int)), SLOT(updateChanged()));
-    connect(handles, SIGNAL(activated(int)), SLOT(updateChanged()));
-    connect(appearance, SIGNAL(activated(int)), SLOT(updateChanged()));
+    connect(menuStripeAppearance, SIGNAL(currentIndexChanged(int)), SLOT(updateChanged()));
+    connect(round, SIGNAL(currentIndexChanged(int)), SLOT(updateChanged()));
+    connect(toolbarBorders, SIGNAL(currentIndexChanged(int)), SLOT(updateChanged()));
+    connect(sliderThumbs, SIGNAL(currentIndexChanged(int)), SLOT(updateChanged()));
+    connect(handles, SIGNAL(currentIndexChanged(int)), SLOT(updateChanged()));
+    connect(appearance, SIGNAL(currentIndexChanged(int)), SLOT(updateChanged()));
     connect(customMenuTextColor, SIGNAL(toggled(bool)), SLOT(customMenuTextColorChanged()));
-    connect(stripedProgress, SIGNAL(activated(int)), SLOT(stripedProgressChanged()));
+    connect(stripedProgress, SIGNAL(currentIndexChanged(int)), SLOT(stripedProgressChanged()));
     connect(animatedProgress, SIGNAL(toggled(bool)), SLOT(updateChanged()));
     connect(embolden, SIGNAL(toggled(bool)), SLOT(emboldenToggled()));
-    connect(defBtnIndicator, SIGNAL(activated(int)), SLOT(defBtnIndicatorChanged()));
+    connect(defBtnIndicator, SIGNAL(currentIndexChanged(int)), SLOT(defBtnIndicatorChanged()));
     connect(highlightTab, SIGNAL(toggled(bool)), SLOT(updateChanged()));
-    connect(menubarAppearance, SIGNAL(activated(int)), SLOT(updateChanged()));
-    connect(toolbarAppearance, SIGNAL(activated(int)), SLOT(updateChanged()));
-    connect(lvAppearance, SIGNAL(activated(int)), SLOT(updateChanged()));
-    connect(sliderAppearance, SIGNAL(activated(int)), SLOT(updateChanged()));
-    connect(tabAppearance, SIGNAL(activated(int)), SLOT(updateChanged()));
-    connect(activeTabAppearance, SIGNAL(activated(int)), SLOT(activeTabAppearanceChanged()));
-    connect(toolbarSeparators, SIGNAL(activated(int)), SLOT(updateChanged()));
-    connect(splitters, SIGNAL(activated(int)), SLOT(updateChanged()));
+    connect(menubarAppearance, SIGNAL(currentIndexChanged(int)), SLOT(updateChanged()));
+    connect(toolbarAppearance, SIGNAL(currentIndexChanged(int)), SLOT(updateChanged()));
+    connect(lvAppearance, SIGNAL(currentIndexChanged(int)), SLOT(updateChanged()));
+    connect(sliderAppearance, SIGNAL(currentIndexChanged(int)), SLOT(updateChanged()));
+    connect(tabAppearance, SIGNAL(currentIndexChanged(int)), SLOT(updateChanged()));
+    connect(activeTabAppearance, SIGNAL(currentIndexChanged(int)), SLOT(activeTabAppearanceChanged()));
+    connect(toolbarSeparators, SIGNAL(currentIndexChanged(int)), SLOT(updateChanged()));
+    connect(splitters, SIGNAL(currentIndexChanged(int)), SLOT(updateChanged()));
     connect(fixParentlessDialogs, SIGNAL(toggled(bool)), SLOT(updateChanged()));
     connect(fillSlider, SIGNAL(toggled(bool)), SLOT(updateChanged()));
-    connect(sliderStyle, SIGNAL(activated(int)), SLOT(updateChanged()));
+    connect(sliderStyle, SIGNAL(currentIndexChanged(int)), SLOT(updateChanged()));
     connect(roundMbTopOnly, SIGNAL(toggled(bool)), SLOT(updateChanged()));
     connect(fillProgress, SIGNAL(toggled(bool)), SLOT(updateChanged()));
     connect(darkerBorders, SIGNAL(toggled(bool)), SLOT(updateChanged()));
@@ -428,22 +430,22 @@ QtCurveConfig::QtCurveConfig(QWidget *parent)
     connect(colorSelTab, SIGNAL(toggled(bool)), SLOT(updateChanged()));
     connect(stdSidebarButtons, SIGNAL(toggled(bool)), SLOT(updateChanged()));
     connect(borderMenuitems, SIGNAL(toggled(bool)), SLOT(updateChanged()));
-    connect(progressAppearance, SIGNAL(activated(int)), SLOT(updateChanged()));
-    connect(progressGrooveAppearance, SIGNAL(activated(int)), SLOT(updateChanged()));
-    connect(progressGrooveColor, SIGNAL(activated(int)), SLOT(updateChanged()));
-    connect(menuitemAppearance, SIGNAL(activated(int)), SLOT(updateChanged()));
-    connect(titlebarAppearance, SIGNAL(activated(int)), SLOT(updateChanged()));
-    connect(inactiveTitlebarAppearance, SIGNAL(activated(int)), SLOT(updateChanged()));
-    connect(titlebarButtonAppearance, SIGNAL(activated(int)), SLOT(updateChanged()));
+    connect(progressAppearance, SIGNAL(currentIndexChanged(int)), SLOT(updateChanged()));
+    connect(progressGrooveAppearance, SIGNAL(currentIndexChanged(int)), SLOT(updateChanged()));
+    connect(progressGrooveColor, SIGNAL(currentIndexChanged(int)), SLOT(updateChanged()));
+    connect(menuitemAppearance, SIGNAL(currentIndexChanged(int)), SLOT(updateChanged()));
+    connect(titlebarAppearance, SIGNAL(currentIndexChanged(int)), SLOT(updateChanged()));
+    connect(inactiveTitlebarAppearance, SIGNAL(currentIndexChanged(int)), SLOT(updateChanged()));
+    connect(titlebarButtonAppearance, SIGNAL(currentIndexChanged(int)), SLOT(updateChanged()));
     connect(colorTitlebarOnly, SIGNAL(toggled(bool)), SLOT(updateChanged()));
-    connect(selectionAppearance, SIGNAL(activated(int)), SLOT(updateChanged()));
-    connect(shadeCheckRadio, SIGNAL(activated(int)), SLOT(shadeCheckRadioChanged()));
+    connect(selectionAppearance, SIGNAL(currentIndexChanged(int)), SLOT(updateChanged()));
+    connect(shadeCheckRadio, SIGNAL(currentIndexChanged(int)), SLOT(shadeCheckRadioChanged()));
     connect(customCheckRadioColor, SIGNAL(changed(const QColor &)), SLOT(updateChanged()));
-    connect(focus, SIGNAL(activated(int)), SLOT(updateChanged()));
+    connect(focus, SIGNAL(currentIndexChanged(int)), SLOT(updateChanged()));
     connect(lvLines, SIGNAL(toggled(bool)), SLOT(updateChanged()));
     connect(drawStatusBarFrames, SIGNAL(toggled(bool)), SLOT(updateChanged()));
-    connect(buttonEffect, SIGNAL(activated(int)), SLOT(buttonEffectChanged()));
-    connect(coloredMouseOver, SIGNAL(activated(int)), SLOT(coloredMouseOverChanged()));
+    connect(buttonEffect, SIGNAL(currentIndexChanged(int)), SLOT(buttonEffectChanged()));
+    connect(coloredMouseOver, SIGNAL(currentIndexChanged(int)), SLOT(coloredMouseOverChanged()));
     connect(menubarMouseOver, SIGNAL(toggled(bool)), SLOT(updateChanged()));
     connect(shadeMenubarOnlyWhenActive, SIGNAL(toggled(bool)), SLOT(updateChanged()));
     connect(thinnerMenuItems, SIGNAL(toggled(bool)), SLOT(updateChanged()));
@@ -451,11 +453,11 @@ QtCurveConfig::QtCurveConfig(QWidget *parent)
     connect(customMenubarsColor, SIGNAL(changed(const QColor &)), SLOT(updateChanged()));
     connect(customMenuSelTextColor, SIGNAL(changed(const QColor &)), SLOT(updateChanged()));
     connect(customMenuNormTextColor, SIGNAL(changed(const QColor &)), SLOT(updateChanged()));
-    connect(shadeSliders, SIGNAL(activated(int)), SLOT(shadeSlidersChanged()));
-    connect(shadeMenubars, SIGNAL(activated(int)), SLOT(shadeMenubarsChanged()));
+    connect(shadeSliders, SIGNAL(currentIndexChanged(int)), SLOT(shadeSlidersChanged()));
+    connect(shadeMenubars, SIGNAL(currentIndexChanged(int)), SLOT(shadeMenubarsChanged()));
     connect(highlightFactor, SIGNAL(valueChanged(int)), SLOT(updateChanged()));
-    connect(scrollbarType, SIGNAL(activated(int)), SLOT(updateChanged()));
-    connect(shading, SIGNAL(activated(int)), SLOT(shadingChanged()));
+    connect(scrollbarType, SIGNAL(currentIndexChanged(int)), SLOT(updateChanged()));
+    connect(shading, SIGNAL(currentIndexChanged(int)), SLOT(shadingChanged()));
     connect(gtkScrollViews, SIGNAL(toggled(bool)), SLOT(updateChanged()));
     connect(squareScrollViews, SIGNAL(toggled(bool)), SLOT(updateChanged()));
     connect(highlightScrollViews, SIGNAL(toggled(bool)), SLOT(updateChanged()));
@@ -469,6 +471,8 @@ QtCurveConfig::QtCurveConfig(QWidget *parent)
     connect(inactiveHighlight, SIGNAL(toggled(bool)), SLOT(updateChanged()));
     connect(colorMenubarMouseOver, SIGNAL(toggled(bool)), SLOT(updateChanged()));
     connect(useHighlightForMenu, SIGNAL(toggled(bool)), SLOT(updateChanged()));
+    connect(groupBoxLine, SIGNAL(toggled(bool)), SLOT(updateChanged()));
+    connect(fadeLines, SIGNAL(toggled(bool)), SLOT(updateChanged()));
 
     defaultSettings(&defaultStyle);
     if(!readConfig(NULL, &currentStyle, &defaultStyle))
@@ -1056,7 +1060,7 @@ void QtCurveConfig::setOptions(Options &opts)
     opts.fixParentlessDialogs=fixParentlessDialogs->isChecked();
     opts.animatedProgress=animatedProgress->isChecked();
     opts.stripedProgress=(EStripe)stripedProgress->currentIndex();
-    opts.lighterPopupMenuBgnd=((double)(lighterPopupMenuBgnd->value()+100))/100.0;
+    opts.lighterPopupMenuBgnd=lighterPopupMenuBgnd->value();
     opts.menuStripe=menuStripe->isChecked();
     opts.menuStripeAppearance=(EAppearance)menuStripeAppearance->currentIndex();
     opts.embolden=embolden->isChecked();
@@ -1077,7 +1081,7 @@ void QtCurveConfig::setOptions(Options &opts)
     opts.splitters=(ELine)splitters->currentIndex();
     opts.customSlidersColor=customSlidersColor->color();
     opts.customMenubarsColor=customMenubarsColor->color();
-    opts.highlightFactor=((double)(highlightFactor->value()+100))/100.0;
+    opts.highlightFactor=highlightFactor->value();
     opts.customMenuNormTextColor=customMenuNormTextColor->color();
     opts.customMenuSelTextColor=customMenuSelTextColor->color();
     opts.customMenuTextColor=customMenuTextColor->isChecked();
@@ -1120,6 +1124,8 @@ void QtCurveConfig::setOptions(Options &opts)
     opts.customGradient=customGradient;
     opts.colorMenubarMouseOver=colorMenubarMouseOver->isChecked();
     opts.useHighlightForMenu=useHighlightForMenu->isChecked();
+    opts.groupBoxLine=groupBoxLine->isChecked();
+    opts.fadeLines=fadeLines->isChecked();
 
     if(customShading->isChecked())
     {
@@ -1135,7 +1141,7 @@ void QtCurveConfig::setWidgetOptions(const Options &opts)
 {
     round->setCurrentIndex(opts.round);
     scrollbarType->setCurrentIndex(opts.scrollbarType);
-    lighterPopupMenuBgnd->setValue((int)(opts.lighterPopupMenuBgnd*100)-100);
+    lighterPopupMenuBgnd->setValue(opts.lighterPopupMenuBgnd);
     menuStripe->setChecked(opts.menuStripe);
     menuStripeAppearance->setCurrentIndex(opts.menuStripeAppearance);
     toolbarBorders->setCurrentIndex(opts.toolbarBorders);
@@ -1166,7 +1172,7 @@ void QtCurveConfig::setWidgetOptions(const Options &opts)
     splitters->setCurrentIndex(opts.splitters);
     shadeSliders->setCurrentIndex(opts.shadeSliders);
     shadeMenubars->setCurrentIndex(opts.shadeMenubars);
-    highlightFactor->setValue((int)(opts.highlightFactor*100)-100);
+    highlightFactor->setValue(opts.highlightFactor);
     customSlidersColor->setColor(opts.customSlidersColor);
     customMenubarsColor->setColor(opts.customMenubarsColor);
     customMenuNormTextColor->setColor(opts.customMenuNormTextColor);
@@ -1207,6 +1213,8 @@ void QtCurveConfig::setWidgetOptions(const Options &opts)
     customCheckRadioColor->setColor(opts.customCheckRadioColor);
     colorMenubarMouseOver->setChecked(opts.colorMenubarMouseOver);
     useHighlightForMenu->setChecked(opts.useHighlightForMenu);
+    groupBoxLine->setChecked(opts.groupBoxLine);
+    fadeLines->setChecked(opts.fadeLines);
 
     shading->setCurrentIndex(opts.shading);
     gtkScrollViews->setChecked(opts.gtkScrollViews);
@@ -1242,7 +1250,7 @@ bool QtCurveConfig::settingsChanged()
          fixParentlessDialogs->isChecked()!=currentStyle.fixParentlessDialogs ||
          animatedProgress->isChecked()!=currentStyle.animatedProgress ||
          stripedProgress->currentIndex()!=currentStyle.stripedProgress ||
-         (lighterPopupMenuBgnd->value()+100)!=(int)(currentStyle.lighterPopupMenuBgnd*100) ||
+         lighterPopupMenuBgnd->value()!=currentStyle.lighterPopupMenuBgnd ||
          menuStripe->isChecked()!=currentStyle.menuStripe ||
          menuStripeAppearance->currentIndex()!=currentStyle.menuStripeAppearance ||
          embolden->isChecked()!=currentStyle.embolden ||
@@ -1286,6 +1294,8 @@ bool QtCurveConfig::settingsChanged()
          splitters->currentIndex()!=currentStyle.splitters ||
          colorMenubarMouseOver->isChecked()!=currentStyle.colorMenubarMouseOver ||
          useHighlightForMenu->isChecked()!=currentStyle.useHighlightForMenu ||
+         groupBoxLine->isChecked()!=currentStyle.groupBoxLine ||
+         fadeLines->isChecked()!=currentStyle.fadeLines ||
 
          shading->currentIndex()!=(int)currentStyle.shading ||
          gtkScrollViews->isChecked()!=currentStyle.gtkScrollViews ||
@@ -1301,7 +1311,7 @@ bool QtCurveConfig::settingsChanged()
 
          toInt(passwordChar->text())!=currentStyle.passwordChar ||
 
-         (highlightFactor->value()+100)!=(int)(currentStyle.highlightFactor*100) ||
+         highlightFactor->value()!=currentStyle.highlightFactor ||
          customMenuTextColor->isChecked()!=currentStyle.customMenuTextColor ||
          (SHADE_CUSTOM==currentStyle.shadeSliders &&
                customSlidersColor->color()!=currentStyle.customSlidersColor) ||

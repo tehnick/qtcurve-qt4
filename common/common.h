@@ -2,7 +2,7 @@
 #define __COMMON_H__
 
 /*
-  QtCurve (C) Craig Drummond, 2003 - 2008 Craig.Drummond@lycos.co.uk
+  QtCurve (C) Craig Drummond, 2003 - 2009 craig_p_drummond@yahoo.co.uk
 
   ----
 
@@ -177,6 +177,8 @@ typedef GdkColor color;
 
 #define QTC_ROUNDED (ROUND_NONE!=opts.round)
 
+#define QTC_TOOLBAR_SEP_GAP        (opts.fadeLines ? 5 : 6)
+#define QTC_FADE_SIZE              0.4
 #define QTC_ETCHED_DARK            0.95
 #define SHADE_BEVEL_GRAD_LIGHT     (QTC_SIMPLE_SHADING ? 1.05 : 1.07)
 #define SHADE_BEVEL_GRAD_DARK      (QTC_SIMPLE_SHADING ? 0.93 : 0.91)
@@ -251,16 +253,17 @@ typedef GdkColor color;
 #define TOO_DARK(A) ((A).red<MENUBAR_DARK_LIMIT || (A).green<MENUBAR_DARK_LIMIT || (A).blue<MENUBAR_DARK_LIMIT)
 #endif
 
-#define DEFAULT_HIGHLIGHT_FACTOR   1.05
-#define MAX_HIGHLIGHT_FACTOR         50
-#define MIN_HIGHLIGHT_FACTOR        -50
-#define MENUBAR_DARK_FACTOR        0.97
-#define INACTIVE_HIGHLIGHT_FACTOR  1.20
-#define DEF_POPUPMENU_LIGHT_FACTOR 1.15
-#define MIN_LIGHTER_POPUP_MENU        0
-#define MAX_LIGHTER_POPUP_MENU      100
+#define QTC_TO_FACTOR(A) ((100.0+((double)A))/100.0)
+#define DEFAULT_HIGHLIGHT_FACTOR                   5
+#define MAX_HIGHLIGHT_FACTOR                      50
+#define MIN_HIGHLIGHT_FACTOR                     -50
+#define MENUBAR_DARK_FACTOR        QTC_TO_FACTOR(-3)
+#define INACTIVE_HIGHLIGHT_FACTOR  QTC_TO_FACTOR(20)
+#define DEF_POPUPMENU_LIGHT_FACTOR                 2
+#define MIN_LIGHTER_POPUP_MENU                  -100
+#define MAX_LIGHTER_POPUP_MENU                   100
 
-#define USE_LIGHTER_POPUP_MENU (opts.lighterPopupMenuBgnd>1)
+#define USE_LIGHTER_POPUP_MENU (opts.lighterPopupMenuBgnd)
 
 #define USE_SHADED_MENU_BAR_COLORS (SHADE_CUSTOM==opts.shadeMenubars || SHADE_BLEND_SELECTED==opts.shadeMenubars)
 #define MENUBAR_GLASS_SELECTED_DARK_FACTOR 0.9
@@ -325,7 +328,11 @@ typedef GdkColor color;
                                     : QTC_MO_PLASTIK_LIGHT(W))
 
 #define QTC_FULLLY_ROUNDED     (opts.round>=ROUND_FULL)
+#if !defined __cplusplus || (defined QT_VERSION && (QT_VERSION >= 0x040000))
+#define QTC_DO_EFFECT          (EFFECT_NONE!=opts.buttonEffect)
+#else
 #define QTC_DO_EFFECT          (QTC_FULLLY_ROUNDED && EFFECT_NONE!=opts.buttonEffect)
+#endif
 
 #if !defined __cplusplus || (defined QT_VERSION && (QT_VERSION >= 0x040000))
 #define QTC_FOCUS_ALPHA              0.08
@@ -491,10 +498,9 @@ typedef enum
     LINE_SUNKEN,
     LINE_FLAT,
     LINE_DOTS,
-    LINE_DASHES
+    LINE_DASHES,
+    LINE_NONE
 } ELine;
-
-#define LINE_NONE LINE_DASHES
 
 typedef enum
 {
@@ -1058,8 +1064,8 @@ typedef struct
 
 #endif
     int              contrast,
-                     passwordChar;
-    double           highlightFactor,
+                     passwordChar,
+                     highlightFactor,
                      lighterPopupMenuBgnd;
     ERound           round;
     bool             embolden,
@@ -1098,6 +1104,10 @@ typedef struct
                      vArrows,
                      xCheck,
                      framelessGroupBoxes,
+                     groupBoxLine,
+#if defined QTC_CONFIG_DIALOG || (defined QT_VERSION && (QT_VERSION >= 0x040000)) || !defined __cplusplus
+                     fadeLines,
+#endif
 #if defined __cplusplus || defined QTC_GTK2_MENU_STRIPE
                      menuStripe,
 #endif
@@ -1270,6 +1280,7 @@ static double getRadius(ERound r, int w, int h, EWidget widget, ERadius rad)
         case RADIUS_SELECTION:
             switch(r)
             {
+                case ROUND_EXTRA:
                 case ROUND_FULL:
                     if(w>48 && h>48)
                         return 3.0;
@@ -1333,3 +1344,4 @@ static double getRadius(ERound r, int w, int h, EWidget widget, ERadius rad)
 #endif
 
 #endif
+

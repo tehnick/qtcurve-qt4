@@ -2,7 +2,7 @@
 #define __QTCURVE_H__
 
 /*
-  QtCurve (C) Craig Drummond, 2007 Craig.Drummond@lycos.co.uk
+  QtCurve (C) Craig Drummond, 2007 - 2009 craig_p_drummond@yahoo.co.uk
 
   ----
 
@@ -29,6 +29,7 @@
 #include <QPalette>
 #include <QMap>
 #include <QList>
+#include <QSet>
 #include <QCache>
 #include <QColor>
 #include <QStyleOption>
@@ -49,6 +50,9 @@ typedef QString QtcKey;
 // #endif
 
 class QStyleOptionSlider;
+class QLabel;
+class QMenuBar;
+class QScrollBar;
 
 class QtCurveStyle : public QWindowsStyle
 {
@@ -56,6 +60,13 @@ class QtCurveStyle : public QWindowsStyle
 
     public:
 
+    enum Version
+    {
+        VER_UNKNOWN,
+        VER_4x,  // <=4.4
+        VER_45   // >=4.5
+    };
+    
     QtCurveStyle(const QString &name=QString());
     ~QtCurveStyle();
 
@@ -88,6 +99,9 @@ class QtCurveStyle : public QWindowsStyle
         return qGray(col.rgb()) < 100 ? QColor(255, 255, 255, 75) : QColor(0, 0, 0, 75);
     }
 
+    void drawFadedLine(QPainter *p, const QRect &r, const QColor &col, bool fadeStart, bool fadeEnd, bool horiz) const;
+    void drawLines(QPainter *p, const QRect &r, bool horiz, int nLines, int offset, const QColor *cols, int startOffset,
+                   int dark, int etchedDisp=1, bool light=true) const;
     void drawProgressBevelGradient(QPainter *p, const QRect &origRect, const QStyleOption *option, bool horiz, double shadeTop,
                                    double shadeBot, EAppearance bevApp) const;
     void drawBevelGradient(const QColor &base, bool increase, QPainter *p, QRect const &r,
@@ -134,13 +148,19 @@ class QtCurveStyle : public QWindowsStyle
     void           readMdiPositions() const;
     const QColor & getFill(const QStyleOption *option, const QColor *use, bool cr=false) const;
     const QColor & getTabFill(bool current, bool highlight, const QColor *use) const;
+    const QColor & menuStripeCol() const;
     QPixmap *      getPixmap(const QColor col, EPixmap p, double shade=1.0) const;
+    int            konqMenuBarSize(const QMenuBar *menu) const;
+    Version        qtVersion() const;
 
     private Q_SLOTS:
 
     void           widgetDestroyed(QObject *o);
     void           setupKde4();
     QIcon          standardIconImplementation(StandardPixmap pix, const QStyleOption *option=0, const QWidget *widget=0) const;
+    int            layoutSpacingImplementation(QSizePolicy::ControlType control1, QSizePolicy::ControlType control2,
+                                               Qt::Orientation orientation, const QStyleOption *option,
+                                               const QWidget *widget) const;
     void           kdeGlobalSettingsChange(int type, int);
 
     private:
@@ -165,7 +185,8 @@ class QtCurveStyle : public QWindowsStyle
     mutable QCache<QtcKey, QPixmap>    itsPixmapCache;
     mutable bool                       itsActive;
     mutable const QWidget              *itsSbWidget;
-    QList<QProgressBar *>              itsProgressBars;
+    mutable QLabel                     *itsClickedLabel;
+    QSet<QProgressBar *>               itsProgressBars;
     int                                itsProgressBarAnimateTimer,
                                        itsAnimateStep;
     QTime                              itsTimer;
@@ -175,6 +196,9 @@ class QtCurveStyle : public QWindowsStyle
     // Required for Q3Header hover...
     QPoint                             itsPos;
     QWidget                            *itsHoverWidget;
+    mutable Version                    itsQtVersion;
+    mutable QScrollBar                 *itsSViewSBar;
+    mutable QMap<QWidget *, QSet<QWidget *> > itsSViewContainers;
 };
 
 #endif

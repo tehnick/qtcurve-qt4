@@ -5,8 +5,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>733</width>
-    <height>630</height>
+    <width>715</width>
+    <height>611</height>
    </rect>
   </property>
   <property name="windowTitle" >
@@ -149,12 +149,29 @@
          </property>
         </widget>
        </item>
-       <item row="5" column="0" colspan="2" >
-        <widget class="QCheckBox" name="framelessGroupBoxes" >
-         <property name="text" >
-          <string>Frameless groupboxes</string>
-         </property>
-        </widget>
+       <item row="5" column="0" colspan="3" >
+        <layout class="QHBoxLayout" name="horizontalLayout" >
+         <item>
+          <widget class="QCheckBox" name="framelessGroupBoxes" >
+           <property name="text" >
+            <string>Frameless groupboxes,</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QCheckBox" name="groupBoxLine" >
+           <property name="sizePolicy" >
+            <sizepolicy vsizetype="Fixed" hsizetype="MinimumExpanding" >
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="text" >
+            <string>draw line after title</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
        </item>
        <item row="6" column="0" colspan="2" >
         <widget class="QCheckBox" name="vArrows" >
@@ -197,6 +214,13 @@ p, li { white-space: pre-wrap; }
         </widget>
        </item>
        <item row="10" column="0" >
+        <widget class="QCheckBox" name="fadeLines" >
+         <property name="text" >
+          <string>Draw fading lines (KDE4 &amp; Gtk2)</string>
+         </property>
+        </widget>
+       </item>
+       <item row="11" column="0" >
         <spacer>
          <property name="orientation" >
           <enum>Qt::Vertical</enum>
@@ -1655,9 +1679,11 @@ p, li { white-space: pre-wrap; }
   <tabstop>focus</tabstop>
   <tabstop>drawStatusBarFrames</tabstop>
   <tabstop>framelessGroupBoxes</tabstop>
+  <tabstop>groupBoxLine</tabstop>
   <tabstop>vArrows</tabstop>
   <tabstop>stdSidebarButtons</tabstop>
   <tabstop>darkerBorders</tabstop>
+  <tabstop>fadeLines</tabstop>
   <tabstop>comboSplitter</tabstop>
   <tabstop>splitters</tabstop>
   <tabstop>sliderAppearance</tabstop>
@@ -1744,5 +1770,22 @@ p, li { white-space: pre-wrap; }
   <include location="local" >kcolorbutton.h</include>
  </includes>
  <resources/>
- <connections/>
+ <connections>
+  <connection>
+   <sender>framelessGroupBoxes</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>groupBoxLine</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel" >
+     <x>251</x>
+     <y>206</y>
+    </hint>
+    <hint type="destinationlabel" >
+     <x>422</x>
+     <y>212</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
 </ui>

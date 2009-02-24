@@ -4454,6 +4454,7 @@ void QtCurveStyle::drawControl(ControlElement element, const QStyleOption *optio
         case CE_MenuVMargin:
         case CE_MenuEmptyArea:
             break;
+#if 0
         case CE_PushButton:
             if(const QStyleOptionButton *btn = qstyleoption_cast<const QStyleOptionButton *>(option))
             {
@@ -4474,6 +4475,7 @@ void QtCurveStyle::drawControl(ControlElement element, const QStyleOption *optio
                 }
             }
             break;
+#endif
         case CE_PushButtonBevel:
             if (const QStyleOptionButton *btn = qstyleoption_cast<const QStyleOptionButton *>(option))
             {
@@ -4563,8 +4565,8 @@ void QtCurveStyle::drawControl(ControlElement element, const QStyleOption *optio
 
                 //this tweak ensures the font is perfectly centered on small sizes
                 //but slightly downward to make it more gnomeish if not
-                if (button->fontMetrics.height() > 14)
-                    r.translate(0, 1);
+//                 if (button->fontMetrics.height() > 14)
+//                     r.translate(0, 1);
 
                 if (button->features&QStyleOptionButton::HasMenu)
                 {
@@ -4731,6 +4733,13 @@ void QtCurveStyle::drawControl(ControlElement element, const QStyleOption *optio
                 if (!styleHint(SH_UnderlineShortcut, option, widget))
                     alignment |= Qt::TextHideMnemonic;
 
+#if QT_VERSION >= 0x040500
+                r = subElementRect(SE_TabBarTabText, option, widget);
+#else
+                if(qtVersion()>=VER_45)
+                    r = subElementRect((QStyle::SubElement)(SE_ItemViewItemFocusRect+3), option, widget);
+#endif
+
                 if (!tabV2.icon.isNull())
                 {
                     QSize iconSize(tabV2.iconSize);
@@ -4741,7 +4750,7 @@ void QtCurveStyle::drawControl(ControlElement element, const QStyleOption *optio
                     }
 
                     QPixmap tabIcon(getIconPixmap(tabV2.icon, iconSize, state&State_Enabled));
-
+#if 0
                     static const int constIconPad=6;
 
                     if(reverse)
@@ -4755,13 +4764,40 @@ void QtCurveStyle::drawControl(ControlElement element, const QStyleOption *optio
                         painter->drawPixmap(r.left() + constIconPad, r.center().y() - tabIcon.height() / 2, tabIcon);
                         r.setLeft(r.left() + iconSize.width() + constIconPad);
                     }
+#endif
+                    QSize tabIconSize = tabV2.icon.actualSize(iconSize, tabV2.state&State_Enabled
+                                                                ? QIcon::Normal
+                                                                : QIcon::Disabled);
+
+                    int offset = 4,
+                        left = option->rect.left();
+#if QT_VERSION >= 0x040500
+                    if (tabV2.leftButtonSize.isNull())
+                        offset += 2;
+                    else
+                        left += tabV2.leftButtonSize.width() + (6 + 2) + 2;
+#endif
+                    QRect iconRect = QRect(left + offset, r.center().y() - tabIcon.height() / 2,
+                                           tabIconSize.width(), tabIconSize.height());
+                    if (!verticalTabs)
+                        iconRect = visualRect(option->direction, option->rect, iconRect);
+                    painter->drawPixmap(iconRect.x(), iconRect.y(), tabIcon);
+#if QT_VERSION < 0x040500
+                    if(qtVersion()<VER_45)
+                        r.adjust(tabIconSize.width(), 0, -tabIconSize.width(), 0);
+#endif
                 }
 
                 if(!tab->text.isEmpty())
                 {
-                    static const int constBorder=6;
+#if QT_VERSION < 0x040500
+                    if(qtVersion()<VER_45)
+                    {
+                        static const int constBorder=6;
 
-                    r.adjust(constBorder, 0, -constBorder, 0);
+                        r.adjust(constBorder, 0, -constBorder, 0);
+                    }
+#endif
                     drawItemText(painter, r, alignment, tab->palette, tab->state&State_Enabled, tab->text, QPalette::WindowText);
                 }
 
@@ -5525,7 +5561,7 @@ void QtCurveStyle::drawComplexControl(ComplexControl control, const QStyleOption
                                              widget->parentWidget() && widget->parentWidget()->inherits("KMenu"));
 
                 if (!(bflags&State_Enabled))
-                    bflags &= ~(State_MouseOver | State_Raised);
+                    bflags &= ~(State_MouseOver/* | State_Raised*/);
 
                 if(bflags&State_MouseOver)
                     bflags |= State_Raised;
@@ -8186,7 +8222,8 @@ void QtCurveStyle::drawBorder(QPainter *p, const QRect &r, const QStyleOption *o
                         ? option->palette.background().color()
                         : WIDGET_ENTRY==w && !hasFocus
                             ? option->palette.base().color()
-                            : enabled && (BORDER_SUNKEN==borderProfile || hasFocus || APPEARANCE_FLAT!=app)
+                            : enabled && (BORDER_SUNKEN==borderProfile || hasFocus || APPEARANCE_FLAT!=app ||
+                                          WIDGET_TAB_TOP==w || WIDGET_TAB_BOT==w)
                                 ? br
                                 : option->palette.background().color());
             p->drawPath(botPath);

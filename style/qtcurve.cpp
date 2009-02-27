@@ -2512,10 +2512,10 @@ void QtCurveStyle::drawPrimitive(PrimitiveElement element, const QStyleOption *o
                     {
                         int y(r.y()+((r.height()-2) / 2));
 
-                        drawFadedLine(painter, QRect(r.x()+QTC_TOOLBAR_SEP_GAP, y, r.height()-(QTC_TOOLBAR_SEP_GAP*2), 1),
+                        drawFadedLine(painter, QRect(r.x()+QTC_TOOLBAR_SEP_GAP, y, r.width()-(QTC_TOOLBAR_SEP_GAP*2), 1),
                                       itsBackgroundCols[LINE_SUNKEN==opts.toolbarSeparators ? 3 : 4], true, true, true);
                         if(LINE_SUNKEN==opts.toolbarSeparators)
-                            drawFadedLine(painter, QRect(r.x()+QTC_TOOLBAR_SEP_GAP, y+1, r.height()-(QTC_TOOLBAR_SEP_GAP*2), 1),
+                            drawFadedLine(painter, QRect(r.x()+QTC_TOOLBAR_SEP_GAP, y+1, r.width()-(QTC_TOOLBAR_SEP_GAP*2), 1),
                                           itsBackgroundCols[0], true, true, true);
                     }
                     break;
@@ -4792,7 +4792,7 @@ void QtCurveStyle::drawControl(ControlElement element, const QStyleOption *optio
                     painter->drawPixmap(iconRect.x(), iconRect.y(), tabIcon);
 #if QT_VERSION < 0x040500
                     if(qtVersion()<VER_45)
-                        r.adjust(tabIconSize.width(), 0, -tabIconSize.width(), 0);
+                        r.adjust(reverse ? 0 : tabIconSize.width(), 0, reverse ? -tabIconSize.width() : 0, 0);
 #endif
                 }
 
@@ -6617,15 +6617,13 @@ void QtCurveStyle::drawComplexControl(ComplexControl control, const QStyleOption
                     }
                     else if(opts.comboSplitter)
                     {
-                        painter->setPen(use[QT_BORDER(state&State_Enabled)]);
-                        painter->drawLine(reverse ? arrow.right()+1 : arrow.x()-1, arrow.top()+2,
-                                          reverse ? arrow.right()+1 : arrow.x()-1, arrow.bottom()-2);
+                        drawFadedLine(painter, QRect(reverse ? arrow.right()+1 : arrow.x()-1, arrow.top()+2,
+                                                     1, arrow.height()-4),
+                                      use[QT_BORDER(state&State_Enabled)], true, true, false);
                         if(!sunken)
-                        {
-                            painter->setPen(use[0]);
-                            painter->drawLine(reverse ? arrow.right()+2 : arrow.x(), arrow.top()+2,
-                                              reverse ? arrow.right()+2 : arrow.x(), arrow.bottom()-2);
-                        }
+                            drawFadedLine(painter, QRect(reverse ? arrow.right()+2 : arrow.x(), arrow.top()+2,
+                                                         1, arrow.height()-4),
+                                          use[0], true, true, false);
                     }
 
                     if(state&State_Enabled && state&State_HasFocus &&

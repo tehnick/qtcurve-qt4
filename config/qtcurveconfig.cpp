@@ -167,9 +167,10 @@ void CGradientPreview::paintEvent(QPaintEvent *)
 
     if(stops.size())
     {
-        QLinearGradient              grad(r.topLeft(), r.bottomLeft());
-        GradientCont::const_iterator it(stops.begin()),
-                                     end(stops.end());
+        QLinearGradient                  grad(r.topLeft(), r.bottomLeft());
+        GradientStopCont                 st(stops.fix());
+        GradientStopCont::const_iterator it(st.begin()),
+                                         end(st.end());
 
         for(; it!=end; ++it)
         {
@@ -184,7 +185,7 @@ void CGradientPreview::paintEvent(QPaintEvent *)
     p.end();
 }
 
-void CGradientPreview::setGrad(const GradientCont &s)
+void CGradientPreview::setGrad(const GradientStopCont &s)
 {
     stops=s;
     repaint();
@@ -235,7 +236,9 @@ static void insertAppearanceEntries(QComboBox *combo, bool split=true, bool bev=
     combo->insertItem(APPEARANCE_RAISED, i18n("Raised"));
     combo->insertItem(APPEARANCE_DULL_GLASS, i18n("Dull glass"));
     combo->insertItem(APPEARANCE_SHINY_GLASS, i18n("Shiny glass"));
-    combo->insertItem(APPEARANCE_GRADIENT, i18n("Gradient"));
+    combo->insertItem(APPEARANCE_SOFT_GRADIENT, i18n("Soft gradient"));
+    combo->insertItem(APPEARANCE_GRADIENT, i18n("Standard gradient"));
+    combo->insertItem(APPEARANCE_HARSH_GRADIENT, i18n("Harsh gradient"));
     combo->insertItem(APPEARANCE_INVERTED, i18n("Inverted gradient"));
     if(split)
     {
@@ -283,7 +286,8 @@ static void insertRoundEntries(QComboBox *combo)
     combo->insertItem(ROUND_NONE, i18n("Square"));
     combo->insertItem(ROUND_SLIGHT, i18n("Slightly rounded"));
     combo->insertItem(ROUND_FULL, i18n("Fully rounded"));
-//    combo->insertItem(ROUND_EXTRA, i18n("Extra rounded (KDE4 & Gtk2)"));
+    combo->insertItem(ROUND_EXTRA, i18n("Extra rounded (KDE4 & Gtk2)"));
+    combo->insertItem(ROUND_MAX, i18n("Max rounded (KDE4 & Gtk2)"));
 }
 
 static void insertMouseOverEntries(QComboBox *combo)
@@ -344,8 +348,24 @@ static void insertFocusEntries(QComboBox *combo)
 {
     combo->insertItem(FOCUS_STANDARD, i18n("Standard (dotted)"));
     combo->insertItem(FOCUS_HIGHLIGHT, i18n("Highlight color"));
+    combo->insertItem(FOCUS_FULL, i18n("Highlight color (full size)"));
     combo->insertItem(FOCUS_FILLED, i18n("Highlight color, and fill (Gtk2 & KDE4 only)"));
     combo->insertItem(FOCUS_BACKGROUND, i18n("Background color"));
+    combo->insertItem(FOCUS_LINE, i18n("Line drawn with highlight color"));
+}
+
+static void insertGradBorderEntries(QComboBox *combo)
+{
+    combo->insertItem(GB_NONE, i18n("No border"));
+    combo->insertItem(GB_LIGHT, i18n("Light border"));
+    combo->insertItem(GB_3D, i18n("3D border"));
+}
+
+static void insertAlignEntries(QComboBox *combo)
+{
+    combo->insertItem(ALIGN_LEFT, i18n("Left"));
+    combo->insertItem(ALIGN_CENTER, i18n("Center"));
+    combo->insertItem(ALIGN_RIGHT, i18n("Right"));
 }
 
 QtCurveConfig::QtCurveConfig(QWidget *parent)
@@ -366,6 +386,8 @@ QtCurveConfig::QtCurveConfig(QWidget *parent)
     insertAppearanceEntries(activeTabAppearance, false);
     insertAppearanceEntries(progressAppearance);
     insertAppearanceEntries(progressGrooveAppearance);
+    insertAppearanceEntries(grooveAppearance);
+    insertAppearanceEntries(sunkenAppearance);
     insertAppearanceEntries(menuitemAppearance, true, true, true);
     insertAppearanceEntries(titlebarAppearance, true, false);
     insertAppearanceEntries(inactiveTitlebarAppearance, true, false);
@@ -387,6 +409,8 @@ QtCurveConfig::QtCurveConfig(QWidget *parent)
     insertSliderStyleEntries(sliderStyle);
     insertEColorEntries(progressGrooveColor);
     insertFocusEntries(focus);
+    insertGradBorderEntries(gradBorder);
+    insertAlignEntries(titlebarAlignment);
 
     highlightFactor->setRange(MIN_HIGHLIGHT_FACTOR, MAX_HIGHLIGHT_FACTOR);
     highlightFactor->setValue(DEFAULT_HIGHLIGHT_FACTOR);
@@ -397,7 +421,7 @@ QtCurveConfig::QtCurveConfig(QWidget *parent)
     connect(lighterPopupMenuBgnd, SIGNAL(valueChanged(int)), SLOT(updateChanged()));
     connect(menuStripe, SIGNAL(toggled(bool)), SLOT(updateChanged()));
     connect(menuStripeAppearance, SIGNAL(currentIndexChanged(int)), SLOT(updateChanged()));
-    connect(round, SIGNAL(currentIndexChanged(int)), SLOT(updateChanged()));
+    connect(round, SIGNAL(currentIndexChanged(int)), SLOT(roundChanged()));
     connect(toolbarBorders, SIGNAL(currentIndexChanged(int)), SLOT(updateChanged()));
     connect(sliderThumbs, SIGNAL(currentIndexChanged(int)), SLOT(updateChanged()));
     connect(handles, SIGNAL(currentIndexChanged(int)), SLOT(updateChanged()));
@@ -432,6 +456,8 @@ QtCurveConfig::QtCurveConfig(QWidget *parent)
     connect(borderMenuitems, SIGNAL(toggled(bool)), SLOT(updateChanged()));
     connect(progressAppearance, SIGNAL(currentIndexChanged(int)), SLOT(updateChanged()));
     connect(progressGrooveAppearance, SIGNAL(currentIndexChanged(int)), SLOT(updateChanged()));
+    connect(grooveAppearance, SIGNAL(currentIndexChanged(int)), SLOT(updateChanged()));
+    connect(sunkenAppearance, SIGNAL(currentIndexChanged(int)), SLOT(updateChanged()));
     connect(progressGrooveColor, SIGNAL(currentIndexChanged(int)), SLOT(updateChanged()));
     connect(menuitemAppearance, SIGNAL(currentIndexChanged(int)), SLOT(updateChanged()));
     connect(titlebarAppearance, SIGNAL(currentIndexChanged(int)), SLOT(updateChanged()));
@@ -441,7 +467,7 @@ QtCurveConfig::QtCurveConfig(QWidget *parent)
     connect(selectionAppearance, SIGNAL(currentIndexChanged(int)), SLOT(updateChanged()));
     connect(shadeCheckRadio, SIGNAL(currentIndexChanged(int)), SLOT(shadeCheckRadioChanged()));
     connect(customCheckRadioColor, SIGNAL(changed(const QColor &)), SLOT(updateChanged()));
-    connect(focus, SIGNAL(currentIndexChanged(int)), SLOT(updateChanged()));
+    connect(focus, SIGNAL(currentIndexChanged(int)), SLOT(focusChanged()));
     connect(lvLines, SIGNAL(toggled(bool)), SLOT(updateChanged()));
     connect(drawStatusBarFrames, SIGNAL(toggled(bool)), SLOT(updateChanged()));
     connect(buttonEffect, SIGNAL(currentIndexChanged(int)), SLOT(buttonEffectChanged()));
@@ -473,6 +499,7 @@ QtCurveConfig::QtCurveConfig(QWidget *parent)
     connect(useHighlightForMenu, SIGNAL(toggled(bool)), SLOT(updateChanged()));
     connect(groupBoxLine, SIGNAL(toggled(bool)), SLOT(updateChanged()));
     connect(fadeLines, SIGNAL(toggled(bool)), SLOT(updateChanged()));
+    connect(titlebarAlignment, SIGNAL(currentIndexChanged(int)), SLOT(updateChanged()));
 
     defaultSettings(&defaultStyle);
     if(!readConfig(NULL, &currentStyle, &defaultStyle))
@@ -561,6 +588,9 @@ void QtCurveConfig::defBtnIndicatorChanged()
     else if(IND_GLOW==defBtnIndicator->currentIndex() && EFFECT_NONE==buttonEffect->currentIndex())
         buttonEffect->setCurrentIndex(EFFECT_SHADOW);
 
+    if(IND_COLORED==defBtnIndicator->currentIndex() && round->currentIndex()>ROUND_FULL)
+        round->setCurrentIndex(ROUND_FULL);
+
     updateChanged();
 }
 
@@ -621,11 +651,12 @@ void QtCurveConfig::stripedProgressChanged()
 
 void QtCurveConfig::activeTabAppearanceChanged()
 {
-    int current(activeTabAppearance->currentIndex());
+    int  current(activeTabAppearance->currentIndex());
+    bool disableCol(APPEARANCE_FLAT==current && APPEARANCE_RAISED==current);
 
-    if(colorSelTab->isChecked() && APPEARANCE_GRADIENT!=current && APPEARANCE_INVERTED!=current)
+    if(colorSelTab->isChecked() && disableCol)
         colorSelTab->setChecked(false);
-    colorSelTab->setEnabled(APPEARANCE_GRADIENT==current || APPEARANCE_INVERTED==current);
+    colorSelTab->setEnabled(!disableCol);
     updateChanged();
 }
 
@@ -641,7 +672,10 @@ void QtCurveConfig::passwordCharClicked()
     CharSelectDialog dlg(this, cur);
 
     if(QDialog::Accepted==dlg.exec() && dlg.currentChar()!=cur)
+    {
         setPasswordChar(dlg.currentChar());
+        updateChanged();
+    }
 }
 
 void QtCurveConfig::setupStack()
@@ -681,17 +715,17 @@ void QtCurveConfig::changeStack()
 
 void QtCurveConfig::gradChanged(int i)
 {
-    CustomGradientCont::const_iterator it(customGradient.find((EAppearance)i));
+    GradientCont::const_iterator it(customGradient.find((EAppearance)i));
 
     gradStops->clear();
 
     if(it!=customGradient.end())
     {
-        gradPreview->setGrad((*it).second.grad);
-        gradLightBorder->setChecked((*it).second.lightBorder);
+        gradPreview->setGrad((*it).second.stops);
+        gradBorder->setCurrentIndex((*it).second.border);
 
-        GradientCont::const_iterator git((*it).second.grad.begin()),
-                                     gend((*it).second.grad.end());
+        GradientStopCont::const_iterator git((*it).second.stops.begin()),
+                                         gend((*it).second.stops.end());
 
         for(; git!=gend; ++git)
         {
@@ -707,11 +741,11 @@ void QtCurveConfig::gradChanged(int i)
     }
     else
     {
-        gradPreview->setGrad(GradientCont());
-        gradLightBorder->setChecked(false);
+        gradPreview->setGrad(GradientStopCont());
+        gradBorder->setCurrentIndex(GB_3D);
     }
 
-    gradLightBorder->setEnabled(APPEARANCE_SUNKEN!=i);
+    gradBorder->setEnabled(QTC_NUM_CUSTOM_GRAD!=i);
 }
 
 static double prev=0.0;
@@ -740,13 +774,13 @@ void QtCurveConfig::itemChanged(QTreeWidgetItem *i, int col)
     {
         double other=i->text(col ? 0 : 1).toDouble(&ok)/100.0;
 
-        CustomGradientCont::iterator it=customGradient.find((EAppearance)gradCombo->currentIndex());
+        GradientCont::iterator it=customGradient.find((EAppearance)gradCombo->currentIndex());
 
         if(it!=customGradient.end())
         {
-            (*it).second.grad.erase(Gradient(col ? other : prev, col ? prev : other));
-            (*it).second.grad.insert(Gradient(col ? other : val, col ? val : other));
-            gradPreview->setGrad((*it).second.grad);
+            (*it).second.stops.erase(GradientStop(col ? other : prev, col ? prev : other));
+            (*it).second.stops.insert(GradientStop(col ? other : val, col ? val : other));
+            gradPreview->setGrad((*it).second.stops);
             i->setText(col, QString().setNum(val*100.0));
             emit changed(true);
         }
@@ -757,14 +791,14 @@ void QtCurveConfig::addGradStop()
 {
     bool added(false);
 
-    CustomGradientCont::iterator cg=customGradient.find((EAppearance)gradCombo->currentIndex());
+    GradientCont::iterator cg=customGradient.find((EAppearance)gradCombo->currentIndex());
 
     if(cg==customGradient.end())
     {
-        CustomGradient cust;
+        Gradient cust;
 
-        cust.lightBorder=gradLightBorder->isChecked();
-        cust.grad.insert(Gradient(stopPosition->value()/100.0, stopValue->value()/100.0));
+        cust.border=(EGradientBorder)gradBorder->currentIndex();
+        cust.stops.insert(GradientStop(stopPosition->value()/100.0, stopValue->value()/100.0));
         customGradient[(EAppearance)gradCombo->currentIndex()]=cust;
         added=true;
         gradChanged(gradCombo->currentIndex());
@@ -772,10 +806,10 @@ void QtCurveConfig::addGradStop()
     }
     else
     {
-        GradientCont::const_iterator it((*cg).second.grad.begin()),
-                                     end((*cg).second.grad.end());
-        double                       pos(stopPosition->value()/100.0),
-                                     val(stopValue->value()/100.0);
+        GradientStopCont::const_iterator it((*cg).second.stops.begin()),
+                                         end((*cg).second.stops.end());
+        double                           pos(stopPosition->value()/100.0),
+                                         val(stopValue->value()/100.0);
 
         for(; it!=end; ++it)
             if(equal(pos, (*it).pos))
@@ -783,15 +817,15 @@ void QtCurveConfig::addGradStop()
                     return;
                 else
                 {
-                    (*cg).second.grad.erase(it);
+                    (*cg).second.stops.erase(it);
                     break;
                 }
 
-        unsigned int b4=(*cg).second.grad.size();
-        (*cg).second.grad.insert(Gradient(pos, val));
-        if((*cg).second.grad.size()!=b4)
+        unsigned int b4=(*cg).second.stops.size();
+        (*cg).second.stops.insert(GradientStop(pos, val));
+        if((*cg).second.stops.size()!=b4)
         {
-            gradPreview->setGrad((*cg).second.grad);
+            gradPreview->setGrad((*cg).second.stops);
 
             QStringList details;
 
@@ -817,7 +851,7 @@ void QtCurveConfig::removeGradStop()
         if(!next)
             next=gradStops->itemAbove(cur);
 
-        CustomGradientCont::iterator it=customGradient.find((EAppearance)gradCombo->currentIndex());
+        GradientCont::iterator it=customGradient.find((EAppearance)gradCombo->currentIndex());
 
         if(it!=customGradient.end())
         {
@@ -825,8 +859,8 @@ void QtCurveConfig::removeGradStop()
             double pos=cur->text(0).toDouble(&ok)/100.0,
                    val=cur->text(1).toDouble(&ok)/100.0;
 
-            (*it).second.grad.erase(Gradient(pos, val));
-            gradPreview->setGrad((*it).second.grad);
+            (*it).second.stops.erase(GradientStop(pos, val));
+            gradPreview->setGrad((*it).second.stops);
             emit changed(true);
 
             delete cur;
@@ -840,7 +874,7 @@ void QtCurveConfig::updateGradStop()
 {
     QTreeWidgetItem *i=gradStops->selectedItems().size() ? *(gradStops->selectedItems().begin()) : 0L;
 
-    CustomGradientCont::iterator cg=customGradient.find((EAppearance)gradCombo->currentIndex());
+    GradientCont::iterator cg=customGradient.find((EAppearance)gradCombo->currentIndex());
 
     if(i)
     {
@@ -851,12 +885,12 @@ void QtCurveConfig::updateGradStop()
 
         if(!equal(newPos, curPos) || !equal(newVal, curVal))
         {
-            (*cg).second.grad.erase(Gradient(curPos, curVal));
-            (*cg).second.grad.insert(Gradient(newPos, newVal));
+            (*cg).second.stops.erase(GradientStop(curPos, curVal));
+            (*cg).second.stops.insert(GradientStop(newPos, newVal));
 
             i->setText(0, QString().setNum(stopPosition->value()));
             i->setText(1, QString().setNum(stopValue->value()));
-            gradPreview->setGrad((*cg).second.grad);
+            gradPreview->setGrad((*cg).second.stops);
             emit changed(true);
         }
     }
@@ -946,10 +980,10 @@ void QtCurveConfig::populateShades(const Options &opts)
     if(contrast<0 || contrast>10)
         contrast=7;
 
-    customShading->setChecked(opts.customShades.size());
+    customShading->setChecked(QTC_USE_CUSTOM_SHADES(opts));
 
     for(int i=0; i<NUM_STD_SHADES; ++i)
-        shadeVals[i]->setValue(opts.customShades.size()
+        shadeVals[i]->setValue(QTC_USE_CUSTOM_SHADES(opts)
                                   ? opts.customShades[i]
                                   : shades[SHADING_SIMPLE==shading->currentIndex()
                                             ? 1 : 0]
@@ -959,8 +993,8 @@ void QtCurveConfig::populateShades(const Options &opts)
 
 bool QtCurveConfig::diffShades(const Options &opts)
 {
-    if( (0==opts.customShades.size() && customShading->isChecked()) ||
-        (opts.customShades.size() && !customShading->isChecked()) )
+    if( (!QTC_USE_CUSTOM_SHADES(opts) && customShading->isChecked()) ||
+        (QTC_USE_CUSTOM_SHADES(opts) && !customShading->isChecked()) )
         return true;
 
     if(customShading->isChecked())
@@ -987,6 +1021,23 @@ void QtCurveConfig::updateChanged()
 {
     if (settingsChanged())
         emit changed(true);
+}
+
+void QtCurveConfig::focusChanged()
+{
+    if(ROUND_MAX==round->currentIndex() && FOCUS_LINE!=focus->currentIndex())
+        round->setCurrentIndex(ROUND_EXTRA);
+    updateChanged();
+}
+
+void QtCurveConfig::roundChanged()
+{
+    if(ROUND_MAX==round->currentIndex() && FOCUS_LINE!=focus->currentIndex())
+        focus->setCurrentIndex(FOCUS_LINE);
+
+    if(round->currentIndex()>ROUND_FULL && IND_COLORED==defBtnIndicator->currentIndex())
+        defBtnIndicator->setCurrentIndex(IND_TINT);
+    updateChanged();
 }
 
 void QtCurveConfig::importStyle()
@@ -1100,6 +1151,8 @@ void QtCurveConfig::setOptions(Options &opts)
     opts.borderMenuitems=borderMenuitems->isChecked();
     opts.progressAppearance=(EAppearance)progressAppearance->currentIndex();
     opts.progressGrooveAppearance=(EAppearance)progressGrooveAppearance->currentIndex();
+    opts.grooveAppearance=(EAppearance)grooveAppearance->currentIndex();
+    opts.sunkenAppearance=(EAppearance)sunkenAppearance->currentIndex();
     opts.progressGrooveColor=(EColor)progressGrooveColor->currentIndex();
     opts.menuitemAppearance=(EAppearance)menuitemAppearance->currentIndex();
     opts.titlebarAppearance=(EAppearance)titlebarAppearance->currentIndex();
@@ -1126,15 +1179,15 @@ void QtCurveConfig::setOptions(Options &opts)
     opts.useHighlightForMenu=useHighlightForMenu->isChecked();
     opts.groupBoxLine=groupBoxLine->isChecked();
     opts.fadeLines=fadeLines->isChecked();
+    opts.titlebarAlignment=(EAlign)titlebarAlignment->currentIndex();
 
     if(customShading->isChecked())
     {
-        opts.customShades.resize(NUM_STD_SHADES);
         for(int i=0; i<NUM_STD_SHADES; ++i)
             opts.customShades[i]=shadeVals[i]->value();
     }
     else
-        opts.customShades.clear();
+        opts.customShades[0]=0;
 }
 
 void QtCurveConfig::setWidgetOptions(const Options &opts)
@@ -1202,6 +1255,8 @@ void QtCurveConfig::setWidgetOptions(const Options &opts)
     borderMenuitems->setChecked(opts.borderMenuitems);
     progressAppearance->setCurrentIndex(opts.progressAppearance);
     progressGrooveAppearance->setCurrentIndex(opts.progressGrooveAppearance);
+    grooveAppearance->setCurrentIndex(opts.grooveAppearance);
+    sunkenAppearance->setCurrentIndex(opts.sunkenAppearance);
     progressGrooveColor->setCurrentIndex(opts.progressGrooveColor);
     menuitemAppearance->setCurrentIndex(opts.menuitemAppearance);
     titlebarAppearance->setCurrentIndex(opts.titlebarAppearance);
@@ -1215,6 +1270,7 @@ void QtCurveConfig::setWidgetOptions(const Options &opts)
     useHighlightForMenu->setChecked(opts.useHighlightForMenu);
     groupBoxLine->setChecked(opts.groupBoxLine);
     fadeLines->setChecked(opts.fadeLines);
+    titlebarAlignment->setCurrentIndex(opts.titlebarAlignment);
 
     shading->setCurrentIndex(opts.shading);
     gtkScrollViews->setChecked(opts.gtkScrollViews);
@@ -1283,6 +1339,8 @@ bool QtCurveConfig::settingsChanged()
          activeTabAppearance->currentIndex()!=currentStyle.activeTabAppearance ||
          progressAppearance->currentIndex()!=currentStyle.progressAppearance ||
          progressGrooveAppearance->currentIndex()!=currentStyle.progressGrooveAppearance ||
+         grooveAppearance->currentIndex()!=currentStyle.grooveAppearance ||
+         sunkenAppearance->currentIndex()!=currentStyle.sunkenAppearance ||
          progressGrooveColor->currentIndex()!=currentStyle.progressGrooveColor ||
          menuitemAppearance->currentIndex()!=currentStyle.menuitemAppearance ||
          titlebarAppearance->currentIndex()!=currentStyle.titlebarAppearance ||
@@ -1296,6 +1354,7 @@ bool QtCurveConfig::settingsChanged()
          useHighlightForMenu->isChecked()!=currentStyle.useHighlightForMenu ||
          groupBoxLine->isChecked()!=currentStyle.groupBoxLine ||
          fadeLines->isChecked()!=currentStyle.fadeLines ||
+         titlebarAlignment->currentIndex()!=currentStyle.titlebarAlignment ||
 
          shading->currentIndex()!=(int)currentStyle.shading ||
          gtkScrollViews->isChecked()!=currentStyle.gtkScrollViews ||

@@ -21,9 +21,6 @@
   Boston, MA 02110-1301, USA.
 */
 
-// Cant use int cache, as not enough bits! :-(
-//#define QTC_INT_CACHE_KEY  // Use 64bit ints as cache index - should be faster than strings!
-
 #include <QProgressBar>
 #include <QTime>
 #include <QPalette>
@@ -33,12 +30,8 @@
 #include <QCache>
 #include <QColor>
 #include <QStyleOption>
-#ifdef QTC_INT_CACHE_KEY
 #include <Q_UINT64>
 typedef qulonglong QtcKey;
-#else
-typedef QString QtcKey;
-#endif
 #include "common.h"
 
 // #ifdef QTC_KSTYLE
@@ -57,6 +50,7 @@ class QScrollBar;
 class QtCurveStyle : public QWindowsStyle
 {
     Q_OBJECT
+    Q_CLASSINFO("X-KDE-CustomElements", "true")
 
     public:
 
@@ -65,6 +59,11 @@ class QtCurveStyle : public QWindowsStyle
         VER_UNKNOWN,
         VER_4x,  // <=4.4
         VER_45   // >=4.5
+    };
+
+    enum CustomElements
+    {
+        CE_QtC_KCapacityBar = CE_CustomBase+0xFFFF00
     };
     
     QtCurveStyle(const QString &name=QString());
@@ -102,16 +101,12 @@ class QtCurveStyle : public QWindowsStyle
     void drawFadedLine(QPainter *p, const QRect &r, const QColor &col, bool fadeStart, bool fadeEnd, bool horiz) const;
     void drawLines(QPainter *p, const QRect &r, bool horiz, int nLines, int offset, const QColor *cols, int startOffset,
                    int dark, ELine type) const;
-    void drawProgressBevelGradient(QPainter *p, const QRect &origRect, const QStyleOption *option, bool horiz, double shadeTop,
-                                   double shadeBot, EAppearance bevApp) const;
-    void drawBevelGradient(const QColor &base, bool increase, QPainter *p, QRect const &r,
-                           bool horiz, double shadeTop, double shadeBot, bool sel, EAppearance bevApp,
-                           EWidget w=WIDGET_OTHER) const;
-    void drawBevelGradientReal(const QColor &base, bool increase, QPainter *p,
-                               const QRect &r, bool horiz, double shadeTop,
-                               double shadeBot, bool sel, EAppearance bevApp, EWidget w) const;
-    void drawCustomGradient(QPainter *p, const QRect &r, bool horiz, const QColor &base,
-                            CustomGradientCont::const_iterator &cg, bool rev=false) const;
+    void drawProgressBevelGradient(QPainter *p, const QRect &origRect, const QStyleOption *option, bool horiz,
+                                   EAppearance bevApp) const;
+    void drawBevelGradient(const QColor &base, QPainter *p, QRect const &r,
+                           bool horiz, bool sel, EAppearance bevApp, EWidget w=WIDGET_OTHER) const;
+    void drawBevelGradientReal(const QColor &base, QPainter *p,
+                               const QRect &r, bool horiz, bool sel, EAppearance bevApp, EWidget w) const;
     void drawLightBevel(QPainter *p, const QRect &r, const QStyleOption *option, const QWidget *widget, int round, const QColor &fill,
                         const QColor *custom=0, bool doBorder=true, EWidget w=WIDGET_OTHER) const;
     void drawGlow(QPainter *p, const QRect &r, EWidget w) const;
@@ -134,7 +129,7 @@ class QtCurveStyle : public QWindowsStyle
     void drawSliderGroove(QPainter *p, const QRect &groove, const QRect &handle, const QStyleOptionSlider *slider, const QWidget *widget) const;
     void drawMenuOrToolBarBackground(QPainter *p, const QRect &r, const QStyleOption *option, bool menu=true, bool horiz=true) const;
     void drawHandleMarkers(QPainter *p, const QRect &r, const QStyleOption *option, bool tb, ELine handles) const;
-    void fillTab(QPainter *p, const QRect &r, const QStyleOption *option, const QColor &fill, bool horiz, bool increase, EWidget tab) const;
+    void fillTab(QPainter *p, const QRect &r, const QStyleOption *option, const QColor &fill, bool horiz, EWidget tab) const;
     void shadeColors(const QColor &base, QColor *vals) const;
     const QColor * buttonColors(const QStyleOption *option) const;
     const QColor * sliderColors(const QStyleOption *option) const;
@@ -152,6 +147,7 @@ class QtCurveStyle : public QWindowsStyle
     QPixmap *      getPixmap(const QColor col, EPixmap p, double shade=1.0) const;
     int            konqMenuBarSize(const QMenuBar *menu) const;
     Version        qtVersion() const;
+    const QColor & checkRadioCol(const QStyleOption *opt) const;
 
     private Q_SLOTS:
 

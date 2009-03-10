@@ -1,3 +1,54 @@
+0.62.0
+------
+ 1. Reduce gradient code complexity - makes predefined gradients
+    work in the same vein as custom gradients.
+ 2. Add scrollbar/slider groove and 'sunken' appearance options.
+ 3. Added new soft and harsh gradients.
+ 4. Change defaults:
+        Soft gradient
+        Fade menuitems
+        Don't use highlight for menu.
+        Default highlight set to 3%
+        Toolbar separators set to sunken
+        Flat menubar appearance
+        Button like check/radios
+        Supply, and use, predefined custom shades
+        Plain progress
+        Don't highlight active tab
+        Sunken scrollviews
+        Sunken appearance set to soft
+        Line focus
+        Set custom appearances for titlebars
+        Extra rounded (only applies to Gtk2 and KDE4 variants)
+ 5. Allow all bar flat and raised tabs to be coloured.
+ 6. Only save appearance settings if different from default.
+ 7. If a gradient does not define the values for positions 0 and 100, then add these.
+ 8. Better colouring of selected tab.
+ 9. Added new focus options - full and line.
+10. Add new round options - extra and max.
+11. Don't etch disabled items.
+12. Use text colour for focus indicator in tree/list/etc views.
+13. When specifying custom gradients, add the pssibility to have no
+    internal border - options are now none, light, 3d
+14. Only apply plastik style mouse-over scrollbars and sliders when
+    plastik is set as the mouse-over style.
+15. Only draw 1 arrow on combos - event when in Gtk style.
+16. Add option to specify titlebar text alignment.
+17. Move Qt4.5 scrollbars closer to scrollview when they are placed on the outside.
+18. Provide icon mapping for pure-Qt apps, as well as KDE ones, if QtCurve is
+    compiled against KDE.
+19. Fix shading of menuitems when slider is set to 'orig selected'
+20. Map more KDE4 icons.
+21. When drawing arrows (such as in KDE4 colour selector), assume the arrow is
+    enabled.
+22. Style KCapacityBar - draw this as if it is a progressbar.
+23. Fixed Qt4.5 tabs?
+24. Add extra space for arrow on toolbuttons with menus.
+
+0.61.5
+------
+1. Try to prevent toolbar button text being clipped.
+
 0.61.4
 ------
 1. Fix settings for sliderThumbs, handles, toolbarSeparators, and splitters.

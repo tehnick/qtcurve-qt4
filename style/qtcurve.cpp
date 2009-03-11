@@ -1843,7 +1843,7 @@ int QtCurveStyle::pixelMetric(PixelMetric metric, const QStyleOption *option, co
         case PM_MaximumDragDistance:
             return -1;
         case PM_TabBarTabHSpace:
-            return 18;
+            return 14;
         case PM_TabBarTabVSpace:
             return opts.highlightTab ? 10 : 8;
         case PM_TitleBarHeight:
@@ -3109,10 +3109,12 @@ void QtCurveStyle::drawPrimitive(PrimitiveElement element, const QStyleOption *o
                                          (widget && widget->parent() &&
                                             ((dynamic_cast<const QAbstractScrollArea*>(widget->parent())) ||
                                               widget->parent()->inherits("Q3ScrollView"))));
-                    const QColor *use(view ? 0L : (FOCUS_BACKGROUND==opts.focus ?  backgroundColors(option) : itsMenuitemCols));
+                    const QColor *use(view && state&State_Selected
+                                        ? 0L : (FOCUS_BACKGROUND==opts.focus ?  backgroundColors(option) : itsMenuitemCols));
 
                     painter->save();
-                    QColor c(view ? state&State_Selected ? palette.highlightedText().color() : palette.text().color()
+                    QColor c(view && state&State_Selected
+                                  ? palette.highlightedText().color()
                                   : use[FOCUS_BACKGROUND!=opts.focus && state&State_Selected ? 3 : QT_FOCUS]);
 
                     if(FOCUS_LINE==opts.focus)
@@ -6683,9 +6685,7 @@ QSize QtCurveStyle::sizeFromContents(ContentsType type, const QStyleOption *opti
             break;
         case CT_ToolButton:
         {
-            newSize.rheight() += 3;
-            newSize.rwidth() += 3;
-
+            newSize = QSize(size.width()+9, size.height()+9);
             // -- from kstyle & oxygen --
             // We want to avoid super-skiny buttons, for things like "up" when icons + text
             // For this, we would like to make width >= height.
@@ -6784,9 +6784,9 @@ QRect QtCurveStyle::subElementRect(SubElement element, const QStyleOption *optio
 #if QT_VERSION >= 0x040300
         case SE_GroupBoxLayoutItem:
             rect = option->rect;
-            if (const QStyleOptionGroupBox *groupBoxOpt = qstyleoption_cast<const QStyleOptionGroupBox *>(option))
-                if (groupBoxOpt->subControls & (SC_GroupBoxCheckBox | SC_GroupBoxLabel))
-                    rect.setTop(rect.top() + 2);    // eat the top margin a little bit
+//             if (const QStyleOptionGroupBox *groupBoxOpt = qstyleoption_cast<const QStyleOptionGroupBox *>(option))
+//                 if (groupBoxOpt->subControls & (SC_GroupBoxCheckBox | SC_GroupBoxLabel))
+//                     rect.setTop(rect.top() + 2);    // eat the top margin a little bit
             break;
 #endif
         case SE_PushButtonFocusRect:

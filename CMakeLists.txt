@@ -8,7 +8,7 @@ set(DEBIAN_PACKAGE_SECTION "kde4")
 set(CPACK_SOURCE_GENERATOR "TBZ2")
 set(CPACK_PACKAGE_VERSION_MAJOR "0")
 set(CPACK_PACKAGE_VERSION_MINOR "62")
-set(CPACK_PACKAGE_VERSION_PATCH "5")
+set(CPACK_PACKAGE_VERSION_PATCH "6")
 set(CPACK_PACKAGE_CONTACT "Craig Drummond <craig_p_drummond@yahoo.co.uk>")
 set(QTCURVE_VERSION "${CPACK_PACKAGE_VERSION_MAJOR}.${CPACK_PACKAGE_VERSION_MINOR}")
 set(QTCURVE_VERSION_FULL "${QTCURVE_VERSION}.${CPACK_PACKAGE_VERSION_PATCH}")
@@ -102,4 +102,10 @@ else (KDE4_FOUND)
 endif (KDE4_FOUND)
 
 add_subdirectory(style)
+
+if (QTC_XBAR_SUPPORT)
+    message("\n**************************************************************\n"
+            "Information: XBar support enabled.\n"
+            "**************************************************************\n")
+endif (QTC_XBAR_SUPPORT)
 

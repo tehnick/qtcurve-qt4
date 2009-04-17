@@ -421,12 +421,12 @@ static QWidget * getActiveWindow(QWidget *widget)
     return activeWindow && activeWindow!=widget ? activeWindow : 0L;
 }
 
-static const QWidget * getToolBar(const QWidget *w, bool checkQ3)
+static const QWidget * getToolBar(const QWidget *w/*, bool checkQ3*/)
 {
     return w
-            ? qobject_cast<const QToolBar *>(w) || (checkQ3 && w->inherits("Q3ToolBar"))
+            ? qobject_cast<const QToolBar *>(w) // || (checkQ3 && w->inherits("Q3ToolBar"))
                 ? w
-                : getToolBar(w->parentWidget(), checkQ3)
+                : getToolBar(w->parentWidget()/*, checkQ3*/)
             : 0L;
 }
 
@@ -1319,15 +1319,16 @@ void QtCurveStyle::polish(QWidget *widget)
         widget->setPalette(pal);
     }
                 
-    bool onToolBar(widget && widget->parent() && 0L!=getToolBar(widget->parentWidget(), true));
+    //bool onToolBar(widget && widget->parent() && 0L!=getToolBar(widget->parentWidget(), true));
+    bool parentIsToolbar(widget && widget->parent() && (qobject_cast<QToolBar *>(widget->parent()) || widget->parent()->inherits("Q3ToolBar")));
 
     if (qobject_cast<QMenuBar *>(widget) ||
         widget->inherits("Q3ToolBar") ||
         qobject_cast<QToolBar *>(widget) ||
-        onToolBar)
+        parentIsToolbar)
         widget->setBackgroundRole(QPalette::Window);
 
-    if(!IS_FLAT(opts.toolbarAppearance) && onToolBar)
+    if(!IS_FLAT(opts.toolbarAppearance) && parentIsToolbar)
         widget->setAutoFillBackground(false);
 
     if(APP_SYSTEMSETTINGS==theThemedApp &&
@@ -2959,7 +2960,7 @@ void QtCurveStyle::drawPrimitive(PrimitiveElement element, const QStyleOption *o
 
                     if(QTC_DO_EFFECT && APP_ARORA==theThemedApp && widget && widget->parentWidget() && 0==strcmp(widget->metaObject()->className(), "LocationBar"))
                     {
-                        const QToolBar *tb=(const QToolBar *)getToolBar(widget->parentWidget(), false);
+                        const QToolBar *tb=(const QToolBar *)getToolBar(widget->parentWidget()/*, false*/);
 
                         if(tb)
                         {

@@ -45,7 +45,12 @@ QtCurveButton::QtCurveButton(ButtonType type, QtCurveClient *parent)
                itsIconType(NumButtonIcons),
                itsHover(false)
 {
-    setAttribute(Qt::WA_NoSystemBackground);
+    setAttribute(Qt::WA_PaintOnScreen, false);
+    setAttribute(Qt::WA_NoSystemBackground, true);
+    setAutoFillBackground(false);
+    setFocusPolicy(Qt::NoFocus);
+    setAttribute(Qt::WA_OpaquePaintEvent, false);
+    setAttribute(Qt::WA_Hover, true);
 }
 
 void QtCurveButton::reset(unsigned long changed)
@@ -78,6 +83,9 @@ void QtCurveButton::reset(unsigned long changed)
             case BelowButton:
                 itsIconType = isChecked() ? NoKeepBelowIcon : KeepBelowIcon;
                 break;
+            case MenuButton:
+                itsIconType=MenuIcon;
+                break;
             default:
                 itsIconType = NumButtonIcons; // empty...
                 break;
@@ -109,22 +117,29 @@ void QtCurveButton::paintEvent(QPaintEvent *)
     drawButton(&p);
 }
 
-inline int limit(double c)
-{
-    return c < 0.0 ? 0 : (c > 255.0  ? 255 : (int)c);
-}
-
-inline QColor midColor(const QColor &a, const QColor &b, double factor=1.0)
-{
-    return QColor((a.red()+limit(b.red()*factor))>>1, 
-                  (a.green()+limit(b.green()*factor))>>1, 
-                  (a.blue()+limit(b.blue()*factor))>>1);
-}
+// inline int limit(double c)
+// {
+//     return c < 0.0 ? 0 : (c > 255.0  ? 255 : (int)c);
+// }
+// 
+// inline QColor midColor(const QColor &a, const QColor &b, double factor=1.0)
+// {
+//     return QColor((a.red()+limit(b.red()*factor))>>1, 
+//                   (a.green()+limit(b.green()*factor))>>1, 
+//                   (a.blue()+limit(b.blue()*factor))>>1);
+// }
 
 void QtCurveButton::drawButton(QPainter *painter)
 {
     QRect    r(0, 0, width(), height());
-    bool     active(itsClient->isActive());
+    int      flags=Handler()->wStyle()->pixelMetric((QStyle::PixelMetric)QtC_TitleBarButtons, 0L, 0L),
+             versionHack=0;
+    bool     active(itsClient->isActive()),
+             sunken(isDown()),
+             drawFrame(!(flags&QTC_TITLEBAR_BUTTON_NO_FRAME) &&
+                       (itsHover || sunken || !(flags&QTC_TITLEBAR_BUTTON_HOVER_FRAME))),
+             iconForMenu(TITLEBAR_ICON_MENU_BUTTON==
+                            Handler()->wStyle()->pixelMetric((QStyle::PixelMetric)QtC_TitleBarIcon, 0L, 0L));
     QPixmap  tempPixmap;
     QColor   buttonColor(KDecoration::options()->color(KDecoration::ColorTitleBar, active));
     QPixmap  buffer(width(), height());
@@ -135,45 +150,111 @@ void QtCurveButton::drawButton(QPainter *painter)
 
     itsClient->drawBtnBgnd(&bP, r, active);
 
-    if (itsHover)
+    if(flags&QTC_TITLEBAR_BUTTON_COLOR)
+        switch(type())
+        {
+            case HelpButton:
+                versionHack=QTC_TBAR_VERSION_HACK+TITLEBAR_HELP;
+                break;
+            case MaxButton:
+                versionHack=QTC_TBAR_VERSION_HACK+TITLEBAR_MAX;
+                break;
+            case MinButton:
+                versionHack=QTC_TBAR_VERSION_HACK+TITLEBAR_MIN;
+                break;
+            case CloseButton:
+                versionHack=QTC_TBAR_VERSION_HACK+TITLEBAR_CLOSE;
+                break;
+            case MenuButton:
+                versionHack=QTC_TBAR_VERSION_HACK+TITLEBAR_MENU;
+                break;
+            case OnAllDesktopsButton:
+                versionHack=QTC_TBAR_VERSION_HACK+TITLEBAR_ALL_DESKTOPS;
+                break;
+            case AboveButton:
+                versionHack=QTC_TBAR_VERSION_HACK+TITLEBAR_KEEP_ABOVE;
+                break;
+            case BelowButton:
+                versionHack=QTC_TBAR_VERSION_HACK+TITLEBAR_KEEP_BELOW;
+                break;
+            case ShadeButton:
+                versionHack=QTC_TBAR_VERSION_HACK+TITLEBAR_SHADE;
+                break;
+        }
+            
+    if (drawFrame && (!(flags&QTC_TITLEBAR_BUTTON_ROUND) || MenuButton!=type() || !iconForMenu))
     {
         QStyleOption opt;
+        int          offset=flags&QTC_TITLEBAR_BUTTON_ROUND && !itsClient->isToolWindow() ? 1 : 0;
 
         opt.init(this);
-        opt.rect=QRect(0, 0, width(), height());
-        opt.state|=(isDown() ? QStyle::State_Sunken : QStyle::State_Raised)|QStyle::State_MouseOver|QStyle::State_Horizontal|QtC_StateKWin;
-        opt.palette.setColor(QPalette::Button, buttonColor);
+        opt.rect=QRect(offset, offset, width()-(2*offset), height()-(2*offset));
+        opt.state|=(isDown() ? QStyle::State_Sunken : QStyle::State_Raised) |
+                   (active ? QStyle::State_Active : QStyle::State_None) |
+                   (itsHover ? QStyle::State_MouseOver : QStyle::State_None)|QStyle::State_Horizontal|QtC_StateKWin;
+        if(!(flags&QTC_TITLEBAR_BUTTON_STD_COLOR) ||
+           (flags&QTC_TITLEBAR_BUTTON_COLOR_MOUSE_OVER && !itsHover && !(flags&QTC_TITLEBAR_BUTTON_COLOR)))
+            opt.palette.setColor(QPalette::Button, buttonColor);
+        if(flags&QTC_TITLEBAR_BUTTON_COLOR && !(flags&QTC_TITLEBAR_BUTTON_COLOR_SYMBOL))
+            opt.version=versionHack;
         Handler()->wStyle()->drawPrimitive(QStyle::PE_PanelButtonCommand, &opt, &bP, 0L);
     }
 
-    if (MenuButton==type())
+    if (MenuButton==type() && iconForMenu)
     {
         QPixmap menuIcon(itsClient->icon().pixmap(style()->pixelMetric(QStyle::PM_SmallIconSize)));
         if (width() < menuIcon.width() || height() < menuIcon.height())
             menuIcon = menuIcon.scaled(width(), height());
-        bP.drawPixmap((width()-menuIcon.width())/2, (height()-menuIcon.height())/2, menuIcon);
-    }
-    else
-    {
-        const QBitmap &icon(Handler()->buttonBitmap(itsIconType, size(), decoration()->isToolWindow()));
-        QColor        col(KDecoration::options()->color(KDecoration::ColorFont, active));
-        int           dX(r.x()+(r.width()-icon.width())/2),
-                      dY(r.y()+(r.height()-icon.height())/2);
 
-        if(isDown())
+        int dX(((width()-menuIcon.width())/2.0)+0.5),
+            dY(((height()-menuIcon.height())/2.0)+0.5);
+
+        if(sunken)
         {
             dY++;
             dX++;
         }
-        else
+        bP.drawPixmap(dX, dY, menuIcon);
+    }
+    else
+    {
+        const QBitmap &icon(Handler()->buttonBitmap(itsIconType, size(), decoration()->isToolWindow()));
+        QColor        col(KDecoration::options()->color(KDecoration::ColorFont,
+                            active || flags&QTC_TITLEBAR_BUTTON_HOVER_SYMBOL));
+        int           dX(r.x()+(r.width()-icon.width())/2),
+                      dY(r.y()+(r.height()-icon.height())/2);
+        bool          customCol(false);
+
+        if(flags&QTC_TITLEBAR_BUTTON_COLOR && flags&QTC_TITLEBAR_BUTTON_COLOR_SYMBOL &&
+           (itsHover || !(flags&QTC_TITLEBAR_BUTTON_HOVER_SYMBOL)))
         {
+            QStyleOption opt;
+
+            opt.init(this);
+            opt.version=versionHack;
+            col=QColor(QRgb(Handler()->wStyle()->pixelMetric((QStyle::PixelMetric)QtC_TitleBarIconColor, &opt, 0L)));
+            customCol=true;
+        }
+
+        if(sunken)
+        {
+            dY++;
+            dX++;
+        }
+        else // if(!(flags&QTC_TITLEBAR_BUTTON_HOVER_SYMBOL) && !customCol)
+        {
+            QColor shadow();
+
             bP.setPen(QtCurveClient::shadowColor(col));
             bP.drawPixmap(dX+1, dY+1, icon);
         }
 
-        if(CloseButton==type() && itsHover)
+        if(CloseButton==type() && itsHover && !(flags&QTC_TITLEBAR_BUTTON_COLOR) && !customCol)
             col=CLOSE_COLOR;
-            
+
+        if(!itsHover && flags&QTC_TITLEBAR_BUTTON_HOVER_SYMBOL)
+            col.setAlphaF(HOVER_BUTTON_ALPHA);
+
         bP.setPen(col);
         bP.drawPixmap(dX, dY, icon);
     }
@@ -245,21 +326,22 @@ QBitmap IconEngine::icon(ButtonIcon icon, int size, QStyle *style)
                 lineWidth2 = 1;
 
             int margin1, margin2;
-            margin1 = margin2 = lineWidth2*2;
+            margin1 = margin2 = (lineWidth2*2)+1;
             if (r.width() < 8)
                 margin1 = 1;
+            int margin1h=margin1-1, margin2h=margin2-1;
 
             // background window
-            drawObject(p, HorizontalLine, r.x()+margin1, r.top(), r.width()-margin1, lineWidth2);
-            drawObject(p, HorizontalLine, r.right()-margin2, r.bottom()-(lineWidth2-1)-margin1, margin2, lineWidth2);
-            drawObject(p, VerticalLine, r.x()+margin1, r.top(), margin2, lineWidth2);
+            drawObject(p, HorizontalLine, r.x()+margin1h, r.top(), r.width()-margin1, lwTitleBar);
+            drawObject(p, HorizontalLine, r.right()-margin2h, r.bottom()-(lineWidth2-1)-margin1, margin2h, lineWidth2);
+            drawObject(p, VerticalLine, r.x()+margin1h, r.top(), margin2, lineWidth2);
             drawObject(p, VerticalLine, r.right()-(lineWidth2-1), r.top(), r.height()-margin1, lineWidth2);
 
             // foreground window
-            drawObject(p, HorizontalLine, r.x(), r.top()+margin2, r.width()-margin2, lwTitleBar);
-            drawObject(p, HorizontalLine, r.x(), r.bottom()-(lineWidth2-1), r.width()-margin2, lineWidth2);
+            drawObject(p, HorizontalLine, r.x(), r.top()+margin2, r.width()-margin2h, lwTitleBar);
+            drawObject(p, HorizontalLine, r.x(), r.bottom()-(lineWidth2-1), r.width()-margin2h, lineWidth2);
             drawObject(p, VerticalLine, r.x(), r.top()+margin2, r.height(), lineWidth2);
-            drawObject(p, VerticalLine, r.right()-(lineWidth2-1)-margin2, r.top()+margin2, r.height(), lineWidth2);
+            drawObject(p, VerticalLine, r.right()-(lineWidth2-1)-margin2h, r.top()+margin2, r.height(), lineWidth2);
 
             break;
         }
@@ -269,7 +351,7 @@ QBitmap IconEngine::icon(ButtonIcon icon, int size, QStyle *style)
             break;
         case HelpIcon:
         {
-            int center = r.x()+r.width()/2 -1;
+            int center = r.x()+r.width()/2; // -1;
             int side = r.width()/4;
 
             // paint a question mark... code is quite messy, to be cleaned up later...! :o
@@ -432,6 +514,13 @@ QBitmap IconEngine::icon(ButtonIcon icon, int size, QStyle *style)
             style->drawPrimitive(ShadeIcon==icon ? QStyle::PE_IndicatorArrowUp
                                                  : QStyle::PE_IndicatorArrowDown,
                                  &opt, &p, 0L);
+            break;
+        }
+        case MenuIcon:
+        {
+            int offset=(r.height()-7)/2;
+            for(int i=0; i<3; i++)
+                drawObject(p, HorizontalLine, r.x()+1, r.y()+offset+(i*3), r.width()-2, 1);
             break;
         }
         default:

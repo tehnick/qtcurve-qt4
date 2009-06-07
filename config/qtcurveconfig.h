@@ -26,6 +26,7 @@
 
 #include <ui_qtcurveconfigbase.h>
 #include <QMap>
+#include <QComboBox>
 #include "common.h"
 
 class QMenu;
@@ -33,6 +34,7 @@ class QAction;
 class QComboBox;
 class KDoubleNumInput;
 class CExportThemeDialog;
+class QtCurveConfig;
 
 class CGradientPreview : public QWidget
 {
@@ -40,7 +42,7 @@ class CGradientPreview : public QWidget
 
     public:
 
-    CGradientPreview(QWidget *p);
+    CGradientPreview(QtCurveConfig *c, QWidget *p);
 
     QSize sizeHint() const;
     QSize minimumSizeHint() const;
@@ -53,6 +55,7 @@ class CGradientPreview : public QWidget
 
     private:
 
+    QtCurveConfig    *cfg;
     QColor           color;
     GradientStopCont stops;
 };
@@ -65,6 +68,8 @@ class QtCurveConfig : public QWidget, private Ui::QtCurveConfigBase
 
     QtCurveConfig(QWidget *parent);
     virtual ~QtCurveConfig();
+
+    EShading currentShading() const { return (EShading)shading->currentIndex(); }
 
     Q_SIGNALS:
 
@@ -96,11 +101,12 @@ class QtCurveConfig : public QWidget, private Ui::QtCurveConfigBase
     void shadeMenubarsChanged();
     void shadeCheckRadioChanged();
     void customMenuTextColorChanged();
+    void menuStripeChanged();
     void stripedProgressChanged();
     void shadingChanged();
     void activeTabAppearanceChanged();
+    void tabMoChanged();
     void passwordCharClicked();
-
     void changeStack();
     void gradChanged(int i);
     void editItem(QTreeWidgetItem *i, int col);
@@ -109,6 +115,7 @@ class QtCurveConfig : public QWidget, private Ui::QtCurveConfigBase
     void removeGradStop();
     void updateGradStop();
     void stopSelected();
+    void exportColors();
 
     private:
 
@@ -120,8 +127,10 @@ class QtCurveConfig : public QWidget, private Ui::QtCurveConfigBase
     bool diffShades(const Options &opts);
     void setPasswordChar(int ch);
     void loadStyle(const QString &file);
+    int getTitleBarButtonFlags();
     void setOptions(Options &opts);
     void setWidgetOptions(const Options &opts);
+    bool diffTitleBarButtonColors(const Options &opts);
     bool settingsChanged();
 
     private:

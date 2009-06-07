@@ -57,12 +57,9 @@ typedef enum
 {
     SHADING_SIMPLE=0,
     SHADING_HSL=1,
-    SHADING_HSV=2
+    SHADING_HSV=2,
+    SHADING_HCY=3
 } EShading;
-
-#if (!defined QTC_KWIN)
-static EShading shading=SHADING_HSL;
-#endif
 
 #ifdef __cplusplus
 #include <qconfig.h>
@@ -71,7 +68,6 @@ static EShading shading=SHADING_HSL;
 #endif
 #include <map>
 #include <set>
-#include <vector>
 #else
 #include <glib.h>
 #endif
@@ -149,8 +145,11 @@ typedef GdkColor color;
 
 #define QTC_SIMPLE_SHADING (!shading)
 
-#define QTC_GLOW_MO        ORIGINAL_SHADE
-#define QTC_GLOW_DEFBTN    0
+#define QTC_THIN_SBAR_MOD  4
+#define QTC_GLOW_MO        1 /*ORIGINAL_SHADE*/
+#define QTC_GLOW_DEFBTN    1
+#define QTC_GLOW_ALPHA(DEF) (DEF ? 0.5 : 0.65)
+#define QTC_DEF_BNT_TINT   0.4
 
 #define QT_STD_BORDER      5
 #define QT_PBAR_BORDER     4
@@ -159,7 +158,7 @@ typedef GdkColor color;
 #define QT_SLIDER_MO_BORDER 3
 
 #define QT_FRAME_DARK_SHADOW 2
-#define QT_FOCUS              (FOCUS_BACKGROUND==opts.focus ? 3 : ORIGINAL_SHADE)
+#define QT_FOCUS(SEL)         ((SEL) ? 3 : ORIGINAL_SHADE)
 #define QTC_MENU_STRIPE_SHADE (USE_LIGHTER_POPUP_MENU ? ORIGINAL_SHADE : 2)
 #define QTC_MENU_SEP_SHADE    (USE_LIGHTER_POPUP_MENU ? 4 : 3)
 
@@ -167,11 +166,11 @@ typedef GdkColor color;
     (c>10 || c<0 || s>=NUM_STD_SHADES || s<0 \
         ? 1.0 \
         : opts.darkerBorders && (QT_STD_BORDER==i || QT_DISABLED_BORDER==i) \
-            ? shades[SHADING_SIMPLE==shading ? 1 : 0][c][s] - 0.1 \
-            : shades[SHADING_SIMPLE==shading ? 1 : 0][c][s] )
+            ? shades[SHADING_SIMPLE==opts.shading ? 1 : 0][c][s] - 0.1 \
+            : shades[SHADING_SIMPLE==opts.shading ? 1 : 0][c][s] )
 
 #define TAB_APPEARANCE(A)   (A) /* (APPEARANCE_GLASS==(A) ? APPEARANCE_GRADIENT : (A)) */
-#define QTC_COLOR_SEL_TAB_FACTOR 1.2
+#define QTC_COLOR_SEL_TAB_FACTOR 0.25
 
 #define INVERT_SHADE(A) (1.0+(1.0-A))
 
@@ -214,14 +213,17 @@ typedef GdkColor color;
 
 #ifdef __cplusplus
 #define WIDGET_BUTTON(w) (WIDGET_STD_BUTTON==w || WIDGET_DEF_BUTTON==w || WIDGET_TOGGLE_BUTTON==w || WIDGET_CHECKBOX==w || \
-                          WIDGET_COMBO==w || WIDGET_COMBO_BUTTON==w)
+                          WIDGET_COMBO==w || WIDGET_COMBO_BUTTON==w || WIDGET_MDI_WINDOW_BUTTON==w || \
+                          WIDGET_TOOLBAR_BUTTON==w )
 #define ETCH_WIDGET(w) (WIDGET_STD_BUTTON==w || WIDGET_DEF_BUTTON==w || WIDGET_TOGGLE_BUTTON==w || WIDGET_SLIDER_TROUGH==w || \
-                        WIDGET_FILLED_SLIDER_TROUGH==w)
+                        WIDGET_FILLED_SLIDER_TROUGH==w || WIDGET_MDI_WINDOW_BUTTON==w || WIDGET_TOOLBAR_BUTTON==w)
 #else
 #define WIDGET_BUTTON(w) (WIDGET_STD_BUTTON==w || WIDGET_DEF_BUTTON==w || WIDGET_TOGGLE_BUTTON==w || WIDGET_CHECKBOX==w || \
-                          WIDGET_COMBO==w || WIDGET_COMBO_BUTTON==w || WIDGET_UNCOLOURED_MO_BUTTON==w)
+                          WIDGET_COMBO==w || WIDGET_COMBO_BUTTON==w || WIDGET_UNCOLOURED_MO_BUTTON==w || \
+                          WIDGET_TOOLBAR_BUTTON==w)
 #define ETCH_WIDGET(w) (WIDGET_STD_BUTTON==w || WIDGET_DEF_BUTTON==w || WIDGET_TOGGLE_BUTTON==w || WIDGET_SLIDER_TROUGH==w || \
-                        WIDGET_FILLED_SLIDER_TROUGH==w || WIDGET_COMBO==w || WIDGET_UNCOLOURED_MO_BUTTON==w)
+                        WIDGET_FILLED_SLIDER_TROUGH==w || WIDGET_COMBO==w || WIDGET_UNCOLOURED_MO_BUTTON==w || \
+                        WIDGET_TOOLBAR_BUTTON==w)
 #endif
 #define COLORED_BORDER_SIZE 3
 #define PROGRESS_CHUNK_WIDTH 10
@@ -231,6 +233,9 @@ typedef GdkColor color;
                           (WIDGET_PROGRESSBAR==WIDGET && APPEARANCE_FLAT!=APP && \
                            APPEARANCE_RAISED!=APP && APPEARANCE_INVERTED!=APP && APPEARANCE_BEVELLED!=APP))
 
+#define QTC_DRAW_3D_FULL_BORDER(SUNKEN, APP) \
+    (!SUNKEN && GB_3D_FULL==getGradient(APP, &opts)->border)
+    
 #define QTC_DRAW_3D_BORDER(SUNKEN, APP) \
     (!SUNKEN && GB_3D==getGradient(APP, &opts)->border)
 
@@ -259,10 +264,10 @@ typedef GdkColor color;
 #define QTC_MO_PLASTIK_LIGHT(W) (WIDGET_DEF_BUTTON==W && IND_COLORED==opts.defBtnIndicator ? 4 : 1) /*? 2 : 0) */
 
 #define QTC_MO_STD_DARK(W)     (MO_GLOW==opts.coloredMouseOver \
-                                    ? QTC_GLOW_MO \
+                                    ? 1 \
                                     : QTC_MO_PLASTIK_DARK(W))
 #define QTC_MO_STD_LIGHT(W, S) (MO_GLOW==opts.coloredMouseOver \
-                                    ? QTC_GLOW_MO \
+                                    ? 1 \
                                     : QTC_MO_PLASTIK_LIGHT(W))
 
 #define QTC_FULLLY_ROUNDED     (opts.round>=ROUND_FULL)
@@ -294,16 +299,61 @@ typedef enum
     QtC_Round = QStyle::PM_CustomBase,
     QtC_TitleBarButtonAppearance,
     QtC_TitleBarColorTopOnly,
-    QtC_TitleAlignment
+    QtC_TitleAlignment,
+    QtC_TitleBarButtons,
+    QtC_TitleBarIcon,
+    QtC_TitleBarIconColor
 } QtCMetrics;
 
 #define QtC_StateKWin          ((QStyle::StateFlag)0x10000000)
 #define QtC_StateKWinHighlight ((QStyle::StateFlag)0x20000000)
 #define QtC_StateKWinShadows   ((QStyle::StateFlag)0x40000000)
 #define QtCStateKWinDrawLine   ((QStyle::StateFlag)0x80000000)
+#define QtCStateKWinNotFull    ((QStyle::StateFlag)0x80000000)
+#define QtCStateKWinNoBorder   ((QStyle::StateFlag)0x08000000)
 
 #define CLOSE_COLOR QColor(191, 82, 82)
+#define HOVER_BUTTON_ALPHA 0.2
+#endif
 
+#if defined QTC_CONFIG_DIALOG || (defined QT_VERSION && (QT_VERSION >= 0x040000))
+typedef enum
+{
+    QTC_TITLEBAR_BUTTON_ROUND            = 0x0001,
+    QTC_TITLEBAR_BUTTON_HOVER_FRAME      = 0x0002,
+    QTC_TITLEBAR_BUTTON_HOVER_SYMBOL     = 0x0004,
+    QTC_TITLEBAR_BUTTON_NO_FRAME         = 0x0008,
+    QTC_TITLEBAR_BUTTON_COLOR            = 0x0010,
+    QTC_TITLEBAR_BUTTON_COLOR_INACTIVE   = 0x0020,
+    QTC_TITLEBAR_BUTTON_COLOR_MOUSE_OVER = 0x0040,
+    QTC_TITLEBAR_BUTTON_STD_COLOR        = 0x0080,
+    QTC_TITLEBAR_BUTTON_COLOR_SYMBOL     = 0x0100
+} ETitleBarButtonFlags;
+
+typedef enum
+{
+    TITLEBAR_ICON_NONE,
+    TITLEBAR_ICON_MENU_BUTTON,
+    TITLEBAR_ICON_NEXT_TO_TITLE
+} ETitleBarIcon;
+
+typedef enum
+{
+    TITLEBAR_CLOSE,
+    TITLEBAR_MIN,
+    TITLEBAR_MAX,
+    TITLEBAR_HELP,
+    TITLEBAR_MENU,
+    TITLEBAR_SHADE,
+    TITLEBAR_ALL_DESKTOPS,
+    TITLEBAR_KEEP_ABOVE,
+    TITLEBAR_KEEP_BELOW,
+    NUM_TITLEBAR_BUTTONS
+} ETitleBarButtons;
+
+#define QTC_TBAR_VERSION_HACK 65535
+
+typedef std::map<ETitleBarButtons, QColor> TBCols;
 #endif
 
 typedef enum
@@ -335,12 +385,14 @@ typedef enum
     WIDGET_TAB_BOT,
     WIDGET_STD_BUTTON,
     WIDGET_DEF_BUTTON,
+    WIDGET_TOOLBAR_BUTTON,
     WIDGET_LISTVIEW_HEADER,
     WIDGET_SLIDER,
     WIDGET_SLIDER_TROUGH,
     WIDGET_FILLED_SLIDER_TROUGH,
     WIDGET_SB_SLIDER,
     WIDGET_SB_BUTTON,
+    WIDGET_SB_BGND,
     WIDGET_TROUGH,
     WIDGET_CHECKBOX,
     WIDGET_TOGGLE_BUTTON,
@@ -367,6 +419,7 @@ typedef enum
 #endif
 #if defined QTC_CONFIG_DIALOG || (defined QT_VERSION && (QT_VERSION >= 0x040000)) || !defined __cplusplus
     WIDGET_SELECTION,
+    WIDGET_RUBBER_BAND,
 #endif
     WIDGET_MENU_BUTTON,        // Qt4 only
     WIDGET_FOCUS,
@@ -386,6 +439,15 @@ typedef enum
     APPEARANCE_CUSTOM8,
     APPEARANCE_CUSTOM9,
     APPEARANCE_CUSTOM10,
+    APPEARANCE_CUSTOM11,
+    APPEARANCE_CUSTOM12,
+    APPEARANCE_CUSTOM13,
+    APPEARANCE_CUSTOM14,
+    APPEARANCE_CUSTOM15,
+    APPEARANCE_CUSTOM16,
+    APPEARANCE_CUSTOM17,
+    APPEARANCE_CUSTOM18,
+    APPEARANCE_CUSTOM19,
 
         QTC_NUM_CUSTOM_GRAD,
 
@@ -471,9 +533,9 @@ typedef enum
 {
     SHADE_NONE,
     SHADE_CUSTOM,
-    SHADE_BLEND_SELECTED,  /* In the case of check/radios this is SHADE_SELECTED */
-      SHADE_SELECTED,
-      SHADE_DARKEN = SHADE_SELECTED ,  /* For menubar only! */
+    SHADE_SELECTED,
+    SHADE_BLEND_SELECTED,
+    SHADE_DARKEN
 } EShade;
 
 typedef enum
@@ -530,12 +592,18 @@ typedef enum
 typedef enum
 {
     FOCUS_STANDARD,
-    FOCUS_HIGHLIGHT,
+    FOCUS_RECTANGLE,
     FOCUS_FULL,
     FOCUS_FILLED,
-    FOCUS_BACKGROUND,
     FOCUS_LINE
 } EFocus;
+
+typedef enum
+{
+    TAB_MO_TOP,
+    TAB_MO_BOTTOM,
+    TAB_MO_GLOW
+} ETabMo;
 
 #define QTC_FULL_FOCUS     (FOCUS_FULL==opts.focus  || FOCUS_FILLED==opts.focus)
 
@@ -569,6 +637,234 @@ bool equal(double d1, double d2)
 {
     return (fabs(d1 - d2) < 0.0001);
 }
+
+#ifdef __cplusplus
+struct GradientStop
+#else
+typedef struct
+#endif
+{
+#ifdef __cplusplus
+    GradientStop(double p=0.0, double v=0.0) : pos(p), val(v) { }
+
+    bool operator==(const GradientStop &o) const
+    {
+        return equal(pos, o.pos) && equal(val, o.val);
+    }
+
+    bool operator<(const GradientStop &o) const
+    {
+        return pos<o.pos || (equal(pos, o.pos) && val<o.val);
+    }
+#endif
+
+    double pos,
+           val;
+
+}
+#ifndef __cplusplus
+GradientStop
+#endif
+;
+
+typedef enum
+{
+    GB_NONE,
+    GB_LIGHT,
+    GB_3D,
+    GB_3D_FULL
+} EGradientBorder;
+
+#ifdef __cplusplus
+struct GradientStopCont : public std::set<GradientStop>
+{
+    GradientStopCont fix() const
+    {
+        GradientStopCont c(*this);
+        if(size())
+        {
+            GradientStopCont::const_iterator   first(c.begin());
+            GradientStopCont::reverse_iterator last(c.rbegin());
+
+            if((*first).pos>0.001)
+                c.insert(GradientStop(0.0, 1.0));
+            if((*last).pos<0.999)
+                c.insert(GradientStop(1.0, 1.0));
+        }
+        return c;                                  
+    }
+};
+struct Gradient
+#else
+typedef struct
+#endif
+{
+#ifdef __cplusplus
+    Gradient() : border(GB_3D) { }
+
+#ifdef QTC_CONFIG_DIALOG
+    bool operator==(const Gradient &o) const
+    {
+        return border==o.border && stops==o.stops;
+    }
+#endif
+#endif
+    EGradientBorder  border;
+#ifdef __cplusplus
+    GradientStopCont stops;
+#else
+    int              numStops;
+    GradientStop     *stops;
+#endif
+}
+#ifndef __cplusplus
+Gradient
+#endif
+;
+
+#define QTC_USE_CUSTOM_SHADES(A) ((A).customShades[0]>0.00001)
+
+#ifdef __cplusplus
+typedef std::map<EAppearance, Gradient> GradientCont;
+struct Options
+#else
+typedef struct
+#endif
+{
+    int              contrast,
+                     passwordChar,
+                     highlightFactor,
+                     lighterPopupMenuBgnd;
+    ERound           round;
+    bool             embolden,
+                     highlightTab,
+                     colorSelTab,
+                     roundAllTabs,
+                     animatedProgress,
+                     fixParentlessDialogs,
+                     customMenuTextColor,
+                     menubarMouseOver,
+                     useHighlightForMenu,
+                     shadeMenubarOnlyWhenActive,
+                     thinnerMenuItems,
+                     lvButton,
+                     lvLines,
+                     drawStatusBarFrames,
+                     fillSlider,
+                     roundMbTopOnly,
+                     gtkScrollViews,
+#ifdef __cplusplus
+                     stdSidebarButtons,
+                     gtkComboMenus,
+                     colorTitlebarOnly,
+/*
+#else
+                     setDialogButtonOrder,
+*/
+#endif
+#if !defined __cplusplus || defined QTC_CONFIG_DIALOG
+                     mapKdeIcons,
+#endif
+#if defined QTC_CONFIG_DIALOG || (defined QT_VERSION && (QT_VERSION >= 0x040000)) || !defined __cplusplus
+                     gtkButtonOrder,
+#endif
+                     borderMenuitems,
+                     colorMenubarMouseOver,
+                     darkerBorders,
+                     vArrows,
+                     xCheck,
+                     framelessGroupBoxes,
+                     groupBoxLine,
+#if defined QTC_CONFIG_DIALOG || (defined QT_VERSION && (QT_VERSION >= 0x040000)) || !defined __cplusplus
+                     fadeLines,
+#endif
+                     crHighlight,
+                     crButton,
+                     fillProgress,
+                     comboSplitter,
+                     squareScrollViews,
+                     highlightScrollViews,
+                     sunkenScrollViews,
+#if defined QTC_CONFIG_DIALOG || (defined QT_VERSION && (QT_VERSION >= 0x040000))
+                     titlebarBorder,
+#endif
+                     colorSliderMouseOver,
+                     thinSbarGroove,
+                     flatSbarButtons;
+#if defined QTC_CONFIG_DIALOG || (defined QT_VERSION && (QT_VERSION >= 0x040000))
+    int              titlebarButtons;
+    TBCols           titlebarButtonColors;
+    ETitleBarIcon    titlebarIcon;
+#endif
+    EStripe          stripedProgress;
+    ESliderStyle     sliderStyle;
+    EMouseOver       coloredMouseOver;
+    ETBarBorder      toolbarBorders;
+    EDefBtnIndicator defBtnIndicator;
+    ELine            sliderThumbs,
+                     handles,
+                     toolbarSeparators,
+                     splitters;
+    ETabMo           tabMouseOver;
+/* NOTE: If add an appearance setting, increase the number of custmo gradients to match! */
+    EAppearance      appearance,
+                     menubarAppearance,
+                     menuitemAppearance,
+                     toolbarAppearance,
+                     lvAppearance,
+                     tabAppearance,
+                     activeTabAppearance,
+                     sliderAppearance,
+#ifdef __cplusplus
+                     titlebarAppearance,
+                     inactiveTitlebarAppearance,
+                     titlebarButtonAppearance,
+#endif
+#if defined QTC_CONFIG_DIALOG || (defined QT_VERSION && (QT_VERSION >= 0x040000)) || !defined __cplusplus
+                     selectionAppearance,
+#endif
+#if defined __cplusplus || defined QTC_GTK2_MENU_STRIPE
+                     menuStripeAppearance,
+#endif
+                     progressAppearance,
+                     progressGrooveAppearance,
+                     grooveAppearance,
+                     sunkenAppearance,
+                     sbarBgndAppearance,
+                     sliderFill;
+    EShade           shadeSliders,
+                     shadeMenubars,
+#if defined __cplusplus || defined QTC_GTK2_MENU_STRIPE
+                     menuStripe,
+#endif
+                     shadeCheckRadio;
+    EColor           progressGrooveColor;
+    EEffect          buttonEffect;
+    EScrollbar       scrollbarType;
+    EFocus           focus;
+    color            customMenubarsColor,
+                     customSlidersColor,
+                     customMenuNormTextColor,
+                     customMenuSelTextColor,
+#if defined __cplusplus || defined QTC_GTK2_MENU_STRIPE
+                     customMenuStripeColor,
+#endif
+                     customCheckRadioColor;
+#if defined __cplusplus
+    EAlign           titlebarAlignment;
+#endif
+    EShading         shading;
+#ifdef __cplusplus
+    GradientCont     customGradient;
+#else
+    Gradient         *customGradient[QTC_NUM_CUSTOM_GRAD];
+#endif
+    double           customShades[NUM_STD_SHADES];
+#ifndef __cplusplus
+} Options;
+#else
+};
+#endif
 
 #ifdef QTC_COMMON_FUNCTIONS
 
@@ -751,15 +1047,28 @@ inline int limit(double c)
 }
 #endif
 
-#ifdef __cplusplus
-static void shade(const color &ca, color *cb, double k)
+#if defined QT_VERSION && (QT_VERSION >= 0x040000)
+#include <KDE/KColorUtils>
+#define tint(COLA, COLB, FACTOR) KColorUtils::tint((COLA), (COLB), (FACTOR))
+#define midColor(COLA, COLB) KColorUtils::mix((COLA), (COLB), 0.5)
 #else
-static void shade(const color *ca, color *cb, double k)
+#include "colorutils.c"
+#ifdef __cplusplus
+#define tint(COLA, COLB, FACTOR) ColorUtils_tint(&(COLA), &(COLB), (FACTOR))
+#define midColor(COLA, COLB) ColorUtils_mix(&(COLA), &(COLB), 0.5)
+#define midColorF(COLA, COLB, FACTOR) ColorUtils_mix(&(COLA), &(COLB), FACTOR-0.5)
+#else
+#define tint(COLA, COLB, FACTOR) ColorUtils_tint((COLA), (COLB), (FACTOR))
+#define midColor(COLA, COLB) ColorUtils_mix((COLA), (COLB), 0.5)
+#endif
+#endif
+
+#ifdef __cplusplus
+static void shade(const Options *opts, const color &ca, color *cb, double k)
+#else
+static void shade(const Options *opts, const color *ca, color *cb, double k)
 #endif
 {
-#ifndef __cplusplus
-    cb->pixel = ca->pixel;
-#endif
     if(equal(k, 1.0))
     {
 #ifdef __cplusplus
@@ -771,7 +1080,7 @@ static void shade(const color *ca, color *cb, double k)
 #endif
     }
     else
-        switch(shading)
+        switch(opts->shading)
         {
             case SHADING_SIMPLE:
             {
@@ -845,10 +1154,34 @@ static void shade(const color *ca, color *cb, double k)
                 cb->green=limit(g*65535.0);
                 cb->blue=limit(b*65535.0);
     #endif
+                break;
+            }
+            case SHADING_HCY:
+            {
+    #define QTC_HCY_FACTOR 0.15
+    #if defined QT_VERSION && (QT_VERSION >= 0x040000)
+                if(k>1.0)
+                    *cb=KColorUtils::lighten(ca, (k*(1+QTC_HCY_FACTOR))-1.0, 1.0);
+                else
+                    *cb=KColorUtils::darken(ca, 1.0-(k*(1-QTC_HCY_FACTOR)), 1.0);
+    #elif defined __cplusplus
+                if(k>1.0)
+                    *cb=ColorUtils_lighten(&ca, (k*(1+QTC_HCY_FACTOR))-1.0, 1.0);
+                else
+                    *cb=ColorUtils_darken(&ca, 1.0-(k*(1-QTC_HCY_FACTOR)), 1.0);
+    #else
+                if(k>1.0)
+                    *cb=ColorUtils_lighten(ca, (k*(1+QTC_HCY_FACTOR))-1.0, 1.0);
+                else
+                    *cb=ColorUtils_darken(ca, 1.0-(k*(1-QTC_HCY_FACTOR)), 1.0);
+    #endif
             }
         }
 #if defined __cplusplus && defined QT_VERSION && (QT_VERSION >= 0x040000)
     cb->setAlpha(ca.alpha());
+#endif
+#ifndef __cplusplus
+    cb->pixel = ca->pixel;
 #endif
 }
 
@@ -902,220 +1235,7 @@ static void adjustPix(unsigned char *data, int numChannels, int w, int h, int st
     }
 }
 #endif
-#endif /* QTC_COMMON_NO_FUNCTIONS */
 
-#ifdef __cplusplus
-struct GradientStop
-#else
-typedef struct
-#endif
-{
-#ifdef __cplusplus
-    GradientStop(double p=0.0, double v=0.0) : pos(p), val(v) { }
-
-    bool operator==(const GradientStop &o) const
-    {
-        return equal(pos, o.pos) && equal(val, o.val);
-    }
-
-    bool operator<(const GradientStop &o) const
-    {
-        return pos<o.pos || (equal(pos, o.pos) && val<o.val);
-    }
-#endif
-
-    double pos,
-           val;
-
-}
-#ifndef __cplusplus
-GradientStop
-#endif
-;
-
-typedef enum
-{
-    GB_NONE,
-    GB_LIGHT,
-    GB_3D
-} EGradientBorder;
-
-#ifdef __cplusplus
-struct GradientStopCont : public std::set<GradientStop>
-{
-    GradientStopCont fix() const
-    {
-        GradientStopCont c(*this);
-        if(size())
-        {
-            GradientStopCont::const_iterator   first(c.begin());
-            GradientStopCont::reverse_iterator last(c.rbegin());
-
-            if((*first).pos>0.001)
-                c.insert(GradientStop(0.0, 1.0));
-            if((*last).pos<0.999)
-                c.insert(GradientStop(1.0, 1.0));
-        }
-        return c;                                  
-    }
-};
-struct Gradient
-#else
-typedef struct
-#endif
-{
-#ifdef __cplusplus
-    Gradient() : border(GB_3D) { }
-
-#ifdef QTC_CONFIG_DIALOG
-    bool operator==(const Gradient &o) const
-    {
-        return border==o.border && stops==o.stops;
-    }
-#endif
-#endif
-    EGradientBorder  border;
-#ifdef __cplusplus
-    GradientStopCont stops;
-#else
-    int              numStops;
-    GradientStop     *stops;
-#endif
-}
-#ifndef __cplusplus
-Gradient
-#endif
-;
-
-#define QTC_USE_CUSTOM_SHADES(A) ((A).customShades[0]>0.00001)
-
-#ifdef __cplusplus
-typedef std::map<EAppearance, Gradient> GradientCont;
-struct Options
-#else
-typedef struct
-#endif
-{
-    int              contrast,
-                     passwordChar,
-                     highlightFactor,
-                     lighterPopupMenuBgnd;
-    ERound           round;
-    bool             embolden,
-                     highlightTab,
-                     colorSelTab,
-                     animatedProgress,
-                     fixParentlessDialogs,
-                     customMenuTextColor,
-                     menubarMouseOver,
-                     useHighlightForMenu,
-                     shadeMenubarOnlyWhenActive,
-                     thinnerMenuItems,
-                     lvLines,
-                     drawStatusBarFrames,
-                     fillSlider,
-                     roundMbTopOnly,
-                     gtkScrollViews,
-#ifdef __cplusplus
-                     stdSidebarButtons,
-                     gtkComboMenus,
-                     colorTitlebarOnly,
-/*
-#else
-                     setDialogButtonOrder,
-*/
-#endif
-#if !defined __cplusplus || defined QTC_CONFIG_DIALOG
-                     mapKdeIcons,
-#endif
-#if defined QTC_CONFIG_DIALOG || (defined QT_VERSION && (QT_VERSION >= 0x040000)) || !defined __cplusplus
-                     gtkButtonOrder,
-#endif
-                     borderMenuitems,
-                     colorMenubarMouseOver,
-                     darkerBorders,
-                     vArrows,
-                     xCheck,
-                     framelessGroupBoxes,
-                     groupBoxLine,
-#if defined QTC_CONFIG_DIALOG || (defined QT_VERSION && (QT_VERSION >= 0x040000)) || !defined __cplusplus
-                     fadeLines,
-#endif
-#if defined __cplusplus || defined QTC_GTK2_MENU_STRIPE
-                     menuStripe,
-#endif
-                     inactiveHighlight,
-                     crHighlight,
-                     crButton,
-                     fillProgress,
-                     comboSplitter,
-                     squareScrollViews,
-                     highlightScrollViews,
-                     sunkenScrollViews,
-                     flatSbarButtons;
-    EStripe          stripedProgress;
-    ESliderStyle     sliderStyle;
-    EMouseOver       coloredMouseOver;
-    ETBarBorder      toolbarBorders;
-    EDefBtnIndicator defBtnIndicator;
-    ELine            sliderThumbs,
-                     handles,
-                     toolbarSeparators,
-                     splitters;
-    EAppearance      appearance,
-                     menubarAppearance,
-                     menuitemAppearance,
-                     toolbarAppearance,
-                     lvAppearance,
-                     tabAppearance,
-                     activeTabAppearance,
-                     sliderAppearance,
-#ifdef __cplusplus
-                     titlebarAppearance,
-                     inactiveTitlebarAppearance,
-                     titlebarButtonAppearance,
-#endif
-#if defined QTC_CONFIG_DIALOG || (defined QT_VERSION && (QT_VERSION >= 0x040000)) || !defined __cplusplus
-                     selectionAppearance,
-#endif
-#if defined __cplusplus || defined QTC_GTK2_MENU_STRIPE
-                     menuStripeAppearance,
-#endif
-                     progressAppearance,
-                     progressGrooveAppearance,
-                     grooveAppearance,
-                     sunkenAppearance;
-    EShade           shadeSliders,
-                     shadeMenubars,
-                     shadeCheckRadio;
-    EColor           progressGrooveColor;
-    EEffect          buttonEffect;
-    EScrollbar       scrollbarType;
-    EFocus           focus;
-    color            customMenubarsColor,
-                     customSlidersColor,
-                     customMenuNormTextColor,
-                     customMenuSelTextColor,
-                     customCheckRadioColor;
-#if defined __cplusplus
-    EAlign           titlebarAlignment;
-#endif
-#ifdef QTC_CONFIG_DIALOG
-    EShading         shading;
-#endif
-#ifdef __cplusplus
-    GradientCont     customGradient;
-#else
-    Gradient         *customGradient[QTC_NUM_CUSTOM_GRAD+1];
-#endif
-    double           customShades[NUM_STD_SHADES];
-#ifndef __cplusplus
-} Options;
-#else
-};
-#endif
-
-#if defined QTC_COMMON_FUNCTIONS
 static void setupGradient(Gradient *grad, EGradientBorder border, int numStops, ...)
 {
     va_list  ap;
@@ -1152,6 +1272,8 @@ static EAppearance widgetApp(EWidget w, const Options *opts)
 {
     switch(w)
     {
+        case WIDGET_SB_BGND:
+            return opts->sbarBgndAppearance;
         case WIDGET_LISTVIEW_HEADER:
             return opts->lvAppearance;
         case WIDGET_SB_BUTTON:
@@ -1159,7 +1281,7 @@ static EAppearance widgetApp(EWidget w, const Options *opts)
         case WIDGET_SB_SLIDER:
             return opts->sliderAppearance;
         case WIDGET_FILLED_SLIDER_TROUGH:
-            return IS_FLAT(opts->appearance) ? opts->grooveAppearance : APPEARANCE_GRADIENT;
+            return opts->sliderFill;
         case WIDGET_TAB_TOP:
         case WIDGET_TAB_BOT:
             return opts->tabAppearance;
@@ -1214,7 +1336,7 @@ static const Gradient * getGradient(EAppearance app, const Options *opts)
 
     if(!init)
     {
-        setupGradient(&stdGradients[APPEARANCE_RAISED-APPEARANCE_RAISED], GB_3D,2,0.0,1.0,1.0,1.0);
+        setupGradient(&stdGradients[APPEARANCE_RAISED-APPEARANCE_RAISED], GB_3D_FULL,2,0.0,1.0,1.0,1.0);
         setupGradient(&stdGradients[APPEARANCE_DULL_GLASS-APPEARANCE_RAISED], GB_LIGHT,4,0.0,1.05,0.499,0.984,0.5,0.928,1.0,1.0);
         setupGradient(&stdGradients[APPEARANCE_SHINY_GLASS-APPEARANCE_RAISED], GB_LIGHT,4,0.0,1.2,0.499,0.984,0.5,0.9,1.0,1.06);
         setupGradient(&stdGradients[APPEARANCE_SOFT_GRADIENT-APPEARANCE_RAISED], GB_3D,2,0.0,1.04,1.0,0.98);
@@ -1235,13 +1357,14 @@ static const Gradient * getGradient(EAppearance app, const Options *opts)
     return 0L; /* Will never happen! */
 }
 
-#define QTC_MIN_ROUND_FULL_SIZE       8
+#define QTC_MIN_ROUND_FULL_SIZE     8
 #ifdef __cplusplus
-#define QTC_MIN_ROUND_EXTRA_SIZE(W)   (WIDGET_SPIN==W ? 7 : 14)
+#define QTC_MIN_ROUND_EXTRA_SIZE(W) (WIDGET_SPIN==W ? 7 : 14)
 #else
-#define QTC_MIN_ROUND_EXTRA_SIZE(W)   (WIDGET_SPIN_UP==W || WIDGET_SPIN_DOWN==W || WIDGET_SPIN==W ? 7 : 14)
+#define QTC_MIN_ROUND_EXTRA_SIZE(W) (WIDGET_SPIN_UP==W || WIDGET_SPIN_DOWN==W || WIDGET_SPIN==W ? 7 : 14)
 #endif
-#define QTC_MIN_ROUND_MAX_HEIGHT_SIZE 20
+#define QTC_MIN_ROUND_MAX_HEIGHT    21
+#define QTC_MIN_ROUND_MAX_WIDTH     32
 
 #if !defined __cplusplus || (defined QT_VERSION && (QT_VERSION >= 0x040000))
 
@@ -1276,20 +1399,28 @@ typedef enum
 } ERadius;
 
 #define QTC_MAX_ROUND_WIDGET(A) \
-            (WIDGET_STD_BUTTON==A || WIDGET_DEF_BUTTON==A || WIDGET_MENU_BUTTON==A)
+            (WIDGET_STD_BUTTON==A || WIDGET_DEF_BUTTON==A /*|| WIDGET_MENU_BUTTON==A*/)
 
 #ifdef __cplusplus
 #define QTC_EXTRA_ROUND_WIDGET(A) \
-            (A!=WIDGET_MENU_ITEM && A!=WIDGET_TAB_FRAME && A!=WIDGET_MDI_WINDOW && A!=WIDGET_MDI_WINDOW_TITLE)
+            (A!=WIDGET_MENU_ITEM && A!=WIDGET_TAB_FRAME && A!=WIDGET_PBAR_TROUGH && A!=WIDGET_PROGRESSBAR && \
+             A!=WIDGET_MDI_WINDOW && A!=WIDGET_MDI_WINDOW_TITLE)
 #else
 #define QTC_EXTRA_ROUND_WIDGET(A) \
-            (A!=WIDGET_MENU_ITEM && A!=WIDGET_TAB_FRAME)
+            (A!=WIDGET_MENU_ITEM && A!=WIDGET_TAB_FRAME && A!=WIDGET_PBAR_TROUGH && A!=WIDGET_PROGRESSBAR)
 #endif
 
-static double getRadius(ERound r, int w, int h, EWidget widget, ERadius rad)
+static double getRadius(const Options *opts, int w, int h, EWidget widget, ERadius rad)
 {
+    ERound r=opts->round;
+
     if((WIDGET_CHECKBOX==widget || WIDGET_FOCUS==widget) && ROUND_NONE!=r)
         r=ROUND_SLIGHT;
+
+#if defined __cplusplus && (defined QT_VERSION && (QT_VERSION >= 0x040000))
+    if(WIDGET_MDI_WINDOW_BUTTON==widget && (opts->titlebarButtons&QTC_TITLEBAR_BUTTON_ROUND))
+       r=ROUND_MAX;
+#endif
 
     switch(rad)
     {
@@ -1298,10 +1429,10 @@ static double getRadius(ERound r, int w, int h, EWidget widget, ERadius rad)
             {
                 case ROUND_MAX:
                 case ROUND_EXTRA:
-                    if(w>48 && h>48)
+                    if( (WIDGET_RUBBER_BAND==widget && w>14 && h>14) || (w>48 && h>48))
                         return 6.0;
                 case ROUND_FULL:
-                    if(w>48 && h>48)
+                    if( (WIDGET_RUBBER_BAND==widget && w>11 && h>11) || (w>48 && h>48))
                         return 3.0;
                     if(w>QTC_MIN_ROUND_FULL_SIZE && h>QTC_MIN_ROUND_FULL_SIZE)
                         return QTC_FULL_OUTER_RADIUS;
@@ -1314,10 +1445,13 @@ static double getRadius(ERound r, int w, int h, EWidget widget, ERadius rad)
             switch(r)
             {
                 case ROUND_MAX:
-                    if(WIDGET_SB_SLIDER==widget || WIDGET_TROUGH==widget)
+                    if(WIDGET_SB_SLIDER==widget || WIDGET_TROUGH==widget
+#if defined __cplusplus && (defined QT_VERSION && (QT_VERSION >= 0x040000))
+                       || (WIDGET_MDI_WINDOW_BUTTON==widget && (opts->titlebarButtons&QTC_TITLEBAR_BUTTON_ROUND))
+#endif
+                       )
                         return ((w>h ? h : w)-2)/2;
-                    if(w>(QTC_MIN_ROUND_EXTRA_SIZE(widget)-2) && h>(QTC_MIN_ROUND_EXTRA_SIZE(widget)-2) &&
-                       QTC_MAX_ROUND_WIDGET(widget))
+                    if(w>(QTC_MIN_ROUND_MAX_WIDTH-2) && h>(QTC_MIN_ROUND_MAX_HEIGHT-2) && QTC_MAX_ROUND_WIDGET(widget))
                         return 8.5;
                 case ROUND_EXTRA:
                     if(QTC_EXTRA_ROUND_WIDGET(widget) &&
@@ -1335,10 +1469,13 @@ static double getRadius(ERound r, int w, int h, EWidget widget, ERadius rad)
             switch(r)
             {
                 case ROUND_MAX:
-                    if(WIDGET_SB_SLIDER==widget || WIDGET_TROUGH==widget)
+                    if(WIDGET_SB_SLIDER==widget || WIDGET_TROUGH==widget
+#if defined __cplusplus && (defined QT_VERSION && (QT_VERSION >= 0x040000))
+                       || (WIDGET_MDI_WINDOW_BUTTON==widget && (opts->titlebarButtons&QTC_TITLEBAR_BUTTON_ROUND))
+#endif
+                      )
                         return (w>h ? h : w)/2;
-                    if(w>QTC_MIN_ROUND_EXTRA_SIZE(widget) && h>QTC_MIN_ROUND_MAX_HEIGHT_SIZE &&
-                       QTC_MAX_ROUND_WIDGET(widget))
+                    if(w>QTC_MIN_ROUND_MAX_WIDTH && h>QTC_MIN_ROUND_MAX_HEIGHT && QTC_MAX_ROUND_WIDGET(widget))
                         return 9.5;
                 case ROUND_EXTRA:
                     if(QTC_EXTRA_ROUND_WIDGET(widget) &&
@@ -1356,10 +1493,13 @@ static double getRadius(ERound r, int w, int h, EWidget widget, ERadius rad)
             switch(r)
             {
                 case ROUND_MAX:
-                    if(WIDGET_SB_SLIDER==widget || WIDGET_TROUGH==widget)
+                    if(WIDGET_SB_SLIDER==widget || WIDGET_TROUGH==widget
+#if defined __cplusplus && (defined QT_VERSION && (QT_VERSION >= 0x040000))
+                       || (WIDGET_MDI_WINDOW_BUTTON==widget && (opts->titlebarButtons&QTC_TITLEBAR_BUTTON_ROUND))
+#endif
+                      )
                         return (w>h ? h : w)/2;
-                    if(w>QTC_MIN_ROUND_EXTRA_SIZE(widget) && h>QTC_MIN_ROUND_MAX_HEIGHT_SIZE &&
-                       QTC_MAX_ROUND_WIDGET(widget))
+                    if(w>QTC_MIN_ROUND_MAX_WIDTH && h>QTC_MIN_ROUND_MAX_HEIGHT && QTC_MAX_ROUND_WIDGET(widget))
                         return 10.5;
                 case ROUND_EXTRA:
                     if(QTC_EXTRA_ROUND_WIDGET(widget) &&

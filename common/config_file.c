@@ -169,26 +169,32 @@ static EAppearance toAppearance(const char *str, EAppearance def, bool allowFade
         {
             int i=atoi(&str[14]);
 
-            if(i>=1 && i<(QTC_NUM_CUSTOM_GRAD+1))
-                return (EAppearance)(APPEARANCE_CUSTOM1+(i-1));
+            i--;
+            if(i>=0 && i<QTC_NUM_CUSTOM_GRAD)
+                return (EAppearance)(APPEARANCE_CUSTOM1+i);
         }
     }
     return def;
 }
 
-static EShade toShade(const char *str, bool allowDarken, EShade def)
+static EShade toShade(const char *str, bool allowDarken, EShade def, bool menuShade, color *col)
 {
     if(str)
     {
         /* true/false is from 0.25... */
-        if(0==memcmp(str, "true", 4) || 0==memcmp(str, "selected", 8))
+        if((!menuShade && 0==memcmp(str, "true", 4)) || 0==memcmp(str, "selected", 8))
             return SHADE_BLEND_SELECTED;
         if(0==memcmp(str, "origselected", 12))
             return SHADE_SELECTED;
-        if(allowDarken && 0==memcmp(str, "darken", 6))
+        if(allowDarken && (0==memcmp(str, "darken", 6) || (menuShade && 0==memcmp(str, "true", 4))))
             return SHADE_DARKEN;
         if(0==memcmp(str, "custom", 6))
             return SHADE_CUSTOM;
+        if('#'==str[0] && col)
+        {
+            setRgb(col, str);
+            return SHADE_CUSTOM;
+        }
         if(0==memcmp(str, "none", 4))
             return SHADE_NONE;
     }
@@ -260,6 +266,8 @@ static EShading toShading(const char *str, EShading def)
             return SHADING_HSL;
         if(0==memcmp(str, "hsv", 3))
             return SHADING_HSV;
+        if(0==memcmp(str, "hcy", 3))
+            return SHADING_HCY;
     }
 
     return def;
@@ -320,16 +328,29 @@ static EFocus toFocus(const char *str, EFocus def)
     {
         if(0==memcmp(str, "standard", 8))
             return FOCUS_STANDARD;
-        if(0==memcmp(str, "highlight", 9))
-            return FOCUS_HIGHLIGHT;
-        if(0==memcmp(str, "background", 10))
-            return FOCUS_BACKGROUND;
+        if(0==memcmp(str, "rect", 4) || 0==memcmp(str, "highlight", 9))
+            return FOCUS_RECTANGLE;
         if(0==memcmp(str, "filled", 6))
             return FOCUS_FILLED;
         if(0==memcmp(str, "full", 4))
             return FOCUS_FULL;
         if(0==memcmp(str, "line", 4))
             return FOCUS_LINE;
+    }
+
+    return def;
+}
+
+static ETabMo toTabMo(const char *str, ETabMo def)
+{
+    if(str)
+    {
+        if(0==memcmp(str, "top", 3))
+            return TAB_MO_TOP;
+        if(0==memcmp(str, "bot", 3))
+            return TAB_MO_BOTTOM;
+        if(0==memcmp(str, "glow", 4))
+            return TAB_MO_GLOW;
     }
 
     return def;
@@ -343,8 +364,11 @@ static EGradientBorder toGradientBorder(const char *str)
             return GB_LIGHT;
         if(0==memcmp(str, "none", 4))
             return GB_NONE;
+        if(0==memcmp(str, "3dfull", 6))
+            return GB_3D_FULL;
         if(0==memcmp(str, "3d", 2) || 0==memcmp(str, "false", 5))
             return GB_3D;
+
     }
     return GB_3D;
 }
@@ -362,6 +386,22 @@ static EAlign toAlign(const char *str, EAlign def)
             return ALIGN_CENTER;
         if(0==memcmp(str, "right", 5))
             return ALIGN_RIGHT;
+    }
+    return def;
+}
+#endif
+
+#if defined QTC_CONFIG_DIALOG || (defined QT_VERSION && (QT_VERSION >= 0x040000))
+static ETitleBarIcon toTitlebarIcon(const char *str, ETitleBarIcon def)
+{
+    if(str)
+    {
+        if(0==memcmp(str, "none", 4))
+            return TITLEBAR_ICON_NONE;
+        if(0==memcmp(str, "menu", 4))
+            return TITLEBAR_ICON_MENU_BUTTON;
+        if(0==memcmp(str, "title", 5))
+            return TITLEBAR_ICON_NEXT_TO_TITLE;
     }
     return def;
 }
@@ -722,8 +762,8 @@ static gboolean readBoolEntry(GHashTable *cfg, char *key, gboolean def)
 #define QTC_CFG_READ_LINE(ENTRY) \
     opts->ENTRY=toLine(QTC_LATIN1(readStringEntry(cfg, #ENTRY)), def->ENTRY);
 
-#define QTC_CFG_READ_SHADE(ENTRY, AD) \
-    opts->ENTRY=toShade(QTC_LATIN1(readStringEntry(cfg, #ENTRY)), AD, def->ENTRY);
+#define QTC_CFG_READ_SHADE(ENTRY, AD, MENU_STRIPE, COL) \
+    opts->ENTRY=toShade(QTC_LATIN1(readStringEntry(cfg, #ENTRY)), AD, def->ENTRY, MENU_STRIPE, COL);
 
 #define QTC_CFG_READ_SCROLLBAR(ENTRY) \
     opts->ENTRY=toScrollbar(QTC_LATIN1(readStringEntry(cfg, #ENTRY)), def->ENTRY);
@@ -731,13 +771,8 @@ static gboolean readBoolEntry(GHashTable *cfg, char *key, gboolean def)
 #define QTC_CFG_READ_EFFECT(ENTRY) \
     opts->ENTRY=toEffect(QTC_LATIN1(readStringEntry(cfg, #ENTRY)), def->ENTRY);
 
-#ifdef QTC_CONFIG_DIALOG
-#define QTC_CFG_READ_SHADING(ENTRY, UNUSED) \
+#define QTC_CFG_READ_SHADING(ENTRY) \
     opts->ENTRY=toShading(QTC_LATIN1(readStringEntry(cfg, #ENTRY)), def->ENTRY);
-#else
-#define QTC_CFG_READ_SHADING(ENTRY, DEF) \
-    ENTRY=toShading(QTC_LATIN1(readStringEntry(cfg, #ENTRY)), DEF);
-#endif
 
 #define QTC_CFG_READ_ECOLOR(ENTRY) \
     opts->ENTRY=toEColor(QTC_LATIN1(readStringEntry(cfg, #ENTRY)), def->ENTRY);
@@ -745,11 +780,19 @@ static gboolean readBoolEntry(GHashTable *cfg, char *key, gboolean def)
 #define QTC_CFG_READ_FOCUS(ENTRY) \
     opts->ENTRY=toFocus(QTC_LATIN1(readStringEntry(cfg, #ENTRY)), def->ENTRY);
 
+#define QTC_CFG_READ_TAB_MO(ENTRY) \
+    opts->ENTRY=toTabMo(QTC_LATIN1(readStringEntry(cfg, #ENTRY)), def->ENTRY);
+
 #ifdef __cplusplus
 #define QTC_CFG_READ_ALIGN(ENTRY) \
     opts->ENTRY=toAlign(QTC_LATIN1(readStringEntry(cfg, #ENTRY)), def->ENTRY);
 #endif
 
+#if defined QTC_CONFIG_DIALOG || (defined QT_VERSION && (QT_VERSION >= 0x040000))
+#define QTC_CFG_READ_TB_ICON(ENTRY) \
+    opts->ENTRY=toTitlebarIcon(QTC_LATIN1(readStringEntry(cfg, #ENTRY)), def->ENTRY);
+#endif
+    
 static void checkAppearance(EAppearance *ap, Options *opts)
 {
     if(*ap>=APPEARANCE_CUSTOM1 && *ap<(APPEARANCE_CUSTOM1+QTC_NUM_CUSTOM_GRAD))
@@ -767,6 +810,39 @@ static void checkAppearance(EAppearance *ap, Options *opts)
 }
 
 static void defaultSettings(Options *opts);
+
+#ifndef __cplusplus
+static void copyGradients(Options *src, Options *dest)
+{
+    if(src && dest && src!=dest)
+    {
+        int i;
+
+        for(i=0; i<QTC_NUM_CUSTOM_GRAD; ++i)
+            if(src->customGradient[i] && src->customGradient[i]->numStops>0)
+            {
+                dest->customGradient[i]=malloc(sizeof(Gradient));
+                dest->customGradient[i]->numStops=src->customGradient[i]->numStops;
+                dest->customGradient[i]->stops=malloc(sizeof(GradientStop) * dest->customGradient[i]->numStops*2);
+                memcpy(dest->customGradient[i]->stops, src->customGradient[i]->stops,
+                        sizeof(GradientStop) * dest->customGradient[i]->numStops*2);
+                dest->customGradient[i]->border=src->customGradient[i]->border;
+            }
+            else
+                dest->customGradient[i]=NULL;
+    }
+}
+
+static void copyOpts(Options *src, Options *dest)
+{
+    if(src && dest && src!=dest)
+    {
+        memcpy(dest, src, sizeof(Options));
+        memcpy(dest->customShades, src->customShades, sizeof(double)*NUM_STD_SHADES);
+        copyGradients(src, dest);
+    }
+}
+#endif
 
 #ifdef __cplusplus
 static bool readConfig(const QString &file, Options *opts, Options *defOpts=0L)
@@ -826,24 +902,28 @@ static bool readConfig(const char *file, Options *opts, Options *defOpts)
 
             Options *def=&newOpts;
 
-            opts->customGradient=def->customGradient;
+            if(opts!=def)
+                opts->customGradient=def->customGradient;
 #else
-            Options newOpts,
-                    *def=defOpts ? defOpts : &newOpts;
+            Options newOpts;
+            Options *def=&newOpts;
 
-            if(!defOpts)
-                defaultSettings(def);
-            for(i=0; i<QTC_NUM_CUSTOM_GRAD+1; ++i)
-                if(def->customGradient[i] && def->customGradient[i]->numStops>0)
-                {
-                    opts->customGradient[i]=malloc(sizeof(Gradient));
-                    opts->customGradient[i]->numStops=def->customGradient[i]->numStops;
-                    opts->customGradient[i]->stops=malloc(sizeof(GradientStop) * opts->customGradient[i]->numStops*2);
-                    memcpy(opts->customGradient[i]->stops, def->customGradient[i]->stops, sizeof(GradientStop) * opts->customGradient[i]->numStops*2);
-                    opts->customGradient[i]->border=def->customGradient[i]->border;
-                }
+            if(defOpts)
+                copyOpts(defOpts, &newOpts);
+            else
+                defaultSettings(&newOpts);
+            if(opts!=def)
+                copyGradients(def, opts);
 #endif
             /* Check if the config file expects old default values... */
+            if(version<QTC_MAKE_VERSION(0, 63))
+            {
+                def->tabMouseOver=TAB_MO_TOP;
+                def->sliderStyle=SLIDER_TRIANGULAR;
+#ifdef __cplusplus
+                def->titlebarAlignment=ALIGN_LEFT;
+#endif
+            }
             if(version<QTC_MAKE_VERSION(0, 62))
             {
 #ifdef __cplusplus
@@ -889,9 +969,12 @@ static bool readConfig(const char *file, Options *opts, Options *defOpts)
                 opts->highlightTab=true;
             }
 
-            opts->customShades[0]=0;
-            if(QTC_USE_CUSTOM_SHADES(*def))
-                memcpy(opts->customShades, def->customShades, sizeof(double)*NUM_STD_SHADES);
+            if(opts!=def)
+            {
+                opts->customShades[0]=0;
+                if(QTC_USE_CUSTOM_SHADES(*def))
+                    memcpy(opts->customShades, def->customShades, sizeof(double)*NUM_STD_SHADES);
+            }
 
             QTC_CFG_READ_NUM(passwordChar)
             QTC_CFG_READ_ROUND(round)
@@ -909,9 +992,11 @@ static bool readConfig(const char *file, Options *opts, Options *defOpts)
             QTC_CFG_READ_LINE(handles)
             QTC_CFG_READ_BOOL(highlightTab)
             QTC_CFG_READ_BOOL(colorSelTab)
-            QTC_CFG_READ_SHADE(shadeSliders, false)
-            QTC_CFG_READ_SHADE(shadeMenubars, true)
-            QTC_CFG_READ_SHADE(shadeCheckRadio, false)
+            QTC_CFG_READ_BOOL(roundAllTabs)
+            QTC_CFG_READ_TAB_MO(tabMouseOver)
+            QTC_CFG_READ_SHADE(shadeSliders, false, false, &opts->customSlidersColor)
+            QTC_CFG_READ_SHADE(shadeMenubars, true, false, &opts->customMenubarsColor)
+            QTC_CFG_READ_SHADE(shadeCheckRadio, false, false, &opts->customCheckRadioColor)
             QTC_CFG_READ_APPEARANCE(menubarAppearance, false)
             QTC_CFG_READ_APPEARANCE(menuitemAppearance, true)
             QTC_CFG_READ_APPEARANCE(toolbarAppearance, false)
@@ -926,11 +1011,17 @@ static bool readConfig(const char *file, Options *opts, Options *defOpts)
             QTC_CFG_READ_BOOL(useHighlightForMenu)
             QTC_CFG_READ_BOOL(shadeMenubarOnlyWhenActive)
             QTC_CFG_READ_BOOL(thinnerMenuItems)
-            QTC_CFG_READ_COLOR(customSlidersColor)
-            QTC_CFG_READ_COLOR(customMenubarsColor)
+            if(version<QTC_MAKE_VERSION(0, 63))
+            {
+                if(QTC_IS_BLACK(opts->customSlidersColor))
+                    QTC_CFG_READ_COLOR(customSlidersColor)
+                if(QTC_IS_BLACK(opts->customMenubarsColor))
+                    QTC_CFG_READ_COLOR(customMenubarsColor)
+                if(QTC_IS_BLACK(opts->customCheckRadioColor))
+                    QTC_CFG_READ_COLOR(customCheckRadioColor)
+            }
             QTC_CFG_READ_COLOR(customMenuSelTextColor)
             QTC_CFG_READ_COLOR(customMenuNormTextColor)
-            QTC_CFG_READ_COLOR(customCheckRadioColor)
             QTC_CFG_READ_SCROLLBAR(scrollbarType)
             QTC_CFG_READ_EFFECT(buttonEffect)
             QTC_CFG_READ_APPEARANCE(lvAppearance, false)
@@ -941,8 +1032,17 @@ static bool readConfig(const char *file, Options *opts, Options *defOpts)
             QTC_CFG_READ_APPEARANCE(progressGrooveAppearance, false)
             QTC_CFG_READ_APPEARANCE(grooveAppearance, false)
             QTC_CFG_READ_APPEARANCE(sunkenAppearance, false)
+            QTC_CFG_READ_APPEARANCE(sbarBgndAppearance, false)
+
+            if(version<QTC_MAKE_VERSION(0, 63))
+                opts->sliderFill=IS_FLAT(opts->appearance) ? opts->grooveAppearance : APPEARANCE_GRADIENT;
+            else
+            {
+                QTC_CFG_READ_APPEARANCE(sliderFill, false)
+            }
             QTC_CFG_READ_ECOLOR(progressGrooveColor)
             QTC_CFG_READ_FOCUS(focus)
+            QTC_CFG_READ_BOOL(lvButton)
             QTC_CFG_READ_BOOL(lvLines)
             QTC_CFG_READ_BOOL(drawStatusBarFrames)
             QTC_CFG_READ_BOOL(fillSlider)
@@ -956,7 +1056,6 @@ static bool readConfig(const char *file, Options *opts, Options *defOpts)
 #if defined QTC_CONFIG_DIALOG || (defined QT_VERSION && (QT_VERSION >= 0x040000)) || !defined __cplusplus
             QTC_CFG_READ_BOOL(fadeLines)
 #endif
-            QTC_CFG_READ_BOOL(inactiveHighlight)
             QTC_CFG_READ_BOOL(colorMenubarMouseOver)
             QTC_CFG_READ_BOOL(crHighlight)
             QTC_CFG_READ_BOOL(crButton)
@@ -966,9 +1065,18 @@ static bool readConfig(const char *file, Options *opts, Options *defOpts)
             QTC_CFG_READ_BOOL(highlightScrollViews)
             QTC_CFG_READ_BOOL(sunkenScrollViews)
             QTC_CFG_READ_BOOL(flatSbarButtons)
+            QTC_CFG_READ_BOOL(thinSbarGroove)
+            QTC_CFG_READ_BOOL(colorSliderMouseOver)
+#if defined QTC_CONFIG_DIALOG || (defined QT_VERSION && (QT_VERSION >= 0x040000))
+            QTC_CFG_READ_BOOL(titlebarBorder)
+            QTC_CFG_READ_INT(titlebarButtons)
+            QTC_CFG_READ_TB_ICON(titlebarIcon)
+#endif
 #if defined __cplusplus || defined QTC_GTK2_MENU_STRIPE
-            QTC_CFG_READ_BOOL(menuStripe)
+            QTC_CFG_READ_SHADE(menuStripe, true, true, &opts->customMenuStripeColor)
             QTC_CFG_READ_APPEARANCE(menuStripeAppearance, false)
+            if(version<QTC_MAKE_VERSION(0, 63) && QTC_IS_BLACK(opts->customMenuStripeColor))
+                QTC_CFG_READ_COLOR(customMenuStripeColor)
 #endif
             QTC_CFG_READ_BOOL(gtkScrollViews)
 #ifdef __cplusplus
@@ -1002,9 +1110,36 @@ static bool readConfig(const char *file, Options *opts, Options *defOpts)
             else if(APPEARANCE_RAISED==opts->inactiveTitlebarAppearance)
                 opts->inactiveTitlebarAppearance=APPEARANCE_FLAT;
 #endif
-            QTC_CFG_READ_SHADING(shading, shading);
+            QTC_CFG_READ_SHADING(shading);
 
 #ifdef __cplusplus
+#if defined QTC_CONFIG_DIALOG || (defined QT_VERSION && (QT_VERSION >= 0x040000))
+            if(opts->titlebarButtons&QTC_TITLEBAR_BUTTON_COLOR)
+            {
+#if (defined QT_VERSION && (QT_VERSION >= 0x040000))
+                QStringList cols(readStringEntry(cfg, "titlebarButtonColors").split(',', QString::SkipEmptyParts));
+#else
+                QStringList cols(QStringList::split(',', readStringEntry(cfg, "titlebarButtonColors")));
+#endif
+                if(NUM_TITLEBAR_BUTTONS==cols.count())
+                {
+                    QStringList::ConstIterator it(cols.begin()),
+                                               end(cols.end());
+                    TBCols                     cols;
+
+                    for(int i=0; it!=end; ++it, ++i)
+                    {
+                        QColor col;
+                        setRgb(&col, QTC_LATIN1((*it)));
+                        cols[(ETitleBarButtons)i]=col;
+                    }
+                    opts->titlebarButtonColors=cols;
+                }
+                else
+                    opts->titlebarButtons&=~QTC_TITLEBAR_BUTTON_COLOR;
+            }
+#endif
+
 #if (defined QT_VERSION && (QT_VERSION >= 0x040000))
             QStringList shades(readStringEntry(cfg, "customShades").split(',', QString::SkipEmptyParts));
 #else
@@ -1023,14 +1158,11 @@ static bool readConfig(const char *file, Options *opts, Options *defOpts)
             if(!ok && shades.size())
                 opts->customShades[0]=0;
 
-            for(i=APPEARANCE_CUSTOM1; i<(APPEARANCE_CUSTOM1+QTC_NUM_CUSTOM_GRAD+1); ++i)
+            for(i=APPEARANCE_CUSTOM1; i<(APPEARANCE_CUSTOM1+QTC_NUM_CUSTOM_GRAD); ++i)
             {
                 QString gradKey;
 
-                if(i==QTC_NUM_CUSTOM_GRAD)
-                    gradKey="sunkengradient";
-                else
-                    gradKey.sprintf("customgradient%d", (i-APPEARANCE_CUSTOM1)+1);
+                gradKey.sprintf("customgradient%d", (i-APPEARANCE_CUSTOM1)+1);
 
 #if (defined QT_VERSION && (QT_VERSION >= 0x040000))
                 QStringList vals(readStringEntry(cfg, gradKey).split(',', QString::SkipEmptyParts));
@@ -1110,15 +1242,12 @@ static bool readConfig(const char *file, Options *opts, Options *defOpts)
             }
             }
 
-            for(i=0; i<QTC_NUM_CUSTOM_GRAD+1; ++i)
+            for(i=0; i<QTC_NUM_CUSTOM_GRAD; ++i)
             {
                 char gradKey[18];
                 char *str;
 
-                if(i==QTC_NUM_CUSTOM_GRAD)
-                    sprintf(gradKey, "sunkengradient");
-                else
-                    sprintf(gradKey, "customgradient%d", i+1);
+                sprintf(gradKey, "customgradient%d", i+1);
                 if((str=readStringEntry(cfg, gradKey)))
                 {
                     int j,
@@ -1242,6 +1371,8 @@ static bool readConfig(const char *file, Options *opts, Options *defOpts)
             checkAppearance(&opts->progressGrooveAppearance, opts);
             checkAppearance(&opts->grooveAppearance, opts);
             checkAppearance(&opts->sunkenAppearance, opts);
+            checkAppearance(&opts->sbarBgndAppearance, opts);
+            checkAppearance(&opts->sliderFill, opts);
 #ifndef __cplusplus
             releaseConfig(cfg);
 #endif
@@ -1251,7 +1382,9 @@ static bool readConfig(const char *file, Options *opts, Options *defOpts)
             checkColor(&opts->shadeMenubars, &opts->customMenubarsColor);
             checkColor(&opts->shadeSliders, &opts->customSlidersColor);
             checkColor(&opts->shadeCheckRadio, &opts->customCheckRadioColor);
-
+#if defined __cplusplus || defined QTC_GTK2_MENU_STRIPE
+            checkColor(&opts->menuStripe, &opts->customMenuStripeColor);
+#endif
             if(APPEARANCE_BEVELLED==opts->toolbarAppearance)
                 opts->toolbarAppearance=APPEARANCE_GRADIENT;
             else if(APPEARANCE_RAISED==opts->toolbarAppearance)
@@ -1317,9 +1450,6 @@ static bool readConfig(const char *file, Options *opts, Options *defOpts)
             if(opts->round>ROUND_EXTRA)
                 opts->focus=FOCUS_LINE;
 
-            if(opts->round>ROUND_FULL && IND_COLORED==opts->defBtnIndicator)
-                opts->defBtnIndicator=IND_TINT;
-
             if(opts->squareScrollViews || EFFECT_NONE==opts->buttonEffect)
                 opts->sunkenScrollViews=false;
 
@@ -1333,7 +1463,7 @@ static bool readConfig(const char *file, Options *opts, Options *defOpts)
             {
                 int i;
 
-                for(i=0; i<QTC_NUM_CUSTOM_GRAD+1; ++i)
+                for(i=0; i<QTC_NUM_CUSTOM_GRAD; ++i)
                     if(def->customGradient[i])
                         free(def->customGradient[i]);
             }
@@ -1348,7 +1478,10 @@ static bool readConfig(const char *file, Options *opts, Options *defOpts)
             else
                 defaultSettings(opts);
 #else
-            defaultSettings(opts);
+            if(defOpts)
+                copyOpts(defOpts, opts);
+            else
+                defaultSettings(opts);
 #endif
             return true;
         }
@@ -1382,7 +1515,7 @@ static void defaultSettings(Options *opts)
 #ifndef __cplusplus
     int i;
 
-    for(i=0; i<QTC_NUM_CUSTOM_GRAD+1; ++i)
+    for(i=0; i<QTC_NUM_CUSTOM_GRAD; ++i)
         opts->customGradient[i]=0L;
 #else
     // Setup titlebar gradients...
@@ -1409,9 +1542,11 @@ static void defaultSettings(Options *opts)
     opts->lighterPopupMenuBgnd=DEF_POPUPMENU_LIGHT_FACTOR;
     opts->animatedProgress=false;
     opts->stripedProgress=STRIPE_NONE;
-    opts->sliderStyle=SLIDER_TRIANGULAR;
+    opts->sliderStyle=SLIDER_PLAIN;
     opts->highlightTab=false;
     opts->colorSelTab=false;
+    opts->roundAllTabs=false;
+    opts->tabMouseOver=TAB_MO_BOTTOM;
     opts->embolden=false;
     opts->appearance=APPEARANCE_SOFT_GRADIENT;
     opts->lvAppearance=APPEARANCE_BEVELLED;
@@ -1426,6 +1561,8 @@ static void defaultSettings(Options *opts)
     opts->progressGrooveColor=ECOLOR_DARK;
     opts->grooveAppearance=APPEARANCE_INVERTED;
     opts->sunkenAppearance=APPEARANCE_SOFT_GRADIENT;
+    opts->sbarBgndAppearance=APPEARANCE_FLAT;
+    opts->sliderFill=APPEARANCE_GRADIENT;
     opts->defBtnIndicator=IND_GLOW;
     opts->sliderThumbs=LINE_FLAT;
     opts->handles=LINE_SUNKEN;
@@ -1445,6 +1582,7 @@ static void defaultSettings(Options *opts)
     opts->scrollbarType=SCROLLBAR_KDE;
     opts->buttonEffect=EFFECT_SHADOW;
     opts->focus=FOCUS_LINE;
+    opts->lvButton=false;
     opts->lvLines=false;
     opts->drawStatusBarFrames=false;
     opts->fillSlider=true;
@@ -1456,7 +1594,6 @@ static void defaultSettings(Options *opts)
     opts->framelessGroupBoxes=true;
     opts->groupBoxLine=true;
     opts->colorMenubarMouseOver=true;
-    opts->inactiveHighlight=false;
     opts->crHighlight=false;
     opts->crButton=true;
     opts->fillProgress=true;
@@ -1465,14 +1602,19 @@ static void defaultSettings(Options *opts)
     opts->highlightScrollViews=false;
     opts->sunkenScrollViews=true;
     opts->flatSbarButtons=true;
+    opts->thinSbarGroove=false;
+    opts->colorSliderMouseOver=false;
+#if defined QTC_CONFIG_DIALOG || (defined QT_VERSION && (QT_VERSION >= 0x040000))
+    opts->titlebarBorder=true;
+    opts->titlebarButtons=QTC_TITLEBAR_BUTTON_HOVER_FRAME;
+    opts->titlebarIcon=TITLEBAR_ICON_MENU_BUTTON;
+#endif
 #if defined __cplusplus || defined QTC_GTK2_MENU_STRIPE
-    opts->menuStripe=false;
+    opts->menuStripe=SHADE_NONE;
     opts->menuStripeAppearance=APPEARANCE_GRADIENT;
+    opts->customMenuStripeColor.setRgb(0, 0, 0);
 #endif
-#ifdef QTC_CONFIG_DIALOG
     opts->shading=SHADING_HSL;
-#endif
-
     opts->gtkScrollViews=false;
 #ifdef __cplusplus
     opts->stdSidebarButtons=false;
@@ -1483,7 +1625,7 @@ static void defaultSettings(Options *opts)
     opts->customMenuNormTextColor.setRgb(0, 0, 0);
     opts->customMenuSelTextColor.setRgb(0, 0, 0);
     opts->customCheckRadioColor.setRgb(0, 0, 0);
-    opts->titlebarAlignment=ALIGN_LEFT;
+    opts->titlebarAlignment=ALIGN_FULL_CENTER;
 #else
 /*
     opts->setDialogButtonOrder=false;
@@ -1627,7 +1769,15 @@ static QString toStr(EAppearance exp)
     }
 }
 
-static const char *toStr(EShade exp, bool dark, bool convertBlendSelToSel)
+static QString toStr(const QColor &col)
+{
+    QString colorStr;
+
+    colorStr.sprintf("#%02X%02X%02X", col.red(), col.green(), col.blue());
+    return colorStr;
+}
+
+static QString toStr(EShade exp, const QColor &col)
 {
     switch(exp)
     {
@@ -1635,12 +1785,13 @@ static const char *toStr(EShade exp, bool dark, bool convertBlendSelToSel)
         case SHADE_NONE:
             return "none";
         case SHADE_BLEND_SELECTED:
-            return dark || !convertBlendSelToSel ? "selected" : "origselected";
+            return "selected";
         case SHADE_CUSTOM:
-            return "custom";
-        /* case SHADE_SELECTED */
+            return toStr(col);
+        case SHADE_SELECTED:
+            return "origselected";
         case SHADE_DARKEN:
-            return dark ? "darken" : "origselected";
+            return "darken";
     }
 }
 
@@ -1696,14 +1847,6 @@ static const char *toStr(EEffect e)
 
 inline const char * toStr(bool b) { return b ? "true" : "false"; }
 
-static QString toStr(const QColor &col)
-{
-    QString colorStr;
-
-    colorStr.sprintf("#%02X%02X%02X", col.red(), col.green(), col.blue());
-    return colorStr;
-}
-
 static const char *toStr(EShading s)
 {
     switch(s)
@@ -1715,6 +1858,8 @@ static const char *toStr(EShading s)
             return "hsl";
         case SHADING_HSV:
             return "hsv";
+        case SHADING_HCY:
+            return "hcy";
     }
 }
 
@@ -1771,16 +1916,28 @@ static const char *toStr(EFocus f)
         default:
         case FOCUS_STANDARD:
             return "standard";
-        case FOCUS_HIGHLIGHT:
-            return "highlight";
-        case FOCUS_BACKGROUND:
-            return "background";
+        case FOCUS_RECTANGLE:
+            return "rect";
         case FOCUS_FILLED:
             return "filled";
         case FOCUS_FULL:
             return "full";
         case FOCUS_LINE:
             return "line";
+    }
+}
+
+static const char *toStr(ETabMo f)
+{
+    switch(f)
+    {
+        default:
+        case TAB_MO_BOTTOM:
+            return "bot";
+        case TAB_MO_TOP:
+            return "top";
+        case TAB_MO_GLOW:
+            return "glow";
     }
 }
 
@@ -1792,6 +1949,8 @@ static const char *toStr(EGradientBorder g)
             return "none";
         case GB_LIGHT:
             return "light";
+        case GB_3D_FULL:
+            return "3dfull";
         default:
         case GB_3D:
             return "3d";
@@ -1814,6 +1973,20 @@ static const char *toStr(EAlign ind)
     }
 }
 
+static const char * toStr(ETitleBarIcon icn)
+{
+    switch(icn)
+    {
+        case TITLEBAR_ICON_NONE:
+            return "none";
+        default:
+        case TITLEBAR_ICON_MENU_BUTTON:
+            return "menu";
+        case TITLEBAR_ICON_NEXT_TO_TITLE:
+            return "title";
+    }
+}
+
 #if QT_VERSION >= 0x040000
 #include <QTextStream>
 #define CFG config
@@ -1833,17 +2006,17 @@ static const char *toStr(EAlign ind)
     else \
         CFG.writeEntry(#ENTRY, toStr(opts.ENTRY, B));
 
-#define CFG_WRITE_ENTRY_SHADE(ENTRY, DARK, CONVERT_SHADE) \
-    if (!exportingStyle && def.ENTRY==opts.ENTRY) \
-        CFG.deleteEntry(#ENTRY); \
-    else \
-        CFG.writeEntry(#ENTRY, toStr(opts.ENTRY, DARK, CONVERT_SHADE));
-
 #define CFG_WRITE_ENTRY_NUM(ENTRY) \
     if (!exportingStyle && def.ENTRY==opts.ENTRY) \
         CFG.deleteEntry(#ENTRY); \
     else \
         CFG.writeEntry(#ENTRY, opts.ENTRY);
+
+#define CFG_WRITE_SHADE_ENTRY(ENTRY, COL) \
+    if (!exportingStyle && def.ENTRY==opts.ENTRY) \
+        CFG.deleteEntry(#ENTRY); \
+    else \
+        CFG.writeEntry(#ENTRY, toStr(opts.ENTRY, opts.COL));
 
 bool static writeConfig(KConfig *cfg, const Options &opts, const Options &def, bool exportingStyle=false)
 {
@@ -1890,9 +2063,8 @@ bool static writeConfig(KConfig *cfg, const Options &opts, const Options &def, b
         CFG_WRITE_ENTRY_B(handles, true)
         CFG_WRITE_ENTRY(highlightTab)
         CFG_WRITE_ENTRY(colorSelTab)
-        CFG_WRITE_ENTRY_SHADE(shadeSliders, false, false)
-        CFG_WRITE_ENTRY_SHADE(shadeMenubars, true, false)
-        CFG_WRITE_ENTRY_SHADE(shadeCheckRadio, false, true)
+        CFG_WRITE_ENTRY(roundAllTabs)
+        CFG_WRITE_ENTRY(tabMouseOver)
         CFG_WRITE_ENTRY(menubarAppearance)
         CFG_WRITE_ENTRY(menuitemAppearance)
         CFG_WRITE_ENTRY(toolbarAppearance)
@@ -1906,11 +2078,11 @@ bool static writeConfig(KConfig *cfg, const Options &opts, const Options &def, b
         CFG_WRITE_ENTRY(useHighlightForMenu)
         CFG_WRITE_ENTRY(shadeMenubarOnlyWhenActive)
         CFG_WRITE_ENTRY(thinnerMenuItems)
-        CFG_WRITE_ENTRY(customSlidersColor)
-        CFG_WRITE_ENTRY(customMenubarsColor)
+        CFG_WRITE_SHADE_ENTRY(shadeSliders, customSlidersColor)
+        CFG_WRITE_SHADE_ENTRY(shadeMenubars, customMenubarsColor)
         CFG_WRITE_ENTRY(customMenuSelTextColor)
         CFG_WRITE_ENTRY(customMenuNormTextColor)
-        CFG_WRITE_ENTRY(customCheckRadioColor)
+        CFG_WRITE_SHADE_ENTRY(shadeCheckRadio, customCheckRadioColor)
         CFG_WRITE_ENTRY(scrollbarType)
         CFG_WRITE_ENTRY(buttonEffect)
         CFG_WRITE_ENTRY(lvAppearance)
@@ -1921,8 +2093,11 @@ bool static writeConfig(KConfig *cfg, const Options &opts, const Options &def, b
         CFG_WRITE_ENTRY(progressGrooveAppearance)
         CFG_WRITE_ENTRY(grooveAppearance)
         CFG_WRITE_ENTRY(sunkenAppearance)
+        CFG_WRITE_ENTRY(sbarBgndAppearance)
+        CFG_WRITE_ENTRY(sliderFill)
         CFG_WRITE_ENTRY(progressGrooveColor)
         CFG_WRITE_ENTRY(focus)
+        CFG_WRITE_ENTRY(lvButton)
         CFG_WRITE_ENTRY(lvLines)
         CFG_WRITE_ENTRY(drawStatusBarFrames)
         CFG_WRITE_ENTRY(fillSlider)
@@ -1934,7 +2109,6 @@ bool static writeConfig(KConfig *cfg, const Options &opts, const Options &def, b
         CFG_WRITE_ENTRY(framelessGroupBoxes)
         CFG_WRITE_ENTRY(groupBoxLine)
         CFG_WRITE_ENTRY(fadeLines)
-        CFG_WRITE_ENTRY(inactiveHighlight)
         CFG_WRITE_ENTRY(crHighlight)
         CFG_WRITE_ENTRY(crButton)
         CFG_WRITE_ENTRY(fillProgress)
@@ -1943,7 +2117,38 @@ bool static writeConfig(KConfig *cfg, const Options &opts, const Options &def, b
         CFG_WRITE_ENTRY(highlightScrollViews)
         CFG_WRITE_ENTRY(sunkenScrollViews)
         CFG_WRITE_ENTRY(flatSbarButtons)
-        CFG_WRITE_ENTRY(menuStripe)
+        CFG_WRITE_ENTRY(thinSbarGroove)
+        CFG_WRITE_ENTRY(colorSliderMouseOver)
+#if defined QTC_CONFIG_DIALOG || (defined QT_VERSION && (QT_VERSION >= 0x040000))
+        CFG_WRITE_ENTRY(titlebarBorder)
+        CFG_WRITE_ENTRY_NUM(titlebarButtons)
+        CFG_WRITE_ENTRY(titlebarIcon)
+
+        if(opts.titlebarButtons&QTC_TITLEBAR_BUTTON_COLOR && NUM_TITLEBAR_BUTTONS==opts.titlebarButtonColors.size())
+        {
+            QString     val;
+#if QT_VERSION >= 0x040000
+            QTextStream str(&val);
+#else
+            QTextStream str(&val, IO_WriteOnly);
+#endif
+            for(int i=0; i<NUM_TITLEBAR_BUTTONS; ++i)
+            {
+                TBCols::const_iterator c(opts.titlebarButtonColors.find((ETitleBarButtons)i));
+
+                if(c!=opts.titlebarButtonColors.end())
+                {
+                    if(i)
+                        str << ',';
+                    str << toStr((*c).second);
+                }
+            }
+            CFG.writeEntry("titlebarButtonColors", val);
+        }
+        else
+            CFG.deleteEntry("titlebarButtonColors");
+#endif
+        CFG_WRITE_SHADE_ENTRY(menuStripe, customMenuStripeColor)
         CFG_WRITE_ENTRY(stdSidebarButtons)
         CFG_WRITE_ENTRY(titlebarAppearance)
         CFG_WRITE_ENTRY(inactiveTitlebarAppearance)
@@ -1956,15 +2161,12 @@ bool static writeConfig(KConfig *cfg, const Options &opts, const Options &def, b
         CFG_WRITE_ENTRY(shading)
         CFG_WRITE_ENTRY(titlebarAlignment)
 
-        for(int i=APPEARANCE_CUSTOM1; i<(APPEARANCE_CUSTOM1+QTC_NUM_CUSTOM_GRAD+1); ++i)
+        for(int i=APPEARANCE_CUSTOM1; i<(APPEARANCE_CUSTOM1+QTC_NUM_CUSTOM_GRAD); ++i)
         {
             GradientCont::const_iterator cg(opts.customGradient.find((EAppearance)i));
             QString                      gradKey;
 
-            if(i==(APPEARANCE_CUSTOM1+QTC_NUM_CUSTOM_GRAD))
-                gradKey="sunkengradient";
-            else
-                gradKey.sprintf("customgradient%d", (i-APPEARANCE_CUSTOM1)+1);
+            gradKey.sprintf("customgradient%d", (i-APPEARANCE_CUSTOM1)+1);
 
             if(cg==opts.customGradient.end())
                 CFG.deleteEntry(gradKey);
@@ -1985,7 +2187,7 @@ bool static writeConfig(KConfig *cfg, const Options &opts, const Options &def, b
 
                     GradientStopCont                 stops((*cg).second.stops.fix());
                     GradientStopCont::const_iterator it(stops.begin()),
-                                                    end(stops.end());
+                                                     end(stops.end());
 
                     for(; it!=end; ++it)
                         str << ',' << (*it).pos << ',' << (*it).val;

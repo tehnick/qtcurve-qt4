@@ -30,6 +30,7 @@
 #include <QPixmap>
 #include <QStyleFactory>
 #include <QStyle>
+#include <QDir>
 #include "qtcurvehandler.h"
 #include "qtcurveclient.h"
 #include "qtcurvebutton.h"
@@ -39,6 +40,39 @@
 #include <KColorUtils>
 #include <KColorScheme>
 #include <KGlobalSettings>
+#include <unistd.h>
+#include <sys/types.h>
+#include <kde_file.h>
+
+static time_t getTimeStamp(const QString &item)
+{
+    KDE_struct_stat info;
+
+    return !item.isEmpty() && 0==KDE_lstat(QFile::encodeName(item), &info) ? info.st_mtime : 0;
+}
+
+static const QString & xdgConfigFolder()
+{
+    static QString xdgDir;
+
+    if(xdgDir.isEmpty())
+    {
+        /*
+           Hmm... for 'root' dont bother to check env var, just set to ~/.config
+           - as problems would arise if "sudo kcmshell style", and then
+           "sudo su" / "kcmshell style". The 1st would write to ~/.config, but
+           if root has a XDG_ set then that would be used on the second :-(
+        */
+        char *env=0==getuid() ? NULL : getenv("XDG_CONFIG_HOME");
+
+        if(!env)
+            xdgDir=QDir::homePath()+"/.config";
+        else
+            xdgDir=env;
+    }
+
+    return xdgDir;
+}
 
 namespace KWinQtCurve
 {
@@ -62,6 +96,7 @@ QtCurveHandler::~QtCurveHandler()
 
 void QtCurveHandler::setStyle()
 {
+#if 0
     if(!qstrcmp(QApplication::style()->metaObject()->className(), "QtCurveStyle")) // The user has select QtCurve...
     {
         if(itsStyle) // ...but it wasn't QtCurve before, so delete our QtC instance...
@@ -72,19 +107,44 @@ void QtCurveHandler::setStyle()
     }
     else if(!itsStyle) // ...user has not selected QtC, so need to create a QtC instance...
         itsStyle=QStyleFactory::create("QtCurve");
+#endif
+
+    // Need to use or ouwn style instance, as want to update this when settings change...
+    if(!itsStyle)
+    {
+        KConfig      kglobals("kdeglobals", KConfig::CascadeConfig);
+        KConfigGroup general(&kglobals, "General");
+        QString      styleName=general.readEntry("widgetStyle", QString()).toLower();
+
+        itsStyle=QStyleFactory::create(styleName.isEmpty() || styleName=="qtcurve" || !styleName.startsWith("qtc_")
+                                        ? QString("QtCurve") : styleName);
+        itsTimeStamp=getTimeStamp(xdgConfigFolder()+"/qtcurvestylerc");
+    }
 }
 
 bool QtCurveHandler::reset(unsigned long changed)
 {
+    bool styleChanged=false;
+    if(abs(itsTimeStamp-getTimeStamp(xdgConfigFolder()+"/qtcurvestylerc"))>2)
+    {
+        delete itsStyle;
+        itsStyle=0L;
+        setStyle();
+        styleChanged=true;
+    }
+    
     // we assume the active font to be the same as the inactive font since the control
     // center doesn't offer different settings anyways.
     itsTitleFont = KDecoration::options()->font(true, false); // not small
     itsTitleFontTool = KDecoration::options()->font(true, true); // small
 
+    // read in the configuration
+    bool configChanged=readConfig();
+
     switch(KDecoration::options()->preferredBorderSize(this))
     {
         case BorderTiny:
-            itsBorderSize = 2;
+            itsBorderSize = 1;
             break;
         case BorderLarge:
             itsBorderSize = 8;
@@ -110,8 +170,8 @@ bool QtCurveHandler::reset(unsigned long changed)
                     4;
     }
 
-    // read in the configuration
-    readConfig();
+    if(itsNoBorder && (itsBorderSize==1 || itsBorderSize>4))
+        itsBorderSize--;
 
     for (int t=0; t < 2; ++t)
         for (int i=0; i < NumButtonIcons; i++)
@@ -125,10 +185,10 @@ bool QtCurveHandler::reset(unsigned long changed)
     bool needHardReset = true;
     // TODO: besides the Color and Font settings I can maybe handle more changes
     //       without a hard reset. I will do this later...
-    if ((changed & ~(SettingColors | SettingFont | SettingButtons)) == 0)
-        needHardReset = false;
+    if (!styleChanged && (changed & ~(SettingColors | SettingFont | SettingButtons)) == 0)
+       needHardReset = false;
 
-    if (needHardReset)
+    if (needHardReset || configChanged)
         return true;
     else
     {
@@ -174,7 +234,7 @@ bool QtCurveHandler::supports(Ability ability) const
     };
 }
 
-void QtCurveHandler::readConfig()
+bool QtCurveHandler::readConfig()
 {
     KConfig configFile("kwinqtcurverc");
     const KConfigGroup config(&configFile, "General");
@@ -195,8 +255,18 @@ void QtCurveHandler::readConfig()
     if (itsTitleHeightTool%2 == 0)
         itsTitleHeightTool++;
 
-    itsColoredShadow = config.readEntry("ColoredShadow", true);
+    bool oldColoredShadow=itsColoredShadow,
+         oldMenuClose=itsMenuClose,
+         oldShowResizeGrip=itsShowResizeGrip,
+         oldRoundBottom=itsRoundBottom;
+    itsColoredShadow = config.readEntry("ColoredShadow", false);
     itsMenuClose = config.readEntry("CloseOnMenuDoubleClick", true);
+    itsShowResizeGrip = config.readEntry("ShowResizeGrip", false);
+    itsRoundBottom = config.readEntry("RoundBottom", true);
+    itsNoBorder = config.readEntry("NoBorder", false);
+
+    return oldColoredShadow!=itsColoredShadow || oldMenuClose!=itsMenuClose || oldShowResizeGrip!=itsShowResizeGrip ||
+           oldRoundBottom!=itsRoundBottom;
 }
 
 const QBitmap & QtCurveHandler::buttonBitmap(ButtonIcon type, const QSize &size, bool toolWindow)
@@ -223,7 +293,8 @@ const QBitmap & QtCurveHandler::buttonBitmap(ButtonIcon type, const QSize &size,
 QList<QtCurveHandler::BorderSize> QtCurveHandler::borderSizes() const
 {
     // the list must be sorted
-    return QList<BorderSize>() << BorderNormal
+    return QList<BorderSize>() << BorderTiny
+                               << BorderNormal
                                << BorderLarge
                                << BorderVeryLarge
                                << BorderHuge
@@ -256,7 +327,7 @@ QList< QList<QImage> > QtCurveHandler::shadowTextures()
     QColor color = palette.window().color();
     QColor light = color.lighter(110);
     QColor dark = color;
-    QColor glow = palette.color(QPalette::Active, QPalette::Highlight); // .lighter(140);
+    QColor glow = KColorScheme(QPalette::Active).decoration(KColorScheme::FocusColor).color();
     QColor glow2 = glow; // palette.color(QPalette::Active, QPalette::Highlight);
 
     qreal size = 25.5;

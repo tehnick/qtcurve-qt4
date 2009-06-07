@@ -39,8 +39,11 @@
 #include "qtcurvehandler.h"
 #include "qtcurveclient.h"
 #include "qtcurvebutton.h"
+#include "resizecorner.h"
 #define QTC_KWIN
 #include "common.h"
+
+#define QTC_DRAW_INTO_PIXMAPS
 
 namespace KWinQtCurve
 {
@@ -51,7 +54,8 @@ QtCurveClient::QtCurveClient(KDecorationBridge *bridge, KDecorationFactory *fact
 #else
              : KCommonDecoration(bridge, factory),
 #endif
-               itsTitleFont(QFont())
+               itsTitleFont(QFont()),
+               itsResizeGrip(0L)
 {
 }
 
@@ -132,8 +136,26 @@ void QtCurveClient::init()
 
     KCommonDecoration::init();
     widget()->setAutoFillBackground(false);
+    widget()->setAttribute(Qt::WA_NoSystemBackground, true);
     widget()->setAttribute(Qt::WA_OpaquePaintEvent);
     widget()->setAttribute(Qt::WA_PaintOnScreen, false);
+    if(Handler()->showResizeGrip() && isResizable())
+        itsResizeGrip=new ResizeCorner(this);
+}
+
+void QtCurveClient::maximizeChange()
+{
+    reset(SettingBorder);
+}
+
+void QtCurveClient::activeChange()
+{
+    if (itsResizeGrip)
+    {
+        itsResizeGrip->setColor(KDecoration::options()->color(KDecoration::ColorTitleBar, isActive()));
+        itsResizeGrip->update();
+    }
+    KCommonDecoration::activeChange();
 }
 
 void QtCurveClient::drawBtnBgnd(QPainter *p, const QRect &r, bool active)
@@ -171,12 +193,15 @@ void QtCurveClient::drawBtnBgnd(QPainter *p, const QRect &r, bool active)
 void QtCurveClient::paintEvent(QPaintEvent *e)
 {
     QPainter             painter(widget());
-    QRect                r(widget()->rect());
+    QRect                r(widget()->rect()),
+                         rx(r);
     QStyleOptionTitleBar opt;
     bool                 active(isActive()),
                          colorTitleOnly(Handler()->wStyle()->pixelMetric((QStyle::PixelMetric)QtC_TitleBarColorTopOnly,
                                         NULL, NULL)),
-                         mximised(maximizeMode()==MaximizeFull && !options()->moveResizeMaximizedWindows());
+                         mximised(maximizeMode()==MaximizeFull && !options()->moveResizeMaximizedWindows()),
+                         roundBottom(Handler()->roundBottom()),
+                         noBorder(Handler()->noBorder());
     const int            maximiseOffset(mximised ? 3 : 0),
                          titleHeight(layoutMetric(LM_TitleHeight)),
                          titleEdgeTop(layoutMetric(LM_TitleEdgeTop)),
@@ -203,23 +228,6 @@ void QtCurveClient::paintEvent(QPaintEvent *e)
     painter.setClipRegion(e->region().intersected(getMask(round, r.width(), r.height())));
     painter.fillRect(r, colorTitleOnly ? windowCol : col);
 
-    if(ROUND_FULL==round)
-    {
-        QColor cornerCol(colorTitleOnly ? windowCol : col);
-        painter.setPen(windowCol);
-        painter.drawRect(r.x()+borderSize-1, r.y()+borderSize-1,
-                         r.x()+r.width()-((borderSize*2)-1), r.y()+r.height()-((borderSize*2)-1));
-        painter.setPen(cornerCol);
-        painter.drawPoint(r.x()+borderSize-1, r.y()+r.height()-(borderSize));
-        painter.drawPoint(r.x()+r.width()-borderSize, r.y()+r.height()-borderSize);
-        cornerCol.setAlphaF(0.5);
-        painter.setPen(cornerCol);
-        painter.drawPoint(r.x()+borderSize, r.y()+r.height()-(borderSize));
-        painter.drawPoint(r.x()+borderSize-1, r.y()+r.height()-(borderSize+1));
-        painter.drawPoint(r.x()+r.width()-borderSize-1, r.y()+r.height()-borderSize);
-        painter.drawPoint(r.x()+r.width()-borderSize, r.y()+r.height()-(borderSize+1));
-    }
-
     opt.init(widget());
 
     if(mximised)
@@ -238,7 +246,47 @@ void QtCurveClient::paintEvent(QPaintEvent *e)
             opt.state|=QtC_StateKWinHighlight;
     }
 #endif
-    Handler()->wStyle()->drawPrimitive(QStyle::PE_FrameWindow, &opt, &painter, widget());
+
+    if(!roundBottom)
+        opt.state|=QtCStateKWinNotFull;
+    if(noBorder)
+        opt.state|=QtCStateKWinNoBorder;
+    else
+    {
+#ifdef QTC_DRAW_INTO_PIXMAPS
+        // For some reason, on Jaunty drawing directly is *hideously* slow on intel graphics card!
+        QPixmap pix(32, 32);
+        QPainter p2(&pix);
+        opt.rect=QRect(0, 0, pix.width(), pix.height());
+        p2.fillRect(opt.rect, colorTitleOnly ? windowCol : col);
+        Handler()->wStyle()->drawPrimitive(QStyle::PE_FrameWindow, &opt, &p2, widget());
+        p2.end();
+        painter.drawTiledPixmap(r.x(), r.y()+10, 2, r.height()-18, pix.copy(0, 8, 2, 16));
+        painter.drawTiledPixmap(r.x()+r.width()-2, r.y()+8, 2, r.height()-16, pix.copy(pix.width()-2, 8, 2, 16));
+        painter.drawTiledPixmap(r.x()+8, r.y()+r.height()-2, r.width()-16, 2, pix.copy(8, pix.height()-2, 16, 2));
+        painter.drawPixmap(r.x(), r.y()+r.height()-8, pix.copy(0, 24, 8, 8));
+        painter.drawPixmap(r.x()+r.width()-8, r.y()+r.height()-8, pix.copy(24, 24, 8, 8));
+#else
+        Handler()->wStyle()->drawPrimitive(QStyle::PE_FrameWindow, &opt, &painter, widget());
+#endif
+    }
+
+    if(round>=ROUND_FULL && !colorTitleOnly && col!=windowCol && roundBottom)
+    {
+        QColor cornerCol(col);
+        painter.setPen(windowCol);
+        painter.drawRect(rx.x()+borderSize-1, rx.y()+borderSize-1,
+                         rx.x()+rx.width()-((borderSize*2)-1), rx.y()+rx.height()-((borderSize*2)-1));
+        painter.setPen(cornerCol);
+        painter.drawPoint(rx.x()+borderSize-1, rx.y()+rx.height()-(borderSize));
+        painter.drawPoint(rx.x()+rx.width()-borderSize, rx.y()+rx.height()-borderSize);
+        cornerCol.setAlphaF(0.5);
+        painter.setPen(cornerCol);
+        painter.drawPoint(rx.x()+borderSize, rx.y()+rx.height()-(borderSize));
+        painter.drawPoint(rx.x()+borderSize-1, rx.y()+rx.height()-(borderSize+1));
+        painter.drawPoint(rx.x()+rx.width()-borderSize-1, rx.y()+rx.height()-borderSize);
+        painter.drawPoint(rx.x()+rx.width()-borderSize, rx.y()+rx.height()-(borderSize+1));
+    }
 
     opt.palette.setColor(QPalette::Button, col);
     opt.rect=QRect(r.x(), r.y(), r.width(), titleBarHeight);
@@ -246,32 +294,119 @@ void QtCurveClient::paintEvent(QPaintEvent *e)
     if(KDecoration::options()->color(KDecoration::ColorTitleBar, true)!=windowCol ||
        KDecoration::options()->color(KDecoration::ColorTitleBar, false)!=windowCol)
        opt.titleBarState|=QtCStateKWinDrawLine;
+#ifdef QTC_DRAW_INTO_PIXMAPS
+    QPixmap  tPix(32, titleBarHeight);
+    QPainter tPainter(&tPix);
+    opt.rect=QRect(0, 0, tPix.width(), tPix.height());
+    Handler()->wStyle()->drawComplexControl(QStyle::CC_TitleBar, &opt, &tPainter, widget());
+    tPainter.end();
+    painter.drawTiledPixmap(r.x()+12, r.y(), r.width()-24, tPix.height(), tPix.copy(8, 0, 16, tPix.height()));
+    painter.drawPixmap(r.x(), r.y(), tPix.copy(0, 0, 16, tPix.height()));
+    painter.drawPixmap(r.x()+r.width()-16, r.y(), tPix.copy(tPix.width()-16, 0, 16, tPix.height()));
+#else
     Handler()->wStyle()->drawComplexControl(QStyle::CC_TitleBar, &opt, &painter, widget());
+#endif
 
     itsCaptionRect = captionRect(); // also update itsCaptionRect!
+    bool     showIcon=TITLEBAR_ICON_NEXT_TO_TITLE==Handler()->wStyle()->pixelMetric((QStyle::PixelMetric)QtC_TitleBarIcon,
+                                                                                    0L, 0L);
+    int     iconSize=showIcon ? Handler()->wStyle()->pixelMetric(QStyle::PM_SmallIconSize) : 0,
+            iconX=itsCaptionRect.x();
+    QPixmap menuIcon;
 
+    if(showIcon)
+    {
+        menuIcon=icon().pixmap(iconSize);
+
+        if(menuIcon.isNull())
+            showIcon=false;
+    }
+        
     if(!caption().isEmpty())
     {
+        static const int constPad=4;
+
         painter.setFont(itsTitleFont);
 
-        QString       str(painter.fontMetrics().elidedText(caption(), Qt::ElideRight,
-                                                           itsCaptionRect.width(), QPalette::WindowText));
-        Qt::Alignment hAlign((Qt::Alignment)Handler()->wStyle()->pixelMetric((QStyle::PixelMetric)QtC_TitleAlignment,
-                                                                                 0L, 0L)),
+        QFontMetrics  fm(painter.fontMetrics());
+        QString       str(fm.elidedText(caption(), Qt::ElideRight,
+                            itsCaptionRect.width()-(showIcon ? iconSize+constPad : 0), QPalette::WindowText));
+        Qt::Alignment hAlign((Qt::Alignment)Handler()->wStyle()->pixelMetric((QStyle::PixelMetric)QtC_TitleAlignment, 0L, 0L)),
                       alignment(Qt::AlignVCenter|hAlign);
         const int     titleEdgeBottomBottom(rectY+titleEdgeTop+titleHeight+titleEdgeBottom);
-        QRect         textRect(Qt::AlignHCenter==hAlign
-                                    ? QRect(rectX+titleEdgeLeft, rectY+titleEdgeTop,
+        bool          alignFull(Qt::AlignHCenter==hAlign),
+                      reverse=Qt::RightToLeft==QApplication::layoutDirection(),
+                      iconRight((!reverse && alignment&Qt::AlignRight) || (reverse && alignment&Qt::AlignLeft));
+        QRect         textRect(alignFull
+                                    ? QRect(rectX+titleEdgeLeft, itsCaptionRect.y(),
                                             rectX2-titleEdgeRight-(rectX+titleEdgeLeft),
-                                            titleEdgeBottomBottom-(rectY+titleEdgeTop))
+                                            itsCaptionRect.height())
                                     : itsCaptionRect);
+        int           textWidth=alignFull || (showIcon && alignment&Qt::AlignHCenter)
+                                    ? fm.boundingRect(str).width()+(showIcon ? iconSize+constPad : 0) : 0;
 
-        painter.setClipRect(itsCaptionRect);
+        if(alignFull)
+            if(itsCaptionRect.left()>((textRect.width()-textWidth)>>1))
+            {
+                alignment=Qt::AlignVCenter|Qt::AlignLeft;
+                textRect=itsCaptionRect;
+            }
+            else if(itsCaptionRect.right()<((textRect.width()+textWidth)>>1))
+            {
+                alignment=Qt::AlignVCenter|Qt::AlignRight;
+                textRect=itsCaptionRect;
+            }
+
+        if(showIcon)
+            if(alignment&Qt::AlignHCenter)
+            {
+                if(reverse)
+                {
+                    iconX=((textRect.width()-textWidth)/2.0)+0.5+textWidth+iconSize;
+                    textRect.setX(textRect.x()-(iconSize+constPad));
+//                     iconX=((textRect.width()-textWidth)/2.0)+0.5+(textWidth-constPad);
+//                     textRect.setX(iconX-(textWidth-iconSize));
+//                     textRect.setWidth(textWidth-iconSize);
+//                     alignment=Qt::AlignVCenter|Qt::AlignRight;
+                }
+                else
+                {
+                    iconX=((textRect.width()-textWidth)/2.0)+0.5;
+                    textRect.setX(iconX+iconSize+constPad);
+                    alignment=Qt::AlignVCenter|Qt::AlignLeft;
+                }
+            }
+            else if((!reverse && alignment&Qt::AlignLeft) || (reverse && alignment&Qt::AlignRight))
+            {
+                iconX=textRect.x();
+                textRect.setX(textRect.x()+(iconSize+constPad));
+            }
+            else if((!reverse && alignment&Qt::AlignRight) || (reverse && alignment&Qt::AlignLeft))
+            {
+                if(iconRight)
+                {
+                    iconX=textRect.x()+textRect.width()-iconSize;
+                    textRect.setWidth(textRect.width()-(iconSize+constPad));
+                }
+                else
+                {
+                    iconX=textRect.x()+textRect.width()-textWidth;
+                    if(iconX<textRect.x())
+                        iconX=textRect.x();
+                }
+            }
+
+        painter.setClipRect(itsCaptionRect.adjusted(-2, 0, 2, 0));
         painter.setPen(shadowColor(KDecoration::options()->color(KDecoration::ColorFont, active)));
         painter.drawText(textRect.adjusted(1, 1, 1, 1), alignment, str);
         painter.setPen(KDecoration::options()->color(KDecoration::ColorFont, active));
         painter.drawText(textRect, alignment, str);
+        painter.setClipping(false);
     }
+
+    if(showIcon && iconX>=0)
+        painter.drawPixmap(iconX, itsCaptionRect.y()+((itsCaptionRect.height()-iconSize)/2)+1, menuIcon);
+
     painter.end();
 }
 
@@ -299,16 +434,30 @@ QRegion QtCurveClient::getMask(int round, int w, int h, bool maximised) const
         default: // ROUND_FULL
         {
             QRegion mask(5, 0, w-10, h);
+            bool    roundBottom=Handler()->roundBottom();
 
-            mask += QRegion(0, 5, 1, h-10);
-            mask += QRegion(1, 3, 1, h-6);
-            mask += QRegion(2, 2, 1, h-4);
-            mask += QRegion(3, 1, 2, h-2);
-
-            mask += QRegion(w-1, 5, 1, h-10);
-            mask += QRegion(w-2, 3, 1, h-6);
-            mask += QRegion(w-3, 2, 1, h-4);
-            mask += QRegion(w-5, 1, 2, h-2);
+            if(roundBottom)
+            {
+                mask += QRegion(0, 5, 1, h-10);
+                mask += QRegion(1, 3, 1, h-6);
+                mask += QRegion(2, 2, 1, h-4);
+                mask += QRegion(3, 1, 2, h-2);
+                mask += QRegion(w-1, 5, 1, h-10);
+                mask += QRegion(w-2, 3, 1, h-6);
+                mask += QRegion(w-3, 2, 1, h-4);
+                mask += QRegion(w-5, 1, 2, h-2);
+            }
+            else
+            {
+                mask += QRegion(0, 5, 1, h-5);
+                mask += QRegion(1, 3, 1, h-2);
+                mask += QRegion(2, 2, 1, h-1);
+                mask += QRegion(3, 1, 2, h);
+                mask += QRegion(w-1, 5, 1, h-5);
+                mask += QRegion(w-2, 3, 1, h-2);
+                mask += QRegion(w-3, 2, 1, h-1);
+                mask += QRegion(w-5, 1, 2, h);
+            }
 
             return mask;
         }
@@ -391,13 +540,22 @@ double QtCurveClient::shadowOpacity(ShadowType type) const
     
 void QtCurveClient::reset(unsigned long changed)
 {
-    if (changed & SettingColors)
+    if (changed&SettingBorder)
+        if (maximizeMode() == MaximizeFull)
+        {
+            if (!options()->moveResizeMaximizedWindows() && itsResizeGrip)
+                itsResizeGrip->hide();
+        }
+        else if (itsResizeGrip)
+                itsResizeGrip->show();
+
+    if (changed&SettingColors)
     {
         // repaint the whole thing
         widget()->update();
         updateButtons();
     }
-    else if (changed & SettingFont)
+    else if (changed&SettingFont)
     {
         // font has changed -- update title height and font
         itsTitleFont = isToolWindow() ? Handler()->titleFontTool() : Handler()->titleFont();
@@ -405,7 +563,7 @@ void QtCurveClient::reset(unsigned long changed)
         updateLayout();
         widget()->update();
     }
-
+    
     KCommonDecoration::reset(changed);
 }
 

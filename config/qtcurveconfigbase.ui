@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>715</width>
-    <height>611</height>
+    <width>778</width>
+    <height>673</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -80,14 +80,14 @@
      </property>
      <widget class="QWidget" name="page">
       <layout class="QGridLayout" name="gridLayout_2">
-       <item row="0" column="1" colspan="2">
+       <item row="0" column="0">
         <widget class="QLabel" name="label_7">
          <property name="text">
           <string>Appearance:</string>
          </property>
         </widget>
        </item>
-       <item row="0" column="3">
+       <item row="0" column="2">
         <widget class="QComboBox" name="appearance">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
@@ -100,7 +100,7 @@
          </property>
         </widget>
        </item>
-       <item row="0" column="4">
+       <item row="0" column="3">
         <spacer>
          <property name="orientation">
           <enum>Qt::Horizontal</enum>
@@ -113,64 +113,61 @@
          </property>
         </spacer>
        </item>
-       <item row="1" column="1">
+       <item row="1" column="0">
         <widget class="QLabel" name="label_29">
          <property name="text">
           <string>Sunken appearance:</string>
          </property>
         </widget>
        </item>
-       <item row="1" column="3">
+       <item row="1" column="2">
         <widget class="QComboBox" name="sunkenAppearance"/>
        </item>
-       <item row="2" column="1" colspan="2">
+       <item row="2" column="0">
         <widget class="QLabel" name="label_8">
          <property name="text">
           <string>Roundedness:</string>
          </property>
         </widget>
        </item>
-       <item row="2" column="3">
+       <item row="2" column="2">
         <widget class="QComboBox" name="round"/>
        </item>
-       <item row="3" column="1" colspan="2">
+       <item row="3" column="0">
         <widget class="QLabel" name="label_9">
          <property name="text">
           <string>Button effect:</string>
          </property>
         </widget>
        </item>
-       <item row="3" column="3">
+       <item row="3" column="2">
         <widget class="QComboBox" name="buttonEffect"/>
        </item>
-       <item row="4" column="1" colspan="2">
+       <item row="4" column="0">
         <widget class="QLabel" name="label_25">
          <property name="text">
           <string>Focus rectangle:</string>
          </property>
         </widget>
        </item>
-       <item row="4" column="3">
+       <item row="4" column="2">
         <widget class="QComboBox" name="focus"/>
        </item>
-       <item row="5" column="0" rowspan="2" colspan="5">
-        <layout class="QHBoxLayout" name="horizontalLayout"/>
-       </item>
-       <item row="6" column="1" colspan="3">
+       <item row="5" column="0">
         <widget class="QCheckBox" name="drawStatusBarFrames">
          <property name="text">
           <string>Draw statusbar frames</string>
          </property>
         </widget>
        </item>
-       <item row="7" column="1">
+       <item row="6" column="0">
         <widget class="QCheckBox" name="framelessGroupBoxes">
          <property name="text">
           <string>Frameless groupboxes,</string>
          </property>
         </widget>
        </item>
-       <item row="7" column="2" colspan="3">
+       <item row="6" column="1" colspan="3">
         <widget class="QCheckBox" name="groupBoxLine">
          <property name="sizePolicy">
           <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
@@ -183,14 +180,14 @@
          </property>
         </widget>
        </item>
-       <item row="8" column="1" colspan="3">
+       <item row="7" column="0">
         <widget class="QCheckBox" name="vArrows">
          <property name="text">
           <string>'V' style arrows</string>
          </property>
         </widget>
        </item>
-       <item row="9" column="1" colspan="3">
+       <item row="8" column="0" colspan="2">
         <widget class="QCheckBox" name="stdSidebarButtons">
          <property name="whatsThis">
           <string>&lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
@@ -203,14 +200,14 @@ p, li { white-space: pre-wrap; }
          </property>
         </widget>
        </item>
-       <item row="10" column="1" colspan="3">
+       <item row="9" column="0">
         <widget class="QCheckBox" name="darkerBorders">
          <property name="text">
           <string>Darker borders</string>
          </property>
         </widget>
        </item>
-       <item row="11" column="1" colspan="3">
+       <item row="10" column="0">
         <widget class="QCheckBox" name="comboSplitter">
          <property name="whatsThis">
           <string>&lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
@@ -223,14 +220,14 @@ p, li { white-space: pre-wrap; }
          </property>
         </widget>
        </item>
-       <item row="12" column="1" colspan="2">
+       <item row="11" column="0" colspan="2">
         <widget class="QCheckBox" name="fadeLines">
          <property name="text">
           <string>Draw fading lines (KDE4 &amp;&amp; Gtk2)</string>
          </property>
         </widget>
        </item>
-       <item row="13" column="1">
+       <item row="12" column="0">
         <spacer>
          <property name="orientation">
           <enum>Qt::Vertical</enum>
@@ -341,14 +338,14 @@ p, li { white-space: pre-wrap; }
          </property>
         </spacer>
        </item>
-       <item row="2" column="0">
+       <item row="3" column="0">
         <widget class="QLabel" name="label_13">
          <property name="text">
           <string>Style:</string>
          </property>
         </widget>
        </item>
-       <item row="2" column="1">
+       <item row="3" column="1">
         <widget class="QComboBox" name="sliderStyle">
          <property name="whatsThis">
           <string>&lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
@@ -358,31 +355,41 @@ p, li { white-space: pre-wrap; }
          </property>
         </widget>
        </item>
-       <item row="3" column="0" colspan="2">
+       <item row="4" column="0">
         <widget class="QCheckBox" name="fillSlider">
          <property name="text">
-          <string>Fill used part of slider groove</string>
+          <string>Fill used part of slider groove:</string>
          </property>
         </widget>
        </item>
-       <item row="4" column="0">
+       <item row="4" column="1">
+        <widget class="QComboBox" name="sliderFill">
+         <property name="whatsThis">
+          <string>&lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
+p, li { white-space: pre-wrap; }
+&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'Verdana'; font-size:9pt; font-weight:400; font-style:normal;&quot;&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;This appearance setting affects both scrollbar sliders, and other sliders.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
+        </widget>
+       </item>
+       <item row="5" column="0">
         <widget class="QLabel" name="label_30">
          <property name="text">
           <string>Groove appearance:</string>
          </property>
         </widget>
        </item>
-       <item row="4" column="1">
+       <item row="5" column="1">
         <widget class="QComboBox" name="grooveAppearance"/>
        </item>
-       <item row="5" column="0">
+       <item row="6" column="0">
         <widget class="QLabel" name="label_14">
          <property name="text">
           <string>Scrollbar buttons:</string>
          </property>
         </widget>
        </item>
-       <item row="5" column="1">
+       <item row="6" column="1">
         <widget class="QComboBox" name="scrollbarType">
          <property name="whatsThis">
           <string>&lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
@@ -399,24 +406,48 @@ p, li { white-space: pre-wrap; }
          </property>
         </widget>
        </item>
-       <item row="5" column="2" colspan="2">
+       <item row="6" column="2">
         <widget class="QCheckBox" name="flatSbarButtons">
          <property name="text">
           <string>Flat</string>
          </property>
         </widget>
        </item>
-       <item row="6" column="0">
+       <item row="7" column="0">
+        <widget class="QLabel" name="label_32">
+         <property name="text">
+          <string>Background:</string>
+         </property>
+        </widget>
+       </item>
+       <item row="7" column="1">
+        <widget class="QComboBox" name="sbarBgndAppearance">
+         <property name="whatsThis">
+          <string>&lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
+p, li { white-space: pre-wrap; }
+&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'Verdana'; font-size:9pt; font-weight:400; font-style:normal;&quot;&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;This controls the position, and number, of buttons on a scrollbar.&lt;/p&gt;
+&lt;p style=&quot;-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;/p&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;KDE - 1 button at the top/left, and two at the bottom/right&lt;/p&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Windows - 1 botton at each end&lt;/p&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Platinum -  no buttons at the top/left, two at bottom/right&lt;/p&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Next - two buttons at the top/left, none at bottom/right&lt;/p&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;None - no buttons, only the slider&lt;/p&gt;
+&lt;p style=&quot;-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
+        </widget>
+       </item>
+       <item row="8" column="0">
         <widget class="QLabel" name="label_15">
          <property name="text">
           <string>Scrollbar thumbs:</string>
          </property>
         </widget>
        </item>
-       <item row="6" column="1">
+       <item row="8" column="1">
         <widget class="QComboBox" name="sliderThumbs"/>
        </item>
-       <item row="7" column="1">
+       <item row="9" column="1">
         <spacer>
          <property name="orientation">
           <enum>Qt::Vertical</enum>
@@ -428,6 +459,20 @@ p, li { white-space: pre-wrap; }
           </size>
          </property>
         </spacer>
+       </item>
+       <item row="5" column="2">
+        <widget class="QCheckBox" name="thinSbarGroove">
+         <property name="text">
+          <string>Thin scrollbar groove</string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="1">
+        <widget class="QCheckBox" name="colorSliderMouseOver">
+         <property name="text">
+          <string>Color only on mouse-over</string>
+         </property>
+        </widget>
        </item>
       </layout>
      </widget>
@@ -455,6 +500,12 @@ p, li { white-space: pre-wrap; }
        </item>
        <item row="0" column="4">
         <widget class="QCheckBox" name="fillProgress">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
          <property name="whatsThis">
           <string>Enable this option to remove the 1 pixel border around the filled element.</string>
          </property>
@@ -462,19 +513,6 @@ p, li { white-space: pre-wrap; }
           <string>No border</string>
          </property>
         </widget>
-       </item>
-       <item row="0" column="5">
-        <spacer name="horizontalSpacer">
-         <property name="orientation">
-          <enum>Qt::Horizontal</enum>
-         </property>
-         <property name="sizeHint" stdset="0">
-          <size>
-           <width>118</width>
-           <height>20</height>
-          </size>
-         </property>
-        </spacer>
        </item>
        <item row="1" column="0">
         <widget class="QLabel" name="label_24">
@@ -625,7 +663,7 @@ p, li { white-space: pre-wrap; }
       </layout>
      </widget>
      <widget class="QWidget" name="page_7">
-      <layout class="QGridLayout">
+      <layout class="QGridLayout" name="gridLayout_10">
        <item row="0" column="0">
         <widget class="QLabel" name="label_19">
          <property name="text">
@@ -637,17 +675,17 @@ p, li { white-space: pre-wrap; }
         <widget class="QComboBox" name="lvAppearance"/>
        </item>
        <item row="0" column="2">
-        <spacer>
-         <property name="orientation">
-          <enum>Qt::Horizontal</enum>
+        <widget class="QCheckBox" name="lvButton">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
          </property>
-         <property name="sizeHint" stdset="0">
-          <size>
-           <width>40</width>
-           <height>20</height>
-          </size>
+         <property name="text">
+          <string>Button color</string>
          </property>
-        </spacer>
+        </widget>
        </item>
        <item row="1" column="0">
         <widget class="QLabel" name="textLabel1_8_2_4">
@@ -756,23 +794,16 @@ p, li { white-space: pre-wrap; }
        </item>
        <item row="0" column="3">
         <widget class="QCheckBox" name="colorSelTab">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
          <property name="text">
           <string>Color</string>
          </property>
         </widget>
-       </item>
-       <item row="0" column="4">
-        <spacer>
-         <property name="orientation">
-          <enum>Qt::Horizontal</enum>
-         </property>
-         <property name="sizeHint" stdset="0">
-          <size>
-           <width>40</width>
-           <height>20</height>
-          </size>
-         </property>
-        </spacer>
        </item>
        <item row="1" column="0">
         <widget class="QLabel" name="label_21">
@@ -785,6 +816,16 @@ p, li { white-space: pre-wrap; }
         <widget class="QComboBox" name="tabAppearance"/>
        </item>
        <item row="2" column="0">
+        <widget class="QLabel" name="label_33">
+         <property name="text">
+          <string>Mouse-over:</string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="1">
+        <widget class="QComboBox" name="tabMouseOver"/>
+       </item>
+       <item row="4" column="0">
         <spacer>
          <property name="orientation">
           <enum>Qt::Vertical</enum>
@@ -796,6 +837,13 @@ p, li { white-space: pre-wrap; }
           </size>
          </property>
         </spacer>
+       </item>
+       <item row="3" column="0">
+        <widget class="QCheckBox" name="roundAllTabs">
+         <property name="text">
+          <string>Round all tabs</string>
+         </property>
+        </widget>
        </item>
       </layout>
      </widget>
@@ -868,7 +916,7 @@ p, li { white-space: pre-wrap; }
       </layout>
      </widget>
      <widget class="QWidget" name="page_10">
-      <layout class="QGridLayout" name="gridLayout_7">
+      <layout class="QGridLayout" name="gridLayout_12">
        <item row="0" column="0">
         <widget class="QLabel" name="label_23">
          <property name="text">
@@ -876,10 +924,10 @@ p, li { white-space: pre-wrap; }
          </property>
         </widget>
        </item>
-       <item row="0" column="1">
+       <item row="0" column="1" colspan="2">
         <widget class="QComboBox" name="titlebarAppearance"/>
        </item>
-       <item row="0" column="2">
+       <item row="0" column="3">
         <spacer>
          <property name="orientation">
           <enum>Qt::Horizontal</enum>
@@ -899,28 +947,28 @@ p, li { white-space: pre-wrap; }
          </property>
         </widget>
        </item>
-       <item row="1" column="1">
+       <item row="1" column="1" colspan="2">
         <widget class="QComboBox" name="inactiveTitlebarAppearance"/>
        </item>
        <item row="2" column="0">
-        <widget class="QLabel" name="label_27">
-         <property name="text">
-          <string>Button appearance:</string>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="1">
-        <widget class="QComboBox" name="titlebarButtonAppearance"/>
-       </item>
-       <item row="3" column="0">
         <widget class="QLabel" name="label_31">
          <property name="text">
           <string>Text alignment:</string>
          </property>
         </widget>
        </item>
-       <item row="3" column="1">
+       <item row="2" column="1" colspan="2">
         <widget class="QComboBox" name="titlebarAlignment"/>
+       </item>
+       <item row="3" column="0">
+        <widget class="QLabel" name="label_43">
+         <property name="text">
+          <string>Application icon (KDE4):</string>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="1" colspan="2">
+        <widget class="QComboBox" name="titlebarIcon"/>
        </item>
        <item row="4" column="0" colspan="2">
         <widget class="QCheckBox" name="colorTitlebarOnly">
@@ -930,6 +978,214 @@ p, li { white-space: pre-wrap; }
         </widget>
        </item>
        <item row="5" column="0">
+        <widget class="QCheckBox" name="titlebarBorder">
+         <property name="text">
+          <string>Light border (KDE4)</string>
+         </property>
+        </widget>
+       </item>
+       <item row="6" column="0" colspan="4">
+        <widget class="QGroupBox" name="groupBox_3">
+         <property name="title">
+          <string>Buttons</string>
+         </property>
+         <layout class="QGridLayout" name="gridLayout_11">
+          <item row="0" column="0">
+           <widget class="QCheckBox" name="titlebarButtons_noFrame">
+            <property name="text">
+             <string>Only show symbols</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0">
+           <widget class="QLabel" name="label_27">
+            <property name="text">
+             <string>Appearance:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QComboBox" name="titlebarButtonAppearance"/>
+          </item>
+          <item row="1" column="2">
+           <spacer name="horizontalSpacer_2">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>327</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+          <item row="2" column="0">
+           <widget class="QCheckBox" name="titlebarButtons_round">
+            <property name="text">
+             <string>Circular (KDE4)</string>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="0" colspan="2">
+           <widget class="QCheckBox" name="titlebarButtons_hoverFrame">
+            <property name="text">
+             <string>Show frame on mouse-over (KDE4)</string>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="0" colspan="2">
+           <widget class="QCheckBox" name="titlebarButtons_hoverSymbol">
+            <property name="text">
+             <string>Highlight symbol on mouse-over (KDE4)</string>
+            </property>
+           </widget>
+          </item>
+          <item row="5" column="0">
+           <widget class="QCheckBox" name="titlebarButtons_button">
+            <property name="text">
+             <string>Use button color</string>
+            </property>
+           </widget>
+          </item>
+          <item row="6" column="0">
+           <widget class="QCheckBox" name="titlebarButtons_custom">
+            <property name="text">
+             <string>Use custom colors</string>
+            </property>
+           </widget>
+          </item>
+          <item row="8" column="0" colspan="3">
+           <widget class="QGroupBox" name="titlebarButtons_colors">
+            <property name="enabled">
+             <bool>false</bool>
+            </property>
+            <property name="title">
+             <string>Custom Colors</string>
+            </property>
+            <layout class="QVBoxLayout" name="verticalLayout">
+             <item>
+              <widget class="QCheckBox" name="titlebarButtons_colorSymbolsOnly">
+               <property name="text">
+                <string>Use only for symbols</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QCheckBox" name="titlebarButtons_colorInactive">
+               <property name="text">
+                <string>Also apply to inactive windows</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <layout class="QGridLayout" name="gridLayout_7">
+               <item row="0" column="0">
+                <widget class="QLabel" name="label_34">
+                 <property name="text">
+                  <string>Close:</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="0" column="2">
+                <widget class="QLabel" name="label_35">
+                 <property name="text">
+                  <string>Minimise:</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="0" column="4">
+                <widget class="QLabel" name="label_36">
+                 <property name="text">
+                  <string>Maximise:</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="2" column="0">
+                <widget class="QLabel" name="label_37">
+                 <property name="text">
+                  <string>Help:</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="2" column="2">
+                <widget class="QLabel" name="label_38">
+                 <property name="text">
+                  <string>Menu:</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="2" column="4">
+                <widget class="QLabel" name="label_39">
+                 <property name="text">
+                  <string>Shade:</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="4" column="0">
+                <widget class="QLabel" name="label_40">
+                 <property name="text">
+                  <string>All Desktops:</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="4" column="2">
+                <widget class="QLabel" name="label_41">
+                 <property name="text">
+                  <string>Keep Above:</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="4" column="4">
+                <widget class="QLabel" name="label_42">
+                 <property name="text">
+                  <string>Keep Below:</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="0" column="1">
+                <widget class="KColorButton" name="titlebarButtons_colorClose"/>
+               </item>
+               <item row="0" column="3">
+                <widget class="KColorButton" name="titlebarButtons_colorMin"/>
+               </item>
+               <item row="0" column="5">
+                <widget class="KColorButton" name="titlebarButtons_colorMax"/>
+               </item>
+               <item row="2" column="1">
+                <widget class="KColorButton" name="titlebarButtons_colorHelp"/>
+               </item>
+               <item row="2" column="3">
+                <widget class="KColorButton" name="titlebarButtons_colorMenu"/>
+               </item>
+               <item row="2" column="5">
+                <widget class="KColorButton" name="titlebarButtons_colorShade"/>
+               </item>
+               <item row="4" column="1">
+                <widget class="KColorButton" name="titlebarButtons_colorAllDesktops"/>
+               </item>
+               <item row="4" column="3">
+                <widget class="KColorButton" name="titlebarButtons_colorKeepAbove"/>
+               </item>
+               <item row="4" column="5">
+                <widget class="KColorButton" name="titlebarButtons_colorKeepBelow"/>
+               </item>
+              </layout>
+             </item>
+            </layout>
+           </widget>
+          </item>
+          <item row="7" column="0">
+           <widget class="QCheckBox" name="titlebarButtons_colorOnMouseOver">
+            <property name="text">
+             <string>Use color only for mouse-over</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item row="7" column="2">
         <spacer>
          <property name="orientation">
           <enum>Qt::Vertical</enum>
@@ -1004,7 +1260,7 @@ p, li { white-space: pre-wrap; }
             </property>
            </widget>
           </item>
-          <item row="0" column="1" colspan="5">
+          <item row="0" column="1">
            <widget class="QComboBox" name="menubarAppearance"/>
           </item>
           <item row="1" column="0">
@@ -1017,24 +1273,24 @@ p, li { white-space: pre-wrap; }
             </property>
            </widget>
           </item>
-          <item row="1" column="1" colspan="4">
+          <item row="1" column="1">
            <widget class="QComboBox" name="shadeMenubars"/>
           </item>
-          <item row="1" column="5">
+          <item row="1" column="2">
            <widget class="KColorButton" name="customMenubarsColor">
             <property name="text">
              <string/>
             </property>
            </widget>
           </item>
-          <item row="2" column="0" colspan="5">
+          <item row="2" column="0" colspan="2">
            <widget class="QCheckBox" name="shadeMenubarOnlyWhenActive">
             <property name="text">
              <string>Apply coloration to active window only</string>
             </property>
            </widget>
           </item>
-          <item row="3" column="0" colspan="3">
+          <item row="3" column="0" colspan="2">
            <widget class="QCheckBox" name="customMenuTextColor">
             <property name="sizePolicy">
              <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
@@ -1047,35 +1303,48 @@ p, li { white-space: pre-wrap; }
             </property>
            </widget>
           </item>
-          <item row="3" column="4">
+          <item row="3" column="2">
            <widget class="KColorButton" name="customMenuNormTextColor">
             <property name="text">
              <string/>
             </property>
            </widget>
           </item>
-          <item row="3" column="5">
+          <item row="3" column="3">
            <widget class="KColorButton" name="customMenuSelTextColor">
             <property name="text">
              <string/>
             </property>
            </widget>
           </item>
-          <item row="4" column="0" colspan="6">
+          <item row="3" column="4">
+           <spacer name="horizontalSpacer_3">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>152</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+          <item row="4" column="0" colspan="2">
            <widget class="QCheckBox" name="menubarMouseOver">
             <property name="text">
              <string>Enable mouse-over for menubar items</string>
             </property>
            </widget>
           </item>
-          <item row="5" column="0" colspan="3">
+          <item row="5" column="0" colspan="2">
            <widget class="QCheckBox" name="colorMenubarMouseOver">
             <property name="text">
              <string>Color menubar items on mouse-over</string>
             </property>
            </widget>
           </item>
-          <item row="6" column="0" colspan="6">
+          <item row="6" column="0" colspan="2">
            <widget class="QCheckBox" name="roundMbTopOnly">
             <property name="text">
              <string>Round selected menubar items on top only</string>
@@ -1092,31 +1361,31 @@ p, li { white-space: pre-wrap; }
             </property>
            </widget>
           </item>
-          <item row="7" column="1" colspan="5">
+          <item row="7" column="1">
            <widget class="QComboBox" name="menuitemAppearance"/>
           </item>
-          <item row="8" column="0" colspan="4">
+          <item row="8" column="0">
            <widget class="QCheckBox" name="borderMenuitems">
             <property name="text">
              <string>Border menuitems</string>
             </property>
            </widget>
           </item>
-          <item row="9" column="0" colspan="5">
+          <item row="9" column="0" colspan="2">
            <widget class="QCheckBox" name="useHighlightForMenu">
             <property name="text">
              <string>Use 'highlight' color for active menuitems</string>
             </property>
            </widget>
           </item>
-          <item row="10" column="0" colspan="2">
+          <item row="10" column="0">
            <widget class="QLabel" name="label_26">
             <property name="text">
              <string>Popup-menu background:</string>
             </property>
            </widget>
           </item>
-          <item row="10" column="2">
+          <item row="10" column="1">
            <widget class="KIntNumInput" name="lighterPopupMenuBgnd">
             <property name="suffix">
              <string>%</string>
@@ -1126,7 +1395,7 @@ p, li { white-space: pre-wrap; }
             </property>
            </widget>
           </item>
-          <item row="10" column="3" colspan="3">
+          <item row="10" column="2" colspan="3">
            <spacer name="spacer">
             <property name="orientation">
              <enum>Qt::Horizontal</enum>
@@ -1139,7 +1408,7 @@ p, li { white-space: pre-wrap; }
             </property>
            </spacer>
           </item>
-          <item row="11" column="0" colspan="6">
+          <item row="11" column="0">
            <widget class="QCheckBox" name="thinnerMenuItems">
             <property name="text">
              <string>Thinner menu items</string>
@@ -1147,14 +1416,28 @@ p, li { white-space: pre-wrap; }
            </widget>
           </item>
           <item row="12" column="0">
-           <widget class="QCheckBox" name="menuStripe">
+           <widget class="QLabel" name="label_44">
             <property name="text">
-             <string>Menu stripe (KDE)</string>
+             <string>Stripe (KDE):</string>
             </property>
            </widget>
           </item>
-          <item row="12" column="1" colspan="5">
-           <widget class="QComboBox" name="menuStripeAppearance"/>
+          <item row="12" column="1">
+           <widget class="QComboBox" name="menuStripe"/>
+          </item>
+          <item row="12" column="2">
+           <widget class="KColorButton" name="customMenuStripeColor">
+            <property name="enabled">
+             <bool>false</bool>
+            </property>
+           </widget>
+          </item>
+          <item row="12" column="3" colspan="2">
+           <widget class="QComboBox" name="menuStripeAppearance">
+            <property name="enabled">
+             <bool>false</bool>
+            </property>
+           </widget>
           </item>
          </layout>
         </widget>
@@ -1281,27 +1564,14 @@ p, li { white-space: pre-wrap; }
          </property>
         </widget>
        </item>
-       <item row="4" column="0" colspan="4">
-        <widget class="QCheckBox" name="inactiveHighlight">
-         <property name="whatsThis">
-          <string>&lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
-p, li { white-space: pre-wrap; }
-&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'Verdana'; font-size:9pt; font-weight:400; font-style:normal;&quot;&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Selecting this option will cause the highlight colour of inactive items (e.g. those in inactive windows) to be drawn using a blen of the background and highlight colors.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-         </property>
-         <property name="text">
-          <string>Use blended background/highlight color for highlight of inactive elements</string>
-         </property>
-        </widget>
-       </item>
-       <item row="5" column="0">
+       <item row="4" column="0">
         <widget class="QLabel" name="label">
          <property name="text">
           <string>Character to use for password entries:</string>
          </property>
         </widget>
        </item>
-       <item row="5" column="1">
+       <item row="4" column="1">
         <widget class="QPushButton" name="passwordChar">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
@@ -1311,7 +1581,7 @@ p, li { white-space: pre-wrap; }
          </property>
         </widget>
        </item>
-       <item row="5" column="2">
+       <item row="4" column="2">
         <spacer>
          <property name="orientation">
           <enum>Qt::Horizontal</enum>
@@ -1324,7 +1594,7 @@ p, li { white-space: pre-wrap; }
          </property>
         </spacer>
        </item>
-       <item row="6" column="3">
+       <item row="5" column="1">
         <spacer>
          <property name="orientation">
           <enum>Qt::Vertical</enum>
@@ -1655,19 +1925,6 @@ p, li { white-space: pre-wrap; }
          </layout>
         </widget>
        </item>
-       <item row="2" column="0">
-        <spacer>
-         <property name="orientation">
-          <enum>Qt::Vertical</enum>
-         </property>
-         <property name="sizeHint" stdset="0">
-          <size>
-           <width>20</width>
-           <height>104</height>
-          </size>
-         </property>
-        </spacer>
-       </item>
       </layout>
      </widget>
     </widget>
@@ -1678,17 +1935,7 @@ p, li { white-space: pre-wrap; }
  <pixmapfunction>qPixmapFromMimeSource</pixmapfunction>
  <customwidgets>
   <customwidget>
-   <class>KColorButton</class>
-   <extends>QPushButton</extends>
-   <header>kcolorbutton.h</header>
-  </customwidget>
-  <customwidget>
    <class>KDoubleNumInput</class>
-   <extends>QWidget</extends>
-   <header>knuminput.h</header>
-  </customwidget>
-  <customwidget>
-   <class>KIntNumInput</class>
    <extends>QWidget</extends>
    <header>knuminput.h</header>
   </customwidget>
@@ -1696,6 +1943,16 @@ p, li { white-space: pre-wrap; }
    <class>KPushButton</class>
    <extends>QPushButton</extends>
    <header>kpushbutton.h</header>
+  </customwidget>
+  <customwidget>
+   <class>KColorButton</class>
+   <extends>QPushButton</extends>
+   <header>kcolorbutton.h</header>
+  </customwidget>
+  <customwidget>
+   <class>KIntNumInput</class>
+   <extends>QWidget</extends>
+   <header>knuminput.h</header>
   </customwidget>
  </customwidgets>
  <tabstops>
@@ -1714,11 +1971,15 @@ p, li { white-space: pre-wrap; }
   <tabstop>sliderAppearance</tabstop>
   <tabstop>shadeSliders</tabstop>
   <tabstop>customSlidersColor</tabstop>
+  <tabstop>colorSliderMouseOver</tabstop>
   <tabstop>sliderStyle</tabstop>
   <tabstop>fillSlider</tabstop>
+  <tabstop>sliderFill</tabstop>
   <tabstop>grooveAppearance</tabstop>
+  <tabstop>thinSbarGroove</tabstop>
   <tabstop>scrollbarType</tabstop>
   <tabstop>flatSbarButtons</tabstop>
+  <tabstop>sbarBgndAppearance</tabstop>
   <tabstop>sliderThumbs</tabstop>
   <tabstop>progressAppearance</tabstop>
   <tabstop>stripedProgress</tabstop>
@@ -1731,6 +1992,7 @@ p, li { white-space: pre-wrap; }
   <tabstop>coloredMouseOver</tabstop>
   <tabstop>highlightFactor</tabstop>
   <tabstop>lvAppearance</tabstop>
+  <tabstop>lvButton</tabstop>
   <tabstop>selectionAppearance</tabstop>
   <tabstop>lvLines</tabstop>
   <tabstop>gtkScrollViews</tabstop>
@@ -1741,6 +2003,8 @@ p, li { white-space: pre-wrap; }
   <tabstop>highlightTab</tabstop>
   <tabstop>colorSelTab</tabstop>
   <tabstop>tabAppearance</tabstop>
+  <tabstop>tabMouseOver</tabstop>
+  <tabstop>roundAllTabs</tabstop>
   <tabstop>shadeCheckRadio</tabstop>
   <tabstop>customCheckRadioColor</tabstop>
   <tabstop>xCheck</tabstop>
@@ -1748,9 +2012,29 @@ p, li { white-space: pre-wrap; }
   <tabstop>crButton</tabstop>
   <tabstop>titlebarAppearance</tabstop>
   <tabstop>inactiveTitlebarAppearance</tabstop>
-  <tabstop>titlebarButtonAppearance</tabstop>
   <tabstop>titlebarAlignment</tabstop>
+  <tabstop>titlebarIcon</tabstop>
   <tabstop>colorTitlebarOnly</tabstop>
+  <tabstop>titlebarBorder</tabstop>
+  <tabstop>titlebarButtons_noFrame</tabstop>
+  <tabstop>titlebarButtonAppearance</tabstop>
+  <tabstop>titlebarButtons_round</tabstop>
+  <tabstop>titlebarButtons_hoverFrame</tabstop>
+  <tabstop>titlebarButtons_hoverSymbol</tabstop>
+  <tabstop>titlebarButtons_button</tabstop>
+  <tabstop>titlebarButtons_custom</tabstop>
+  <tabstop>titlebarButtons_colorOnMouseOver</tabstop>
+  <tabstop>titlebarButtons_colorSymbolsOnly</tabstop>
+  <tabstop>titlebarButtons_colorInactive</tabstop>
+  <tabstop>titlebarButtons_colorClose</tabstop>
+  <tabstop>titlebarButtons_colorMin</tabstop>
+  <tabstop>titlebarButtons_colorMax</tabstop>
+  <tabstop>titlebarButtons_colorHelp</tabstop>
+  <tabstop>titlebarButtons_colorMenu</tabstop>
+  <tabstop>titlebarButtons_colorShade</tabstop>
+  <tabstop>titlebarButtons_colorAllDesktops</tabstop>
+  <tabstop>titlebarButtons_colorKeepAbove</tabstop>
+  <tabstop>titlebarButtons_colorKeepBelow</tabstop>
   <tabstop>toolbarBorders</tabstop>
   <tabstop>handles</tabstop>
   <tabstop>menubarAppearance</tabstop>
@@ -1769,6 +2053,7 @@ p, li { white-space: pre-wrap; }
   <tabstop>lighterPopupMenuBgnd</tabstop>
   <tabstop>thinnerMenuItems</tabstop>
   <tabstop>menuStripe</tabstop>
+  <tabstop>customMenuStripeColor</tabstop>
   <tabstop>menuStripeAppearance</tabstop>
   <tabstop>toolbarAppearance</tabstop>
   <tabstop>toolbarSeparators</tabstop>
@@ -1776,7 +2061,6 @@ p, li { white-space: pre-wrap; }
   <tabstop>gtkButtonOrder</tabstop>
   <tabstop>mapKdeIcons</tabstop>
   <tabstop>fixParentlessDialogs</tabstop>
-  <tabstop>inactiveHighlight</tabstop>
   <tabstop>passwordChar</tabstop>
   <tabstop>gradCombo</tabstop>
   <tabstop>gradStops</tabstop>
@@ -1799,18 +2083,114 @@ p, li { white-space: pre-wrap; }
  <resources/>
  <connections>
   <connection>
-   <sender>framelessGroupBoxes</sender>
+   <sender>titlebarButtons_noFrame</sender>
    <signal>toggled(bool)</signal>
-   <receiver>groupBoxLine</receiver>
+   <receiver>label_27</receiver>
+   <slot>setDisabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>261</x>
+     <y>59</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>261</x>
+     <y>59</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>titlebarButtons_noFrame</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>titlebarButtonAppearance</receiver>
+   <slot>setDisabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>261</x>
+     <y>59</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>261</x>
+     <y>59</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>titlebarButtons_noFrame</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>titlebarButtons_round</receiver>
+   <slot>setDisabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>261</x>
+     <y>59</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>261</x>
+     <y>59</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>titlebarButtons_noFrame</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>titlebarButtons_hoverFrame</receiver>
+   <slot>setDisabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>261</x>
+     <y>59</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>261</x>
+     <y>59</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>titlebarButtons_colorOnMouseOver</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>titlebarButtons_colorInactive</receiver>
+   <slot>setDisabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>261</x>
+     <y>59</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>261</x>
+     <y>59</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>titlebarButtons_custom</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>titlebarButtons_colors</receiver>
    <slot>setEnabled(bool)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>251</x>
-     <y>206</y>
+     <x>261</x>
+     <y>59</y>
     </hint>
     <hint type="destinationlabel">
-     <x>422</x>
-     <y>212</y>
+     <x>261</x>
+     <y>59</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>flatSbarButtons</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>thinSbarGroove</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>505</x>
+     <y>210</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>530</x>
+     <y>181</y>
     </hint>
    </hints>
   </connection>

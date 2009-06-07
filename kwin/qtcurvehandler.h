@@ -54,6 +54,7 @@ enum ButtonIcon
     NoKeepBelowIcon,
     ShadeIcon,
     UnShadeIcon,
+    MenuIcon,
     NumButtonIcons
 };
 
@@ -84,6 +85,9 @@ class QtCurveHandler : public QObject,
     int             borderSize() const      { return itsBorderSize; }
     bool            coloredShadow() const   { return itsColoredShadow; }
     bool            menuClose() const       { return itsMenuClose; }
+    bool            showResizeGrip() const  { return itsShowResizeGrip; }
+    bool            roundBottom() const     { return itsRoundBottom && itsBorderSize>1; }
+    bool            noBorder() const        { return itsNoBorder; }
     QStyle *        wStyle() const          { return itsStyle ? itsStyle : QApplication::style(); }
 
     QList<QtCurveHandler::BorderSize>  borderSizes() const;
@@ -97,15 +101,19 @@ class QtCurveHandler : public QObject,
 
     private:
 
-    void readConfig();
+    bool readConfig();
 
     private:
 
     bool    itsColoredShadow,
-            itsMenuClose;
+            itsMenuClose,
+            itsShowResizeGrip,
+            itsRoundBottom,
+            itsNoBorder;
     int     itsBorderSize,
             itsTitleHeight,
-            itsTitleHeightTool;
+            itsTitleHeightTool,
+            itsTimeStamp;
     QFont   itsTitleFont,
             itsTitleFontTool;
     QStyle  *itsStyle;

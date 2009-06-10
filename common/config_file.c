@@ -85,6 +85,8 @@ static EDefBtnIndicator toInd(const char *str, EDefBtnIndicator def)
             return IND_TINT;
         if(0==memcmp(str, "glow", 4))
             return IND_GLOW;
+        if(0==memcmp(str, "darken", 6))
+            return IND_DARKEN;
     }
 
     return def;
@@ -128,6 +130,8 @@ static EMouseOver toMouseOver(const char *str, EMouseOver def)
     {
         if(0==memcmp(str, "true", 4) || 0==memcmp(str, "colored", 7))
             return MO_COLORED;
+        if(0==memcmp(str, "thickcolored", 12))
+            return MO_COLORED_THICK;
         if(0==memcmp(str, "plastik", 7))
             return MO_PLASTIK;
         if(0==memcmp(str, "glow", 4))
@@ -979,6 +983,7 @@ static bool readConfig(const char *file, Options *opts, Options *defOpts)
             QTC_CFG_READ_NUM(passwordChar)
             QTC_CFG_READ_ROUND(round)
             QTC_CFG_READ_INT(highlightFactor)
+            QTC_CFG_READ_INT(menuDelay)
             QTC_CFG_READ_INT_BOOL(lighterPopupMenuBgnd)
             QTC_CFG_READ_TB_BORDER(toolbarBorders)
             QTC_CFG_READ_APPEARANCE(appearance, false)
@@ -994,7 +999,7 @@ static bool readConfig(const char *file, Options *opts, Options *defOpts)
             QTC_CFG_READ_BOOL(colorSelTab)
             QTC_CFG_READ_BOOL(roundAllTabs)
             QTC_CFG_READ_TAB_MO(tabMouseOver)
-            QTC_CFG_READ_SHADE(shadeSliders, false, false, &opts->customSlidersColor)
+            QTC_CFG_READ_SHADE(shadeSliders, true, false, &opts->customSlidersColor)
             QTC_CFG_READ_SHADE(shadeMenubars, true, false, &opts->customMenubarsColor)
             QTC_CFG_READ_SHADE(shadeCheckRadio, false, false, &opts->customCheckRadioColor)
             QTC_CFG_READ_APPEARANCE(menubarAppearance, false)
@@ -1065,6 +1070,8 @@ static bool readConfig(const char *file, Options *opts, Options *defOpts)
             QTC_CFG_READ_BOOL(highlightScrollViews)
             QTC_CFG_READ_BOOL(sunkenScrollViews)
             QTC_CFG_READ_BOOL(flatSbarButtons)
+            QTC_CFG_READ_BOOL(popupBorder)
+            QTC_CFG_READ_BOOL(unifySpinBtns)
             QTC_CFG_READ_BOOL(thinSbarGroove)
             QTC_CFG_READ_BOOL(colorSliderMouseOver)
 #if defined QTC_CONFIG_DIALOG || (defined QT_VERSION && (QT_VERSION >= 0x040000))
@@ -1078,6 +1085,7 @@ static bool readConfig(const char *file, Options *opts, Options *defOpts)
             if(version<QTC_MAKE_VERSION(0, 63) && QTC_IS_BLACK(opts->customMenuStripeColor))
                 QTC_CFG_READ_COLOR(customMenuStripeColor)
 #endif
+            QTC_CFG_READ_SHADE(comboBtn, true, false, &opts->customComboBtnColor);
             QTC_CFG_READ_BOOL(gtkScrollViews)
 #ifdef __cplusplus
             QTC_CFG_READ_ALIGN(titlebarAlignment)
@@ -1376,8 +1384,8 @@ static bool readConfig(const char *file, Options *opts, Options *defOpts)
 #ifndef __cplusplus
             releaseConfig(cfg);
 #endif
-            if(SHADE_SELECTED==opts->shadeCheckRadio)
-                opts->shadeCheckRadio=SHADE_BLEND_SELECTED;
+            if(SHADE_BLEND_SELECTED==opts->shadeCheckRadio)
+                opts->shadeCheckRadio=SHADE_SELECTED;
 
             checkColor(&opts->shadeMenubars, &opts->customMenubarsColor);
             checkColor(&opts->shadeSliders, &opts->customSlidersColor);
@@ -1385,6 +1393,7 @@ static bool readConfig(const char *file, Options *opts, Options *defOpts)
 #if defined __cplusplus || defined QTC_GTK2_MENU_STRIPE
             checkColor(&opts->menuStripe, &opts->customMenuStripeColor);
 #endif
+            checkColor(&opts->comboBtn, &opts->customComboBtnColor);
             if(APPEARANCE_BEVELLED==opts->toolbarAppearance)
                 opts->toolbarAppearance=APPEARANCE_GRADIENT;
             else if(APPEARANCE_RAISED==opts->toolbarAppearance)
@@ -1418,6 +1427,9 @@ static bool readConfig(const char *file, Options *opts, Options *defOpts)
 #endif
             if(opts->highlightFactor<MIN_HIGHLIGHT_FACTOR || opts->highlightFactor>MAX_HIGHLIGHT_FACTOR)
                 opts->highlightFactor=DEFAULT_HIGHLIGHT_FACTOR;
+
+            if(opts->menuDelay<MIN_MENU_DELAY || opts->menuDelay>MAX_MENU_DELAY)
+                opts->menuDelay=DEFAULT_MENU_DELAY;
 
             if(opts->lighterPopupMenuBgnd>MAX_LIGHTER_POPUP_MENU)
                 opts->lighterPopupMenuBgnd=DEF_POPUPMENU_LIGHT_FACTOR;
@@ -1531,6 +1543,7 @@ static void defaultSettings(Options *opts)
     opts->contrast=7;
     opts->passwordChar=0x25CF;
     opts->highlightFactor=DEFAULT_HIGHLIGHT_FACTOR;
+    opts->menuDelay=DEFAULT_MENU_DELAY;
 #if defined QTC_CONFIG_DIALOG || (defined QT_VERSION && (QT_VERSION >= 0x040000)) || !defined __cplusplus
     opts->round=ROUND_EXTRA;
     opts->fadeLines=true;
@@ -1602,6 +1615,8 @@ static void defaultSettings(Options *opts)
     opts->highlightScrollViews=false;
     opts->sunkenScrollViews=true;
     opts->flatSbarButtons=true;
+    opts->popupBorder=true;
+    opts->unifySpinBtns=false;
     opts->thinSbarGroove=false;
     opts->colorSliderMouseOver=false;
 #if defined QTC_CONFIG_DIALOG || (defined QT_VERSION && (QT_VERSION >= 0x040000))
@@ -1616,6 +1631,7 @@ static void defaultSettings(Options *opts)
 #endif
     opts->shading=SHADING_HSL;
     opts->gtkScrollViews=false;
+    opts->comboBtn=SHADE_NONE;
 #ifdef __cplusplus
     opts->stdSidebarButtons=false;
     opts->gtkComboMenus=false;
@@ -1625,6 +1641,7 @@ static void defaultSettings(Options *opts)
     opts->customMenuNormTextColor.setRgb(0, 0, 0);
     opts->customMenuSelTextColor.setRgb(0, 0, 0);
     opts->customCheckRadioColor.setRgb(0, 0, 0);
+    opts->customComboBtnColor.setRgb(0, 0, 0);
     opts->titlebarAlignment=ALIGN_FULL_CENTER;
 #else
 /*
@@ -1635,6 +1652,7 @@ static void defaultSettings(Options *opts)
     opts->customMenuNormTextColor.red=opts->customMenuNormTextColor.green=opts->customMenuNormTextColor.blue=0;
     opts->customMenuSelTextColor.red=opts->customMenuSelTextColor.green=opts->customMenuSelTextColor.blue=0;
     opts->customCheckRadioColor.red=opts->customCheckRadioColor.green=opts->customCheckRadioColor.blue=0;
+    opts->customComboBtnColor.red=opts->customCheckRadioColor.green=opts->customCheckRadioColor.blue=0;
 #endif
 
 #if !defined __cplusplus || defined QTC_CONFIG_DIALOG
@@ -1679,6 +1697,8 @@ static const char *toStr(EDefBtnIndicator ind)
             return "tint";
         case IND_GLOW:
             return "glow";
+        case IND_DARKEN:
+            return "darken";
         default:
             return "colored";
     }
@@ -1724,6 +1744,8 @@ static const char *toStr(EMouseOver mo)
     {
         case MO_COLORED:
             return "colored";
+        case MO_COLORED_THICK:
+            return "thickcolored";
         case MO_NONE:
             return "none";
         case MO_GLOW:
@@ -2050,6 +2072,7 @@ bool static writeConfig(KConfig *cfg, const Options &opts, const Options &def, b
         CFG_WRITE_ENTRY_NUM(passwordChar)
         CFG_WRITE_ENTRY(round)
         CFG_WRITE_ENTRY_NUM(highlightFactor)
+        CFG_WRITE_ENTRY_NUM(menuDelay)
         CFG_WRITE_ENTRY(toolbarBorders)
         CFG_WRITE_ENTRY(appearance)
         CFG_WRITE_ENTRY(fixParentlessDialogs)
@@ -2117,6 +2140,8 @@ bool static writeConfig(KConfig *cfg, const Options &opts, const Options &def, b
         CFG_WRITE_ENTRY(highlightScrollViews)
         CFG_WRITE_ENTRY(sunkenScrollViews)
         CFG_WRITE_ENTRY(flatSbarButtons)
+        CFG_WRITE_ENTRY(popupBorder)
+        CFG_WRITE_ENTRY(unifySpinBtns)
         CFG_WRITE_ENTRY(thinSbarGroove)
         CFG_WRITE_ENTRY(colorSliderMouseOver)
 #if defined QTC_CONFIG_DIALOG || (defined QT_VERSION && (QT_VERSION >= 0x040000))
@@ -2149,6 +2174,7 @@ bool static writeConfig(KConfig *cfg, const Options &opts, const Options &def, b
             CFG.deleteEntry("titlebarButtonColors");
 #endif
         CFG_WRITE_SHADE_ENTRY(menuStripe, customMenuStripeColor)
+        CFG_WRITE_SHADE_ENTRY(comboBtn, customComboBtnColor)
         CFG_WRITE_ENTRY(stdSidebarButtons)
         CFG_WRITE_ENTRY(titlebarAppearance)
         CFG_WRITE_ENTRY(inactiveTitlebarAppearance)

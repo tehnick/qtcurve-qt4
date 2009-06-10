@@ -202,6 +202,12 @@ typedef GdkColor color;
 #define MIN_LIGHTER_POPUP_MENU                  -100
 #define MAX_LIGHTER_POPUP_MENU                   100
 
+#define DEFAULT_MENU_DELAY 100
+#define MIN_MENU_DELAY       0
+#define MAX_MENU_DELAY     500
+
+#define SIZE_GRIP_SIZE 12
+
 #define USE_LIGHTER_POPUP_MENU (opts.lighterPopupMenuBgnd)
 
 #define USE_SHADED_MENU_BAR_COLORS (SHADE_CUSTOM==opts.shadeMenubars || SHADE_BLEND_SELECTED==opts.shadeMenubars)
@@ -496,6 +502,7 @@ typedef enum
     IND_COLORED,
     IND_TINT,
     IND_GLOW,
+    IND_DARKEN,
     IND_NONE
 } EDefBtnIndicator;
 
@@ -567,6 +574,7 @@ typedef enum
 {
     MO_NONE,
     MO_COLORED,
+    MO_COLORED_THICK,
     MO_PLASTIK,
     MO_GLOW
 } EMouseOver;
@@ -734,7 +742,8 @@ typedef struct
     int              contrast,
                      passwordChar,
                      highlightFactor,
-                     lighterPopupMenuBgnd;
+                     lighterPopupMenuBgnd,
+                     menuDelay;
     ERound           round;
     bool             embolden,
                      highlightTab,
@@ -790,7 +799,9 @@ typedef struct
 #endif
                      colorSliderMouseOver,
                      thinSbarGroove,
-                     flatSbarButtons;
+                     flatSbarButtons,
+                     popupBorder,
+                     unifySpinBtns;
 #if defined QTC_CONFIG_DIALOG || (defined QT_VERSION && (QT_VERSION >= 0x040000))
     int              titlebarButtons;
     TBCols           titlebarButtonColors;
@@ -837,7 +848,8 @@ typedef struct
 #if defined __cplusplus || defined QTC_GTK2_MENU_STRIPE
                      menuStripe,
 #endif
-                     shadeCheckRadio;
+                     shadeCheckRadio,
+                     comboBtn;
     EColor           progressGrooveColor;
     EEffect          buttonEffect;
     EScrollbar       scrollbarType;
@@ -849,7 +861,8 @@ typedef struct
 #if defined __cplusplus || defined QTC_GTK2_MENU_STRIPE
                      customMenuStripeColor,
 #endif
-                     customCheckRadioColor;
+                     customCheckRadioColor,
+                     customComboBtnColor;
 #if defined __cplusplus
     EAlign           titlebarAlignment;
 #endif
@@ -1363,7 +1376,7 @@ static const Gradient * getGradient(EAppearance app, const Options *opts)
 #else
 #define QTC_MIN_ROUND_EXTRA_SIZE(W) (WIDGET_SPIN_UP==W || WIDGET_SPIN_DOWN==W || WIDGET_SPIN==W ? 7 : 14)
 #endif
-#define QTC_MIN_ROUND_MAX_HEIGHT    21
+#define QTC_MIN_ROUND_MAX_HEIGHT    19
 #define QTC_MIN_ROUND_MAX_WIDTH     32
 
 #if !defined __cplusplus || (defined QT_VERSION && (QT_VERSION >= 0x040000))
@@ -1451,7 +1464,7 @@ static double getRadius(const Options *opts, int w, int h, EWidget widget, ERadi
 #endif
                        )
                         return ((w>h ? h : w)-2)/2;
-                    if(w>(QTC_MIN_ROUND_MAX_WIDTH-2) && h>(QTC_MIN_ROUND_MAX_HEIGHT-2) && QTC_MAX_ROUND_WIDGET(widget))
+                    if(w>QTC_MIN_ROUND_MAX_WIDTH && h>QTC_MIN_ROUND_MAX_HEIGHT && QTC_MAX_ROUND_WIDGET(widget))
                         return 8.5;
                 case ROUND_EXTRA:
                     if(QTC_EXTRA_ROUND_WIDGET(widget) &&

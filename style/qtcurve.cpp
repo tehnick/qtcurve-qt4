@@ -34,6 +34,19 @@
 // TODO! REMOVE THIS WHEN KDE'S ICON SETTINGS ACTUALLY WORK!!!
 #define QTC_FIX_DISABLED_ICONS
 
+#define QTC_MO_ARROW_X(MO, COL) (MO_GLOW==opts.coloredMouseOver && state&State_Enabled && MO ? itsMouseOverCols[QT_STD_BORDER] : COL)
+#define QTC_MO_ARROW(COL)       QTC_MO_ARROW_X(state&State_MouseOver, COL)
+
+static bool useQt3Settings()
+{
+    static const char *full = getenv("KDE_FULL_SESSION");
+    static const char *vers = full ? getenv("KDE_SESSION_VERSION") : 0;
+    static bool       use   = full && (!vers || atoi(vers)<4);
+
+    return use;
+}
+
+#ifndef QTC_QT_ONLY
 #include <KDE/KApplication>
 #include <KDE/KAboutData>
 #include <KDE/KGlobalSettings>
@@ -45,9 +58,6 @@
 #include <KDE/KTabWidget>
 #include <KDE/KColorScheme>
 #include <KDE/KStandardDirs>
-
-#define QTC_MO_ARROW_X(MO, COL) (MO_GLOW==opts.coloredMouseOver && state&State_Enabled && MO ? itsMouseOverCols[QT_STD_BORDER] : COL)
-#define QTC_MO_ARROW(COL)       QTC_MO_ARROW_X(state&State_MouseOver, COL)
 
 static KComponentData *theKComponentData=0;
 static int            theInstanceCount=0;
@@ -213,8 +223,9 @@ static void unsetFileDialogs()
 }
 
 #endif
+#endif
 
-#ifdef QTC_FIX_DISABLED_ICONS
+#if defined QTC_FIX_DISABLED_ICONS && !defined QTC_QT_ONLY
 #include <KDE/KIconEffect>
 QPixmap getIconPixmap(const QIcon &icon, const QSize &size, QIcon::Mode mode, QIcon::State)
 {
@@ -459,7 +470,25 @@ static const int constTabPad         = 6;
 
 static QString kdeHome()
 {
+#if defined QTC_QT_ONLY
+    static QString kdeHomePath;
+    if (kdeHomePath.isEmpty())
+    {
+        kdeHomePath = QString::fromLocal8Bit(qgetenv("KDEHOME"));
+        if (kdeHomePath.isEmpty())
+        {
+            QDir    homeDir(QDir::homePath());
+            QString kdeConfDir(QLatin1String("/.kde"));
+            if (!useQt3Settings() && homeDir.exists(QLatin1String(".kde4")))
+                kdeConfDir = QLatin1String("/.kde4");
+            kdeHomePath = QDir::homePath() + kdeConfDir;
+        }
+    }
+    return kdeHomePath;
+
+#else
     return KGlobal::dirs()->localkdedir();
+#endif
 }
 
 static void getStyles(const QString &dir, const char *sub, QSet<QString> &styles)
@@ -707,15 +736,6 @@ static void parseWindowLine(const QString &line, QList<int> &data)
         }
 }
 
-static bool useQt3Settings()
-{
-    static const char *full = getenv("KDE_FULL_SESSION");
-    static const char *vers = full ? getenv("KDE_SESSION_VERSION") : 0;
-    static bool       use   = full && (!vers || atoi(vers)<4);
-
-    return use;
-}
-
 static const QPushButton * getButton(const QWidget *w, const QPainter *p)
 {
     const QWidget *widget=w ? w : (p && p->device() ? dynamic_cast<const QWidget *>(p->device()) : 0L);
@@ -744,6 +764,7 @@ QtCurveStyle::QtCurveStyle(const QString &name)
               itsHoverWidget(0L),
               itsQtVersion(VER_UNKNOWN)
 {
+#if !defined QTC_QT_ONLY
     theInstanceCount++;
 
     if(!theKComponentData && !KGlobal::hasMainComponent())
@@ -768,6 +789,7 @@ QtCurveStyle::QtCurveStyle(const QString &name)
 #endif
     QDBusConnection::sessionBus().connect(QString(), "/KGlobalSettings", "org.kde.KGlobalSettings",
                                           "notifyChange", this, SLOT(kdeGlobalSettingsChange(int, int)));
+#endif
 
     QString rcFile;
 
@@ -901,12 +923,15 @@ QtCurveStyle::QtCurveStyle(const QString &name)
         }
     else
         opts.titlebarButtons&=~QTC_TITLEBAR_BUTTON_COLOR;
-    
+
+#if !defined QTC_QT_ONLY
     setupKde4();
+#endif
 }
 
 QtCurveStyle::~QtCurveStyle()
 {
+#if !defined QTC_QT_ONLY
     if(0==--theInstanceCount && theKComponentData)
     {
         delete theKComponentData;
@@ -914,6 +939,7 @@ QtCurveStyle::~QtCurveStyle()
     }
 #if !defined QTC_DISABLE_KDEFILEDIALOG_CALLS && !KDE_IS_VERSION(4, 1, 0)
     unsetFileDialogs();
+#endif
 #endif
 
     if(itsSidebarButtonsCols &&
@@ -1783,6 +1809,8 @@ int QtCurveStyle::pixelMetric(PixelMetric metric, const QStyleOption *option, co
     switch(metric)
     {
 #if QT_VERSION >= 0x040500
+        case PM_SubMenuOverlap:
+            return -2;
         case PM_ScrollView_ScrollBarSpacing:
 #else
         case PM_TextCursorWidth+3:
@@ -1790,8 +1818,6 @@ int QtCurveStyle::pixelMetric(PixelMetric metric, const QStyleOption *option, co
             return 3;
         case PM_MenuPanelWidth:
             return opts.popupBorder ? pixelMetric(PM_DefaultFrameWidth, option, widget) : 0;
-        case PM_SubMenuOverlap:
-            return -2;
         case PM_SizeGripSize:
             return SIZE_GRIP_SIZE;
         case PM_TabBarScrollButtonWidth:
@@ -2109,28 +2135,37 @@ int QtCurveStyle::styleHint(StyleHint hint, const QStyleOption *option, const QW
         case SH_FormLayoutWrapPolicy:
             return QFormLayout::DontWrapRows;
 #endif
+#if !defined QTC_QT_ONLY
         case SH_DialogButtonBox_ButtonsHaveIcons:
             return KGlobalSettings::showIconsOnPushButtons();
         case SH_ItemView_ActivateItemOnSingleClick:
             return KGlobalSettings::singleClick();
+#endif
         case SH_MenuBar_AltKeyNavigation:
             return false;
         default:
+#if !defined QTC_QT_ONLY
             // Tell the calling app that we can handle certain custom widgets...
             if(hint>=SH_CustomBase && widget)
                 if("CE_CapacityBar"==widget->objectName())
                     return CE_QtC_KCapacityBar;
+#endif
             return QTC_BASE_STYLE::styleHint(hint, option, widget, returnData);
    }
 }
 
 QPalette QtCurveStyle::standardPalette() const
 {
+#if defined QTC_QT_ONLY
+    return QTC_BASE_STYLE::standardPalette();
+#else
     return KGlobalSettings::createApplicationPalette(KSharedConfig::openConfig(KGlobal::mainComponent()));
+#endif
 }
 
 QPixmap QtCurveStyle::standardPixmap(StandardPixmap pix, const QStyleOption *option, const QWidget *widget) const
 {
+#if !defined QTC_QT_ONLY
     bool fd(widget && qobject_cast<const QFileDialog *>(widget));
 
     switch(pix)
@@ -2266,11 +2301,13 @@ QPixmap QtCurveStyle::standardPixmap(StandardPixmap pix, const QStyleOption *opt
         default:
             break;
     }
+#endif
     return QTC_BASE_STYLE::standardPixmap(pix, option, widget);
 }
 
 QIcon QtCurveStyle::standardIconImplementation(StandardPixmap pix, const QStyleOption *option, const QWidget *widget) const
 {
+#if !defined QTC_QT_ONLY
     switch(pix)
     {
 //         case SP_TitleBarMenuButton:
@@ -2403,6 +2440,7 @@ QIcon QtCurveStyle::standardIconImplementation(StandardPixmap pix, const QStyleO
         default:
             break;
     }
+#endif
     return QTC_BASE_STYLE::standardIconImplementation(pix, option, widget);
 }
 
@@ -3226,23 +3264,19 @@ void QtCurveStyle::drawPrimitive(PrimitiveElement element, const QStyleOption *o
 
             painter->setClipping(false);
 
-            if(!doneShadow && doEtch && glow)
+            if(!doneShadow && doEtch && (glow || EFFECT_ETCH==opts.buttonEffect || sunken))
             {
-                QColor topCol(glow ? itsMouseOverCols[QTC_GLOW_MO] : Qt::black),
-                       botCol(getLowerEtchCol(widget));
+                QColor topCol(glow ? itsMouseOverCols[QTC_GLOW_MO] : Qt::black);
 
                 if(!glow)
-                {
                     topCol.setAlphaF(QTC_ETCH_RADIO_TOP_ALPHA);
-                    botCol=getLowerEtchCol(widget);
-                }
 
                 painter->setRenderHint(QPainter::Antialiasing, true);
                 painter->setBrush(Qt::NoBrush);
                 painter->setPen(topCol);
                 painter->drawArc(QRectF(r.x()+0.5, r.y()+0.5, QTC_RADIO_SIZE+1, QTC_RADIO_SIZE+1), 45*16, 180*16);
                 if(!glow)
-                    painter->setPen(botCol);
+                    painter->setPen(getLowerEtchCol(widget));
                 painter->drawArc(QRectF(r.x()+0.5, r.y()+0.5, QTC_RADIO_SIZE+1, QTC_RADIO_SIZE+1), 225*16, 180*16);
                 painter->setRenderHint(QPainter::Antialiasing, false);
             }
@@ -3527,10 +3561,16 @@ void QtCurveStyle::drawPrimitive(PrimitiveElement element, const QStyleOption *o
 
             if(opts.round && widget && ::qobject_cast<const QTabWidget *>(widget))
             {
+#if !defined QTC_QT_ONLY
                 const KTabWidget *ktw=::qobject_cast<const KTabWidget *>(widget);
+#endif
                 const QTabWidget *tw((const QTabWidget *)widget);
 
-                if(0==tw->currentIndex() && tw->count()>0 && (!ktw || !ktw->isTabBarHidden()))
+                if(0==tw->currentIndex() && tw->count()>0
+#if !defined QTC_QT_ONLY
+                    && (!ktw || !ktw->isTabBarHidden())
+#endif
+                  )
                     if(const QStyleOptionTabWidgetFrame *twf = qstyleoption_cast<const QStyleOptionTabWidgetFrame *>(option))
                     {
                         bool reverse(Qt::RightToLeft==twf->direction);
@@ -4474,7 +4514,7 @@ void QtCurveStyle::drawControl(ControlElement element, const QStyleOption *optio
 
                                 sunkenRect = visualRect(menuItem->direction, menuItem->rect, sunkenRect);
                                 opt.state = menuItem->state;
-                                opt.state|=State_Raised;
+                                opt.state|=State_Raised|State_Horizontal;
                                 if (checked)
                                     opt.state |= State_On;
                                 drawLightBevel(painter, sunkenRect, &opt, widget, ROUNDED_ALL, getFill(&opt, itsButtonCols), itsButtonCols);
@@ -8266,7 +8306,7 @@ void QtCurveStyle::drawLightBevel(QPainter *p, const QRect &rOrig, const QStyleO
     
     if(doBorder)
     {
-        const QColor *borderCols=WIDGET_COMBO==w && border==itsComboBtnCols
+        const QColor *borderCols=(WIDGET_COMBO==w || WIDGET_COMBO_BUTTON==w) && border==itsComboBtnCols
                             ? option->state&State_MouseOver && MO_GLOW==opts.coloredMouseOver && !sunken
                                 ? itsMouseOverCols
                                 : itsButtonCols
@@ -9394,6 +9434,7 @@ const QColor * QtCurveStyle::getMdiColors(const QStyleOption *option, bool activ
         itsActiveMdiTextColor=option->palette.highlightedText().color();
         itsMdiTextColor=option->palette.text().color();
 
+#if !defined QTC_QT_ONLY
         QColor col=KGlobalSettings::activeTitleColor();
 
         if(col!=itsHighlightCols[ORIGINAL_SHADE])
@@ -9411,6 +9452,7 @@ const QColor * QtCurveStyle::getMdiColors(const QStyleOption *option, bool activ
 
         itsActiveMdiTextColor=KGlobalSettings::activeTextColor();
         itsMdiTextColor=KGlobalSettings::inactiveTextColor();
+#endif
 
         if(!itsActiveMdiColors)
             itsActiveMdiColors=(QColor *)itsHighlightCols;
@@ -9435,6 +9477,7 @@ void QtCurveStyle::readMdiPositions() const
         itsMdiButtons[1].append(WINDOWTITLE_SPACER);
         itsMdiButtons[1].append(SC_TitleBarCloseButton);
 
+#if !defined QTC_QT_ONLY
         KConfig      cfg("kwinrc");
         KConfigGroup grp(&cfg, "Style");
 
@@ -9477,6 +9520,7 @@ void QtCurveStyle::readMdiPositions() const
                 }
             }
         }
+#endif
     }
 }
 
@@ -9659,11 +9703,11 @@ QColor QtCurveStyle::getLowerEtchCol(const QWidget *widget) const
 //         doEtch=false;
 //         theNoEtchWidgets.insert(widget);
 //     }
-            
+
     if(doEtch)
     {
         QColor bgnd(widget->parentWidget()->palette().color(widget->parentWidget()->backgroundRole()));
-        
+
         if(bgnd.alpha()>0)
             return shade(bgnd, 1.06);
     }
@@ -9699,6 +9743,7 @@ void QtCurveStyle::widgetDestroyed(QObject *o)
     }
 }
 
+#if !defined QTC_QT_ONLY
 void QtCurveStyle::setupKde4()
 {
     if(kapp)
@@ -9735,8 +9780,13 @@ void QtCurveStyle::applyKdeSettings(bool pal)
 //         QApplication::setFont(KGlobalSettings::toolBarFont(), "QToolBar");
     }
 }
+#endif
+
 void QtCurveStyle::kdeGlobalSettingsChange(int type, int)
 {
+#if defined QTC_QT_ONLY
+    Q_UNUSED(type)
+#else
     switch(type)
     {
         case KGlobalSettings::PaletteChanged:
@@ -9748,4 +9798,5 @@ void QtCurveStyle::kdeGlobalSettingsChange(int type, int)
             applyKdeSettings(false);
             break;
     }
+#endif
 }

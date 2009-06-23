@@ -34,6 +34,10 @@
 typedef qulonglong QtcKey;
 #include "common.h"
 
+#if !defined QTC_QT_ONLY
+#include <KDE/KComponentData>
+#endif
+
 // #ifdef QTC_KSTYLE
 // #include <kstyle.h>
 // #define QTC_BASE_STYLE KStyle
@@ -79,7 +83,6 @@ class QtCurveStyle : public QWindowsStyle
     int pixelMetric(PixelMetric metric, const QStyleOption *option=0, const QWidget *widget=0) const;
     int styleHint(StyleHint hint, const QStyleOption *option, const QWidget *widget, QStyleHintReturn *returnData=0) const;
     QPalette standardPalette() const;
-    QPixmap standardPixmap(StandardPixmap pix, const QStyleOption *option, const QWidget *widget) const;
     void drawPrimitive(PrimitiveElement element, const QStyleOption *option, QPainter *painter, const QWidget *widget) const;
     void drawControl(ControlElement control, const QStyleOption *option, QPainter *painter, const QWidget *widget) const;
     void drawComplexControl(ComplexControl control, const QStyleOptionComplex *option, QPainter *painter, const QWidget *widget) const;
@@ -105,13 +108,16 @@ class QtCurveStyle : public QWindowsStyle
     void drawProgressBevelGradient(QPainter *p, const QRect &origRect, const QStyleOption *option, bool horiz,
                                    EAppearance bevApp) const;
     void drawBevelGradient(const QColor &base, QPainter *p, QRect const &r,
-                           bool horiz, bool sel, EAppearance bevApp, EWidget w=WIDGET_OTHER) const;
+                           bool horiz, bool sel, EAppearance bevApp, EWidget w=WIDGET_OTHER, bool useCache=true) const;
     void drawBevelGradientReal(const QColor &base, QPainter *p,
                                const QRect &r, bool horiz, bool sel, EAppearance bevApp, EWidget w) const;
     void drawLightBevel(QPainter *p, const QRect &r, const QStyleOption *option, const QWidget *widget, int round, const QColor &fill,
                         const QColor *custom=0, bool doBorder=true, EWidget w=WIDGET_OTHER) const;
+    void drawLightBevelReal(QPainter *p, const QRect &r, const QStyleOption *option, const QWidget *widget, int round, const QColor &fill,
+                        const QColor *custom=0, bool doBorder=true, EWidget w=WIDGET_OTHER, bool useCache=true) const;
     void drawGlow(QPainter *p, const QRect &r, EWidget w) const;
     void drawEtch(QPainter *p, const QRect &r,  const QWidget *widget, EWidget w, bool raised=false) const;
+    void drawWindowBackground(QWidget *widget);
     QPainterPath buildPath(const QRect &r, EWidget w, int round, double radius, double wmod=0.0, double hmod=0.0) const;
     void buildSplitPath(const QRect &r, EWidget w, int round, double radius, QPainterPath &tl, QPainterPath &br) const;
     void drawBorder(QPainter *p, const QRect &r, const QStyleOption *option, int round, const QColor *custom=0,
@@ -164,11 +170,11 @@ class QtCurveStyle : public QWindowsStyle
                                                Qt::Orientation orientation, const QStyleOption *option,
                                                const QWidget *widget) const;
     void           kdeGlobalSettingsChange(int type, int);
+    void           setupKde4();
 
     private:
 
 #if !defined QTC_QT_ONLY
-    void           setupKde4();
     void           setDecorationColors();
     void           applyKdeSettings(bool pal);
 #endif
@@ -212,6 +218,9 @@ class QtCurveStyle : public QWindowsStyle
     mutable Version                    itsQtVersion;
     mutable QScrollBar                 *itsSViewSBar;
     mutable QMap<QWidget *, QSet<QWidget *> > itsSViewContainers;
+#if !defined QTC_QT_ONLY
+    KComponentData                     itsComponentData;
+#endif
 };
 
 #endif

@@ -398,18 +398,24 @@ enum ETitleBarButtonColoration
     TITLE_BTN_COL_CUSTOM
 };
 
-static void insertTitlebarIconEntriess(QComboBox *combo)
+static void insertTitlebarIconEntries(QComboBox *combo)
 {
     combo->insertItem(TITLEBAR_ICON_NONE, i18n("Do not show"));
     combo->insertItem(TITLEBAR_ICON_MENU_BUTTON, i18n("Place on menu button"));
     combo->insertItem(TITLEBAR_ICON_NEXT_TO_TITLE, i18n("Place next to title"));
 }
 
-static void insertTabMoEntriess(QComboBox *combo)
+static void insertTabMoEntries(QComboBox *combo)
 {
     combo->insertItem(TAB_MO_TOP, i18n("Highlight on top"));
     combo->insertItem(TAB_MO_BOTTOM, i18n("Highlight on bottom"));
     combo->insertItem(TAB_MO_GLOW, i18n("Add a slight glow"));
+}
+
+static void insertGradTypeEntries(QComboBox *combo)
+{
+    combo->insertItem(GT_HORIZ, i18n("Horizontal"));
+    combo->insertItem(GT_VERT, i18n("Vertical"));
 }
 
 QtCurveConfig::QtCurveConfig(QWidget *parent)
@@ -436,6 +442,7 @@ QtCurveConfig::QtCurveConfig(QWidget *parent)
     insertAppearanceEntries(grooveAppearance);
     insertAppearanceEntries(sunkenAppearance);
     insertAppearanceEntries(menuitemAppearance, true, true, true);
+    insertAppearanceEntries(menuBgndAppearance);
     insertAppearanceEntries(titlebarAppearance, true, false);
     insertAppearanceEntries(inactiveTitlebarAppearance, true, false);
     insertAppearanceEntries(titlebarButtonAppearance);
@@ -443,6 +450,7 @@ QtCurveConfig::QtCurveConfig(QWidget *parent)
     insertAppearanceEntries(menuStripeAppearance, true, false);
     insertAppearanceEntries(sbarBgndAppearance);
     insertAppearanceEntries(sliderFill);
+    insertAppearanceEntries(bgndAppearance);
     insertLineEntries(handles, true);
     insertLineEntries(sliderThumbs, false);
     insertLineEntries(toolbarSeparators, false);
@@ -460,8 +468,10 @@ QtCurveConfig::QtCurveConfig(QWidget *parent)
     insertFocusEntries(focus);
     insertGradBorderEntries(gradBorder);
     insertAlignEntries(titlebarAlignment);
-    insertTitlebarIconEntriess(titlebarIcon);
-    insertTabMoEntriess(tabMouseOver);
+    insertTitlebarIconEntries(titlebarIcon);
+    insertTabMoEntries(tabMouseOver);
+    insertGradTypeEntries(bgndGrad);
+    insertGradTypeEntries(menuBgndGrad);
 
     highlightFactor->setRange(MIN_HIGHLIGHT_FACTOR, MAX_HIGHLIGHT_FACTOR);
     highlightFactor->setValue(DEFAULT_HIGHLIGHT_FACTOR);
@@ -471,15 +481,23 @@ QtCurveConfig::QtCurveConfig(QWidget *parent)
 
     menuDelay->setRange(MIN_MENU_DELAY, MAX_MENU_DELAY);
     menuDelay->setValue(DEFAULT_MENU_DELAY);
-    
+
+    sliderWidth->setRange(MIN_SLIDER_WIDTH, MAX_SLIDER_WIDTH, 2);
+    sliderWidth->setValue(DEFAULT_SLIDER_WIDTH);
+    sliderWidth->setSuffix(i18n(" pixels"));
+
     connect(lighterPopupMenuBgnd, SIGNAL(valueChanged(int)), SLOT(updateChanged()));
     connect(menuDelay, SIGNAL(valueChanged(int)), SLOT(updateChanged()));
+    connect(sliderWidth, SIGNAL(valueChanged(int)), SLOT(sliderWidthChanged()));
     connect(menuStripe, SIGNAL(currentIndexChanged(int)), SLOT(menuStripeChanged()));
     connect(customMenuStripeColor, SIGNAL(changed(const QColor &)), SLOT(updateChanged()));
     connect(menuStripeAppearance, SIGNAL(currentIndexChanged(int)), SLOT(updateChanged()));
+    connect(gtkMenuStripe, SIGNAL(toggled(bool)), SLOT(updateChanged()));
+    connect(bgndGrad, SIGNAL(currentIndexChanged(int)), SLOT(updateChanged()));
+    connect(menuBgndGrad, SIGNAL(currentIndexChanged(int)), SLOT(updateChanged()));
     connect(round, SIGNAL(currentIndexChanged(int)), SLOT(roundChanged()));
     connect(toolbarBorders, SIGNAL(currentIndexChanged(int)), SLOT(updateChanged()));
-    connect(sliderThumbs, SIGNAL(currentIndexChanged(int)), SLOT(updateChanged()));
+    connect(sliderThumbs, SIGNAL(currentIndexChanged(int)), SLOT(sliderThumbChanged()));
     connect(handles, SIGNAL(currentIndexChanged(int)), SLOT(updateChanged()));
     connect(appearance, SIGNAL(currentIndexChanged(int)), SLOT(updateChanged()));
     connect(customMenuTextColor, SIGNAL(toggled(bool)), SLOT(customMenuTextColorChanged()));
@@ -505,13 +523,16 @@ QtCurveConfig::QtCurveConfig(QWidget *parent)
     connect(comboSplitter, SIGNAL(toggled(bool)), SLOT(updateChanged()));
     connect(comboBtn, SIGNAL(currentIndexChanged(int)), SLOT(comboBtnChanged()));
     connect(customComboBtnColor, SIGNAL(changed(const QColor &)), SLOT(updateChanged()));
-    connect(unifySpinBtns, SIGNAL(toggled(bool)), SLOT(updateChanged()));
+    connect(unifySpinBtns, SIGNAL(toggled(bool)), SLOT(unifySpinBtnsToggled()));
+    connect(unifySpin, SIGNAL(toggled(bool)), SLOT(unifySpinToggled()));
+    connect(unifyCombo, SIGNAL(toggled(bool)), SLOT(updateChanged()));
     connect(vArrows, SIGNAL(toggled(bool)), SLOT(updateChanged()));
     connect(xCheck, SIGNAL(toggled(bool)), SLOT(updateChanged()));
     connect(crHighlight, SIGNAL(toggled(bool)), SLOT(updateChanged()));
     connect(crButton, SIGNAL(toggled(bool)), SLOT(updateChanged()));
     connect(colorSelTab, SIGNAL(toggled(bool)), SLOT(updateChanged()));
     connect(roundAllTabs, SIGNAL(toggled(bool)), SLOT(updateChanged()));
+    connect(borderTab, SIGNAL(toggled(bool)), SLOT(updateChanged()));
     connect(tabMouseOver, SIGNAL(currentIndexChanged(int)), SLOT(tabMoChanged()));
     connect(stdSidebarButtons, SIGNAL(toggled(bool)), SLOT(updateChanged()));
     connect(borderMenuitems, SIGNAL(toggled(bool)), SLOT(updateChanged()));
@@ -522,6 +543,7 @@ QtCurveConfig::QtCurveConfig(QWidget *parent)
     connect(sunkenAppearance, SIGNAL(currentIndexChanged(int)), SLOT(updateChanged()));
     connect(progressGrooveColor, SIGNAL(currentIndexChanged(int)), SLOT(updateChanged()));
     connect(menuitemAppearance, SIGNAL(currentIndexChanged(int)), SLOT(updateChanged()));
+    connect(menuBgndAppearance, SIGNAL(currentIndexChanged(int)), SLOT(updateChanged()));
     connect(titlebarAppearance, SIGNAL(currentIndexChanged(int)), SLOT(updateChanged()));
     connect(inactiveTitlebarAppearance, SIGNAL(currentIndexChanged(int)), SLOT(updateChanged()));
     connect(titlebarButtonAppearance, SIGNAL(currentIndexChanged(int)), SLOT(updateChanged()));
@@ -538,6 +560,7 @@ QtCurveConfig::QtCurveConfig(QWidget *parent)
     connect(menubarMouseOver, SIGNAL(toggled(bool)), SLOT(updateChanged()));
     connect(shadeMenubarOnlyWhenActive, SIGNAL(toggled(bool)), SLOT(updateChanged()));
     connect(thinnerMenuItems, SIGNAL(toggled(bool)), SLOT(updateChanged()));
+    connect(thinnerBtns, SIGNAL(toggled(bool)), SLOT(updateChanged()));
     connect(customSlidersColor, SIGNAL(changed(const QColor &)), SLOT(updateChanged()));
     connect(customMenubarsColor, SIGNAL(changed(const QColor &)), SLOT(updateChanged()));
     connect(customMenuSelTextColor, SIGNAL(changed(const QColor &)), SLOT(updateChanged()));
@@ -557,6 +580,7 @@ QtCurveConfig::QtCurveConfig(QWidget *parent)
     connect(titlebarBorder, SIGNAL(toggled(bool)), SLOT(updateChanged()));
     connect(sbarBgndAppearance, SIGNAL(currentIndexChanged(int)), SLOT(updateChanged()));
     connect(sliderFill, SIGNAL(currentIndexChanged(int)), SLOT(updateChanged()));
+    connect(bgndAppearance, SIGNAL(currentIndexChanged(int)), SLOT(updateChanged()));
     connect(gtkComboMenus, SIGNAL(toggled(bool)), SLOT(updateChanged()));
     connect(gtkButtonOrder, SIGNAL(toggled(bool)), SLOT(updateChanged()));
     connect(mapKdeIcons, SIGNAL(toggled(bool)), SLOT(updateChanged()));
@@ -744,6 +768,9 @@ void QtCurveConfig::menuStripeChanged()
 {
     customMenuStripeColor->setEnabled(SHADE_CUSTOM==menuStripe->currentIndex());
     menuStripeAppearance->setEnabled(SHADE_NONE!=menuStripe->currentIndex());
+    gtkMenuStripe->setEnabled(SHADE_NONE!=menuStripe->currentIndex());
+    if(SHADE_NONE==menuStripe->currentIndex())
+        gtkMenuStripe->setChecked(false);
     updateChanged();
 }
 
@@ -799,11 +826,41 @@ void QtCurveConfig::passwordCharClicked()
     }
 }
 
+void QtCurveConfig::unifySpinBtnsToggled()
+{
+    if(unifySpinBtns->isChecked())
+        unifySpin->setChecked(false);
+    unifySpin->setDisabled(unifySpinBtns->isChecked());
+}
+
+void QtCurveConfig::unifySpinToggled()
+{
+    if(unifySpin->isChecked())
+        unifySpinBtns->setChecked(false);
+    unifySpinBtns->setDisabled(unifySpin->isChecked());
+}
+
+void QtCurveConfig::sliderThumbChanged()
+{
+    if(LINE_NONE!=sliderThumbs->currentIndex() && sliderWidth->value()<DEFAULT_SLIDER_WIDTH)
+        sliderWidth->setValue(DEFAULT_SLIDER_WIDTH);
+}
+
+void QtCurveConfig::sliderWidthChanged()
+{
+    if(0==sliderWidth->value()%2)
+        sliderWidth->setValue(sliderWidth->value()+1);
+
+    if(LINE_NONE!=sliderThumbs->currentIndex() && sliderWidth->value()<DEFAULT_SLIDER_WIDTH)
+        sliderThumbs->setCurrentIndex(LINE_NONE);
+}
+
 void QtCurveConfig::setupStack()
 {
     int i=0;
     CStackItem *first=new CStackItem(stackList, i18n("General"), i++);
     new CStackItem(stackList, i18n("Combos"), i++);
+    new CStackItem(stackList, i18n("Spin Buttons"), i++);
     new CStackItem(stackList, i18n("Splitters"), i++);
     new CStackItem(stackList, i18n("Sliders and Scrollbars"), i++);
     new CStackItem(stackList, i18n("Progressbars"), i++);
@@ -1327,14 +1384,19 @@ void QtCurveConfig::setOptions(Options &opts)
     opts.menubarMouseOver=menubarMouseOver->isChecked();
     opts.shadeMenubarOnlyWhenActive=shadeMenubarOnlyWhenActive->isChecked();
     opts.thinnerMenuItems=thinnerMenuItems->isChecked();
+    opts.thinnerBtns=thinnerBtns->isChecked();
     opts.fixParentlessDialogs=fixParentlessDialogs->isChecked();
     opts.animatedProgress=animatedProgress->isChecked();
     opts.stripedProgress=(EStripe)stripedProgress->currentIndex();
     opts.lighterPopupMenuBgnd=lighterPopupMenuBgnd->value();
     opts.menuDelay=menuDelay->value();
+    opts.sliderWidth=sliderWidth->value();
     opts.menuStripe=(EShade)menuStripe->currentIndex();
     opts.customMenuStripeColor=customMenuStripeColor->color();
     opts.menuStripeAppearance=(EAppearance)menuStripeAppearance->currentIndex();
+    opts.gtkMenuStripe=gtkMenuStripe->isChecked();
+    opts.bgndGrad=(EGradType)bgndGrad->currentIndex();
+    opts.menuBgndGrad=(EGradType)menuBgndGrad->currentIndex();
     opts.embolden=embolden->isChecked();
     opts.scrollbarType=(EScrollbar)scrollbarType->currentIndex();
     opts.defBtnIndicator=(EDefBtnIndicator)defBtnIndicator->currentIndex();
@@ -1366,12 +1428,15 @@ void QtCurveConfig::setOptions(Options &opts)
     opts.comboBtn=(EShade)comboBtn->currentIndex();
     opts.customComboBtnColor=customComboBtnColor->color();
     opts.unifySpinBtns=unifySpinBtns->isChecked();
+    opts.unifySpin=unifySpin->isChecked();
+    opts.unifyCombo=unifyCombo->isChecked();
     opts.vArrows=vArrows->isChecked();
     opts.xCheck=xCheck->isChecked();
     opts.crHighlight=crHighlight->isChecked();
     opts.crButton=crButton->isChecked();
     opts.colorSelTab=colorSelTab->isChecked();
     opts.roundAllTabs=roundAllTabs->isChecked();
+    opts.borderTab=borderTab->isChecked();
     opts.tabMouseOver=(ETabMo)tabMouseOver->currentIndex();
     opts.stdSidebarButtons=stdSidebarButtons->isChecked();
     opts.borderMenuitems=borderMenuitems->isChecked();
@@ -1382,6 +1447,7 @@ void QtCurveConfig::setOptions(Options &opts)
     opts.sunkenAppearance=(EAppearance)sunkenAppearance->currentIndex();
     opts.progressGrooveColor=(EColor)progressGrooveColor->currentIndex();
     opts.menuitemAppearance=(EAppearance)menuitemAppearance->currentIndex();
+    opts.menuBgndAppearance=(EAppearance)menuBgndAppearance->currentIndex();
     opts.titlebarAppearance=(EAppearance)titlebarAppearance->currentIndex();
     opts.inactiveTitlebarAppearance=(EAppearance)inactiveTitlebarAppearance->currentIndex();
     opts.titlebarButtonAppearance=(EAppearance)titlebarButtonAppearance->currentIndex();
@@ -1400,6 +1466,7 @@ void QtCurveConfig::setOptions(Options &opts)
     opts.titlebarBorder=titlebarBorder->isChecked();
     opts.sbarBgndAppearance=(EAppearance)sbarBgndAppearance->currentIndex();
     opts.sliderFill=(EAppearance)sliderFill->currentIndex();
+    opts.bgndAppearance=(EAppearance)bgndAppearance->currentIndex();
     opts.gtkComboMenus=gtkComboMenus->isChecked();
     opts.gtkButtonOrder=gtkButtonOrder->isChecked();
     opts.mapKdeIcons=mapKdeIcons->isChecked();
@@ -1451,9 +1518,13 @@ void QtCurveConfig::setWidgetOptions(const Options &opts)
     scrollbarType->setCurrentIndex(opts.scrollbarType);
     lighterPopupMenuBgnd->setValue(opts.lighterPopupMenuBgnd);
     menuDelay->setValue(opts.menuDelay);
+    sliderWidth->setValue(opts.sliderWidth);
     menuStripe->setCurrentIndex(opts.menuStripe);
     customMenuStripeColor->setColor(opts.customMenuStripeColor);
     menuStripeAppearance->setCurrentIndex(opts.menuStripeAppearance);
+    gtkMenuStripe->setChecked(opts.gtkMenuStripe);
+    bgndGrad->setCurrentIndex(opts.bgndGrad);
+    menuBgndGrad->setCurrentIndex(opts.menuBgndGrad);
     toolbarBorders->setCurrentIndex(opts.toolbarBorders);
     sliderThumbs->setCurrentIndex(opts.sliderThumbs);
     handles->setCurrentIndex(opts.handles);
@@ -1467,6 +1538,7 @@ void QtCurveConfig::setWidgetOptions(const Options &opts)
     menubarMouseOver->setChecked(opts.menubarMouseOver);
     shadeMenubarOnlyWhenActive->setChecked(opts.shadeMenubarOnlyWhenActive);
     thinnerMenuItems->setChecked(opts.thinnerMenuItems);
+    thinnerBtns->setChecked(opts.thinnerBtns);
     fixParentlessDialogs->setChecked(opts.fixParentlessDialogs);
     animatedProgress->setChecked(opts.animatedProgress);
     stripedProgress->setCurrentIndex(opts.stripedProgress);
@@ -1509,12 +1581,15 @@ void QtCurveConfig::setWidgetOptions(const Options &opts)
     comboBtn->setCurrentIndex(opts.comboBtn);
     customComboBtnColor->setColor(opts.customComboBtnColor);
     unifySpinBtns->setChecked(opts.unifySpinBtns);
+    unifySpin->setChecked(opts.unifySpin);
+    unifyCombo->setChecked(opts.unifyCombo);
     vArrows->setChecked(opts.vArrows);
     xCheck->setChecked(opts.xCheck);
     crHighlight->setChecked(opts.crHighlight);
     crButton->setChecked(opts.crButton);
     colorSelTab->setChecked(opts.colorSelTab);
     roundAllTabs->setChecked(opts.roundAllTabs);
+    borderTab->setChecked(opts.borderTab);
     tabMouseOver->setCurrentIndex(opts.tabMouseOver);
     stdSidebarButtons->setChecked(opts.stdSidebarButtons);
     borderMenuitems->setChecked(opts.borderMenuitems);
@@ -1525,6 +1600,7 @@ void QtCurveConfig::setWidgetOptions(const Options &opts)
     sunkenAppearance->setCurrentIndex(opts.sunkenAppearance);
     progressGrooveColor->setCurrentIndex(opts.progressGrooveColor);
     menuitemAppearance->setCurrentIndex(opts.menuitemAppearance);
+    menuBgndAppearance->setCurrentIndex(opts.menuBgndAppearance);
     titlebarAppearance->setCurrentIndex(opts.titlebarAppearance);
     inactiveTitlebarAppearance->setCurrentIndex(opts.inactiveTitlebarAppearance);
     titlebarButtonAppearance->setCurrentIndex(opts.titlebarButtonAppearance);
@@ -1550,6 +1626,7 @@ void QtCurveConfig::setWidgetOptions(const Options &opts)
     titlebarBorder->setChecked(opts.titlebarBorder);
     sbarBgndAppearance->setCurrentIndex(opts.sbarBgndAppearance);
     sliderFill->setCurrentIndex(opts.sliderFill);
+    bgndAppearance->setCurrentIndex(opts.bgndAppearance);
     gtkComboMenus->setChecked(opts.gtkComboMenus);
     gtkButtonOrder->setChecked(opts.gtkButtonOrder);
     mapKdeIcons->setChecked(opts.mapKdeIcons);
@@ -1626,13 +1703,18 @@ bool QtCurveConfig::settingsChanged()
          menubarMouseOver->isChecked()!=currentStyle.menubarMouseOver ||
          shadeMenubarOnlyWhenActive->isChecked()!=currentStyle.shadeMenubarOnlyWhenActive ||
          thinnerMenuItems->isChecked()!=currentStyle.thinnerMenuItems ||
+         thinnerBtns->isChecked()!=currentStyle.thinnerBtns ||
          fixParentlessDialogs->isChecked()!=currentStyle.fixParentlessDialogs ||
          animatedProgress->isChecked()!=currentStyle.animatedProgress ||
          stripedProgress->currentIndex()!=currentStyle.stripedProgress ||
          lighterPopupMenuBgnd->value()!=currentStyle.lighterPopupMenuBgnd ||
          menuDelay->value()!=currentStyle.menuDelay ||
+         sliderWidth->value()!=currentStyle.sliderWidth ||
          menuStripe->currentIndex()!=currentStyle.menuStripe ||
          menuStripeAppearance->currentIndex()!=currentStyle.menuStripeAppearance ||
+         gtkMenuStripe->isChecked()!=currentStyle.gtkMenuStripe ||
+         bgndGrad->currentIndex()!=currentStyle.bgndGrad ||
+         menuBgndGrad->currentIndex()!=currentStyle.menuBgndGrad ||
          embolden->isChecked()!=currentStyle.embolden ||
          fillSlider->isChecked()!=currentStyle.fillSlider ||
          sliderStyle->currentIndex()!=currentStyle.sliderStyle ||
@@ -1642,12 +1724,15 @@ bool QtCurveConfig::settingsChanged()
          comboSplitter->isChecked()!=currentStyle.comboSplitter ||
          comboBtn->currentIndex()!=(int)currentStyle.comboBtn ||
          unifySpinBtns->isChecked()!=currentStyle.unifySpinBtns ||
+         unifySpin->isChecked()!=currentStyle.unifySpin ||
+         unifyCombo->isChecked()!=currentStyle.unifyCombo ||
          vArrows->isChecked()!=currentStyle.vArrows ||
          xCheck->isChecked()!=currentStyle.xCheck ||
          crHighlight->isChecked()!=currentStyle.crHighlight ||
          crButton->isChecked()!=currentStyle.crButton ||
          colorSelTab->isChecked()!=currentStyle.colorSelTab ||
          roundAllTabs->isChecked()!=currentStyle.roundAllTabs ||
+         borderTab->isChecked()!=currentStyle.borderTab ||
          tabMouseOver->currentIndex()!=currentStyle.tabMouseOver ||
          stdSidebarButtons->isChecked()!=currentStyle.stdSidebarButtons ||
          borderMenuitems->isChecked()!=currentStyle.borderMenuitems ||
@@ -1672,6 +1757,7 @@ bool QtCurveConfig::settingsChanged()
          sunkenAppearance->currentIndex()!=currentStyle.sunkenAppearance ||
          progressGrooveColor->currentIndex()!=currentStyle.progressGrooveColor ||
          menuitemAppearance->currentIndex()!=currentStyle.menuitemAppearance ||
+         menuBgndAppearance->currentIndex()!=currentStyle.menuBgndAppearance ||
          titlebarAppearance->currentIndex()!=currentStyle.titlebarAppearance ||
          inactiveTitlebarAppearance->currentIndex()!=currentStyle.inactiveTitlebarAppearance ||
          titlebarButtonAppearance->currentIndex()!=currentStyle.titlebarButtonAppearance ||
@@ -1697,6 +1783,7 @@ bool QtCurveConfig::settingsChanged()
          titlebarBorder->isChecked()!=currentStyle.titlebarBorder ||
          sbarBgndAppearance->currentIndex()!=currentStyle.sbarBgndAppearance ||
          sliderFill->currentIndex()!=currentStyle.sliderFill ||
+         bgndAppearance->currentIndex()!=currentStyle.bgndAppearance ||
          gtkComboMenus->isChecked()!=currentStyle.gtkComboMenus ||
          gtkButtonOrder->isChecked()!=currentStyle.gtkButtonOrder ||
          mapKdeIcons->isChecked()!=currentStyle.mapKdeIcons ||

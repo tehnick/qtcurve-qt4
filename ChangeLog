@@ -1,6 +1,36 @@
-0.64.3
+0.65.0
 ------
-1. Fix some K apps crashing due to KComponentData
+ 1. Add options to draw editable combos, and spin widgets, as edit fields with
+    embedded arrows - oxygen style.
+ 2. Add option to draw a light border around tab widgets, as opposed to 3d look.
+ 3. Added ability to specify scrollbar width (11 -> 31, default 15)
+ 4. Base slider dimensions off of scrollbar width, unless using triangular slider.
+ 5. Add option to have thinner buttons.
+ 6. Add option to specify gradient for background of popupmenus.
+ 7. Enable mouse-over for entry fields.
+ 8. For mouse-over and focus, use same colour for top and bottom inner parts
+    of entry fields.
+ 9. When using filled/full focus with colored mouse over, then mouse over takes
+    precedence.
+10. Alter default settings:
+        Place arrows of spin buttons, and editable combos, in the edit field.
+        Draw a light border around tab widget.
+        Thinner buttons.
+        Use soft gradient for active tab.
+        Use glow style highlight for tab mouse-over (this introduces gaps between tabs).
+11. Modified how button, and combo, heights are calculated - no longer set a
+    minimum height.
+12. Fix some K apps crashing due to KComponentData. Use a QTimer::singleShot to
+    set up KDE settings.
+13. Dont use KDE4's disabled background colour.
+14. Disable QtCurve's coloures shadows for KDE>=4.3 - needs rewriting to support
+    new kwin API.
+15. Only use mouse-over colour for menu-toolbutton arrows when mouse is over menu
+    segment.
+16. Make Kate/Kwrite's option toolbuton have the same size as the next/prev buttons.
+17. Make listview lines match Gtk2 better.
+18. Experimental support for drawing of background gradients.
+19. Cache complete buttons, etc, pixmaps - as opposed to jusr the gradient fill.
 
 0.64.2
 ------

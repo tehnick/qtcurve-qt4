@@ -360,6 +360,18 @@ static ETabMo toTabMo(const char *str, ETabMo def)
     return def;
 }
 
+static EGradType toGradType(const char *str, EGradType def)
+{
+    if(str)
+    {
+        if(0==memcmp(str, "horiz", 5))
+            return GT_HORIZ;
+        if(0==memcmp(str, "vert", 4))
+            return GT_VERT;
+    }
+    return def;
+}
+
 static EGradientBorder toGradientBorder(const char *str)
 {
     if(str)
@@ -787,6 +799,9 @@ static gboolean readBoolEntry(GHashTable *cfg, char *key, gboolean def)
 #define QTC_CFG_READ_TAB_MO(ENTRY) \
     opts->ENTRY=toTabMo(QTC_LATIN1(readStringEntry(cfg, #ENTRY)), def->ENTRY);
 
+#define QTC_CFG_READ_GRAD_TYPE(ENTRY) \
+    opts->ENTRY=toGradType(QTC_LATIN1(readStringEntry(cfg, #ENTRY)), def->ENTRY);
+
 #ifdef __cplusplus
 #define QTC_CFG_READ_ALIGN(ENTRY) \
     opts->ENTRY=toAlign(QTC_LATIN1(readStringEntry(cfg, #ENTRY)), def->ENTRY);
@@ -920,6 +935,15 @@ static bool readConfig(const char *file, Options *opts, Options *defOpts)
                 copyGradients(def, opts);
 #endif
             /* Check if the config file expects old default values... */
+            if(version<QTC_MAKE_VERSION(0, 65))
+            {
+                def->tabMouseOver=TAB_MO_BOTTOM;
+                def->activeTabAppearance=APPEARANCE_FLAT;
+                def->unifySpin=false;
+                def->unifyCombo=false;
+                def->borderTab=false;
+                def->thinnerBtns=false;
+            }
             if(version<QTC_MAKE_VERSION(0, 63))
             {
                 def->tabMouseOver=TAB_MO_TOP;
@@ -984,9 +1008,14 @@ static bool readConfig(const char *file, Options *opts, Options *defOpts)
             QTC_CFG_READ_ROUND(round)
             QTC_CFG_READ_INT(highlightFactor)
             QTC_CFG_READ_INT(menuDelay)
+            QTC_CFG_READ_INT(sliderWidth)
             QTC_CFG_READ_INT_BOOL(lighterPopupMenuBgnd)
             QTC_CFG_READ_TB_BORDER(toolbarBorders)
             QTC_CFG_READ_APPEARANCE(appearance, false)
+            QTC_CFG_READ_APPEARANCE(bgndAppearance, false)
+            QTC_CFG_READ_GRAD_TYPE(bgndGrad)
+            QTC_CFG_READ_GRAD_TYPE(menuBgndGrad)
+            QTC_CFG_READ_APPEARANCE(menuBgndAppearance, false)
             QTC_CFG_READ_BOOL(fixParentlessDialogs)
             QTC_CFG_READ_STRIPE(stripedProgress)
             QTC_CFG_READ_SLIDER(sliderStyle)
@@ -1016,6 +1045,7 @@ static bool readConfig(const char *file, Options *opts, Options *defOpts)
             QTC_CFG_READ_BOOL(useHighlightForMenu)
             QTC_CFG_READ_BOOL(shadeMenubarOnlyWhenActive)
             QTC_CFG_READ_BOOL(thinnerMenuItems)
+            QTC_CFG_READ_BOOL(thinnerBtns)
             if(version<QTC_MAKE_VERSION(0, 63))
             {
                 if(QTC_IS_BLACK(opts->customSlidersColor))
@@ -1072,6 +1102,9 @@ static bool readConfig(const char *file, Options *opts, Options *defOpts)
             QTC_CFG_READ_BOOL(flatSbarButtons)
             QTC_CFG_READ_BOOL(popupBorder)
             QTC_CFG_READ_BOOL(unifySpinBtns)
+            QTC_CFG_READ_BOOL(unifySpin)
+            QTC_CFG_READ_BOOL(unifyCombo)
+            QTC_CFG_READ_BOOL(borderTab)
             QTC_CFG_READ_BOOL(thinSbarGroove)
             QTC_CFG_READ_BOOL(colorSliderMouseOver)
 #if defined QTC_CONFIG_DIALOG || (defined QT_VERSION && (QT_VERSION >= 0x040000))
@@ -1079,12 +1112,10 @@ static bool readConfig(const char *file, Options *opts, Options *defOpts)
             QTC_CFG_READ_INT(titlebarButtons)
             QTC_CFG_READ_TB_ICON(titlebarIcon)
 #endif
-#if defined __cplusplus || defined QTC_GTK2_MENU_STRIPE
             QTC_CFG_READ_SHADE(menuStripe, true, true, &opts->customMenuStripeColor)
             QTC_CFG_READ_APPEARANCE(menuStripeAppearance, false)
             if(version<QTC_MAKE_VERSION(0, 63) && QTC_IS_BLACK(opts->customMenuStripeColor))
                 QTC_CFG_READ_COLOR(customMenuStripeColor)
-#endif
             QTC_CFG_READ_SHADE(comboBtn, true, false, &opts->customComboBtnColor);
             QTC_CFG_READ_BOOL(gtkScrollViews)
 #ifdef __cplusplus
@@ -1099,6 +1130,7 @@ static bool readConfig(const char *file, Options *opts, Options *defOpts)
 #endif
 #if !defined __cplusplus || defined QTC_CONFIG_DIALOG
             QTC_CFG_READ_BOOL(mapKdeIcons)
+            QTC_CFG_READ_BOOL(gtkMenuStripe)
 #endif
 #if defined QTC_CONFIG_DIALOG || (defined QT_VERSION && (QT_VERSION >= 0x040000)) || !defined __cplusplus
             QTC_CFG_READ_BOOL(gtkButtonOrder)
@@ -1357,6 +1389,8 @@ static bool readConfig(const char *file, Options *opts, Options *defOpts)
 
             /* **Must** check appearance first, as the rest will default to this */
             checkAppearance(&opts->appearance, opts);
+            checkAppearance(&opts->bgndAppearance, opts);
+            checkAppearance(&opts->menuBgndAppearance, opts);
             checkAppearance(&opts->menubarAppearance, opts);
             checkAppearance(&opts->menuitemAppearance, opts);
             checkAppearance(&opts->toolbarAppearance, opts);
@@ -1372,9 +1406,7 @@ static bool readConfig(const char *file, Options *opts, Options *defOpts)
 #if defined QTC_CONFIG_DIALOG || (defined QT_VERSION && (QT_VERSION >= 0x040000)) || !defined __cplusplus
             checkAppearance(&opts->selectionAppearance, opts);
 #endif
-#if defined __cplusplus || defined QTC_GTK2_MENU_STRIPE
             checkAppearance(&opts->menuStripeAppearance, opts);
-#endif
             checkAppearance(&opts->progressAppearance, opts);
             checkAppearance(&opts->progressGrooveAppearance, opts);
             checkAppearance(&opts->grooveAppearance, opts);
@@ -1390,9 +1422,7 @@ static bool readConfig(const char *file, Options *opts, Options *defOpts)
             checkColor(&opts->shadeMenubars, &opts->customMenubarsColor);
             checkColor(&opts->shadeSliders, &opts->customSlidersColor);
             checkColor(&opts->shadeCheckRadio, &opts->customCheckRadioColor);
-#if defined __cplusplus || defined QTC_GTK2_MENU_STRIPE
             checkColor(&opts->menuStripe, &opts->customMenuStripeColor);
-#endif
             checkColor(&opts->comboBtn, &opts->customComboBtnColor);
             if(APPEARANCE_BEVELLED==opts->toolbarAppearance)
                 opts->toolbarAppearance=APPEARANCE_GRADIENT;
@@ -1419,17 +1449,25 @@ static bool readConfig(const char *file, Options *opts, Options *defOpts)
             else if(APPEARANCE_BEVELLED==opts->selectionAppearance)
                 opts->selectionAppearance=APPEARANCE_GRADIENT;
 #endif
-#if defined __cplusplus || defined QTC_GTK2_MENU_STRIPE
             if(APPEARANCE_RAISED==opts->menuStripeAppearance)
                 opts->menuStripeAppearance=APPEARANCE_FLAT;
             else if(APPEARANCE_BEVELLED==opts->menuStripeAppearance)
                 opts->menuStripeAppearance=APPEARANCE_GRADIENT;
-#endif
+
             if(opts->highlightFactor<MIN_HIGHLIGHT_FACTOR || opts->highlightFactor>MAX_HIGHLIGHT_FACTOR)
                 opts->highlightFactor=DEFAULT_HIGHLIGHT_FACTOR;
 
             if(opts->menuDelay<MIN_MENU_DELAY || opts->menuDelay>MAX_MENU_DELAY)
                 opts->menuDelay=DEFAULT_MENU_DELAY;
+
+            if(0==opts->sliderWidth%2)
+                opts->sliderWidth++;
+
+            if(opts->sliderWidth<MIN_SLIDER_WIDTH || opts->sliderWidth>MAX_SLIDER_WIDTH)
+                opts->sliderWidth=DEFAULT_SLIDER_WIDTH;
+
+            if(opts->sliderWidth<DEFAULT_SLIDER_WIDTH)
+                opts->sliderThumbs=LINE_NONE;
 
             if(opts->lighterPopupMenuBgnd>MAX_LIGHTER_POPUP_MENU)
                 opts->lighterPopupMenuBgnd=DEF_POPUPMENU_LIGHT_FACTOR;
@@ -1544,6 +1582,7 @@ static void defaultSettings(Options *opts)
     opts->passwordChar=0x25CF;
     opts->highlightFactor=DEFAULT_HIGHLIGHT_FACTOR;
     opts->menuDelay=DEFAULT_MENU_DELAY;
+    opts->sliderWidth=DEFAULT_SLIDER_WIDTH;
 #if defined QTC_CONFIG_DIALOG || (defined QT_VERSION && (QT_VERSION >= 0x040000)) || !defined __cplusplus
     opts->round=ROUND_EXTRA;
     opts->fadeLines=true;
@@ -1559,12 +1598,16 @@ static void defaultSettings(Options *opts)
     opts->highlightTab=false;
     opts->colorSelTab=false;
     opts->roundAllTabs=false;
-    opts->tabMouseOver=TAB_MO_BOTTOM;
+    opts->tabMouseOver=TAB_MO_GLOW;
     opts->embolden=false;
+    opts->bgndGrad=GT_HORIZ;
+    opts->menuBgndGrad=GT_HORIZ;
     opts->appearance=APPEARANCE_SOFT_GRADIENT;
+    opts->bgndAppearance=APPEARANCE_FLAT;
+    opts->menuBgndAppearance=APPEARANCE_FLAT;
     opts->lvAppearance=APPEARANCE_BEVELLED;
     opts->tabAppearance=APPEARANCE_SOFT_GRADIENT;
-    opts->activeTabAppearance=APPEARANCE_FLAT;
+    opts->activeTabAppearance=APPEARANCE_SOFT_GRADIENT;
     opts->sliderAppearance=APPEARANCE_SOFT_GRADIENT;
     opts->menubarAppearance=APPEARANCE_FLAT;
     opts->menuitemAppearance=APPEARANCE_FADE;
@@ -1592,6 +1635,7 @@ static void defaultSettings(Options *opts)
     opts->useHighlightForMenu=false;
     opts->shadeMenubarOnlyWhenActive=false;
     opts->thinnerMenuItems=false;
+    opts->thinnerBtns=true;
     opts->scrollbarType=SCROLLBAR_KDE;
     opts->buttonEffect=EFFECT_SHADOW;
     opts->focus=FOCUS_LINE;
@@ -1617,6 +1661,9 @@ static void defaultSettings(Options *opts)
     opts->flatSbarButtons=true;
     opts->popupBorder=true;
     opts->unifySpinBtns=false;
+    opts->unifySpin=true;
+    opts->unifyCombo=true;
+    opts->borderTab=true;
     opts->thinSbarGroove=false;
     opts->colorSliderMouseOver=false;
 #if defined QTC_CONFIG_DIALOG || (defined QT_VERSION && (QT_VERSION >= 0x040000))
@@ -1624,11 +1671,8 @@ static void defaultSettings(Options *opts)
     opts->titlebarButtons=QTC_TITLEBAR_BUTTON_HOVER_FRAME;
     opts->titlebarIcon=TITLEBAR_ICON_MENU_BUTTON;
 #endif
-#if defined __cplusplus || defined QTC_GTK2_MENU_STRIPE
     opts->menuStripe=SHADE_NONE;
     opts->menuStripeAppearance=APPEARANCE_GRADIENT;
-    opts->customMenuStripeColor.setRgb(0, 0, 0);
-#endif
     opts->shading=SHADING_HSL;
     opts->gtkScrollViews=false;
     opts->comboBtn=SHADE_NONE;
@@ -1642,6 +1686,7 @@ static void defaultSettings(Options *opts)
     opts->customMenuSelTextColor.setRgb(0, 0, 0);
     opts->customCheckRadioColor.setRgb(0, 0, 0);
     opts->customComboBtnColor.setRgb(0, 0, 0);
+    opts->customMenuStripeColor.setRgb(0, 0, 0);
     opts->titlebarAlignment=ALIGN_FULL_CENTER;
 #else
 /*
@@ -1653,10 +1698,12 @@ static void defaultSettings(Options *opts)
     opts->customMenuSelTextColor.red=opts->customMenuSelTextColor.green=opts->customMenuSelTextColor.blue=0;
     opts->customCheckRadioColor.red=opts->customCheckRadioColor.green=opts->customCheckRadioColor.blue=0;
     opts->customComboBtnColor.red=opts->customCheckRadioColor.green=opts->customCheckRadioColor.blue=0;
+    opts->customMenuStripeColor.red=opts->customMenuStripeColor.green=opts->customMenuStripeColor.blue=0;
 #endif
 
 #if !defined __cplusplus || defined QTC_CONFIG_DIALOG
     opts->mapKdeIcons=true;
+    opts->gtkMenuStripe=false;
 #endif
 #ifdef __cplusplus
     opts->titlebarAppearance=APPEARANCE_CUSTOM1;
@@ -2009,6 +2056,18 @@ static const char * toStr(ETitleBarIcon icn)
     }
 }
 
+static const char * toStr(EGradType gt)
+{
+    switch(gt)
+    {
+        case GT_VERT:
+            return "vert";
+        default:
+        case GT_HORIZ:
+            return "horiz";
+    }
+}
+
 #if QT_VERSION >= 0x040000
 #include <QTextStream>
 #define CFG config
@@ -2073,8 +2132,13 @@ bool static writeConfig(KConfig *cfg, const Options &opts, const Options &def, b
         CFG_WRITE_ENTRY(round)
         CFG_WRITE_ENTRY_NUM(highlightFactor)
         CFG_WRITE_ENTRY_NUM(menuDelay)
+        CFG_WRITE_ENTRY_NUM(sliderWidth)
         CFG_WRITE_ENTRY(toolbarBorders)
         CFG_WRITE_ENTRY(appearance)
+        CFG_WRITE_ENTRY(bgndAppearance)
+        CFG_WRITE_ENTRY(bgndGrad)
+        CFG_WRITE_ENTRY(menuBgndGrad)
+        CFG_WRITE_ENTRY(menuBgndAppearance)
         CFG_WRITE_ENTRY(fixParentlessDialogs)
         CFG_WRITE_ENTRY(stripedProgress)
         CFG_WRITE_ENTRY(sliderStyle)
@@ -2101,6 +2165,7 @@ bool static writeConfig(KConfig *cfg, const Options &opts, const Options &def, b
         CFG_WRITE_ENTRY(useHighlightForMenu)
         CFG_WRITE_ENTRY(shadeMenubarOnlyWhenActive)
         CFG_WRITE_ENTRY(thinnerMenuItems)
+        CFG_WRITE_ENTRY(thinnerBtns)
         CFG_WRITE_SHADE_ENTRY(shadeSliders, customSlidersColor)
         CFG_WRITE_SHADE_ENTRY(shadeMenubars, customMenubarsColor)
         CFG_WRITE_ENTRY(customMenuSelTextColor)
@@ -2142,6 +2207,9 @@ bool static writeConfig(KConfig *cfg, const Options &opts, const Options &def, b
         CFG_WRITE_ENTRY(flatSbarButtons)
         CFG_WRITE_ENTRY(popupBorder)
         CFG_WRITE_ENTRY(unifySpinBtns)
+        CFG_WRITE_ENTRY(unifySpin)
+        CFG_WRITE_ENTRY(unifyCombo)
+        CFG_WRITE_ENTRY(borderTab)
         CFG_WRITE_ENTRY(thinSbarGroove)
         CFG_WRITE_ENTRY(colorSliderMouseOver)
 #if defined QTC_CONFIG_DIALOG || (defined QT_VERSION && (QT_VERSION >= 0x040000))
@@ -2184,6 +2252,7 @@ bool static writeConfig(KConfig *cfg, const Options &opts, const Options &def, b
         CFG_WRITE_ENTRY(colorTitlebarOnly)
         CFG_WRITE_ENTRY(gtkButtonOrder)
         CFG_WRITE_ENTRY(mapKdeIcons)
+        CFG_WRITE_ENTRY(gtkMenuStripe)
         CFG_WRITE_ENTRY(shading)
         CFG_WRITE_ENTRY(titlebarAlignment)
 

@@ -145,11 +145,13 @@ typedef GdkColor color;
 
 #define QTC_SIMPLE_SHADING (!shading)
 
-#define QTC_THIN_SBAR_MOD  4
+#define QTC_THIN_SBAR_MOD  (opts.sliderWidth<DEFAULT_SLIDER_WIDTH ? 3 : opts.sliderWidth>DEFAULT_SLIDER_WIDTH ? (opts.sliderWidth-9)/2 : 4)
+#define QTC_SLIDER_SIZE (opts.sliderWidth<DEFAULT_SLIDER_WIDTH ? DEFAULT_SLIDER_WIDTH-2 : opts.sliderWidth)
 #define QTC_GLOW_MO        1 /*ORIGINAL_SHADE*/
 #define QTC_GLOW_DEFBTN    1
 #define QTC_GLOW_ALPHA(DEF) (DEF ? 0.5 : 0.65)
 #define QTC_DEF_BNT_TINT   0.4
+#define QTC_ENTRY_INNER_ALPHA 0.4
 
 #define QT_STD_BORDER      5
 #define QT_PBAR_BORDER     4
@@ -205,6 +207,10 @@ typedef GdkColor color;
 #define DEFAULT_MENU_DELAY 100
 #define MIN_MENU_DELAY       0
 #define MAX_MENU_DELAY     500
+
+#define DEFAULT_SLIDER_WIDTH 15
+#define MIN_SLIDER_WIDTH     11
+#define MAX_SLIDER_WIDTH     31
 
 #define SIZE_GRIP_SIZE 12
 
@@ -380,7 +386,7 @@ typedef enum
     PIX_SLIDER_LIGHT,
     PIX_SLIDER_V,
     PIX_SLIDER_LIGHT_V
-#if !defined __cplusplus && defined QTC_GTK2_MENU_STRIPE_HACK_MENU
+#if !defined __cplusplus
     , PIX_BLANK
 #endif
 } EPixmap;
@@ -454,6 +460,8 @@ typedef enum
     APPEARANCE_CUSTOM17,
     APPEARANCE_CUSTOM18,
     APPEARANCE_CUSTOM19,
+    APPEARANCE_CUSTOM20,
+    APPEARANCE_CUSTOM21,
 
         QTC_NUM_CUSTOM_GRAD,
 
@@ -528,7 +536,8 @@ typedef enum
 {
     BORDER_FLAT,
     BORDER_RAISED,
-    BORDER_SUNKEN
+    BORDER_SUNKEN,
+    BORDER_LIGHT
 } EBorder;
 
 /*
@@ -612,6 +621,12 @@ typedef enum
     TAB_MO_BOTTOM,
     TAB_MO_GLOW
 } ETabMo;
+
+typedef enum
+{
+    GT_HORIZ,
+    GT_VERT
+} EGradType;
 
 #define QTC_FULL_FOCUS     (FOCUS_FULL==opts.focus  || FOCUS_FILLED==opts.focus)
 
@@ -743,7 +758,8 @@ typedef struct
                      passwordChar,
                      highlightFactor,
                      lighterPopupMenuBgnd,
-                     menuDelay;
+                     menuDelay,
+                     sliderWidth;
     ERound           round;
     bool             embolden,
                      highlightTab,
@@ -756,6 +772,7 @@ typedef struct
                      useHighlightForMenu,
                      shadeMenubarOnlyWhenActive,
                      thinnerMenuItems,
+                     thinnerBtns,
                      lvButton,
                      lvLines,
                      drawStatusBarFrames,
@@ -773,6 +790,7 @@ typedef struct
 #endif
 #if !defined __cplusplus || defined QTC_CONFIG_DIALOG
                      mapKdeIcons,
+                     gtkMenuStripe,
 #endif
 #if defined QTC_CONFIG_DIALOG || (defined QT_VERSION && (QT_VERSION >= 0x040000)) || !defined __cplusplus
                      gtkButtonOrder,
@@ -801,7 +819,12 @@ typedef struct
                      thinSbarGroove,
                      flatSbarButtons,
                      popupBorder,
-                     unifySpinBtns;
+                     unifySpinBtns,
+                     unifyCombo,
+                     unifySpin,
+                     borderTab;
+    EGradType        bgndGrad,
+                     menuBgndGrad;
 #if defined QTC_CONFIG_DIALOG || (defined QT_VERSION && (QT_VERSION >= 0x040000))
     int              titlebarButtons;
     TBCols           titlebarButtonColors;
@@ -819,6 +842,8 @@ typedef struct
     ETabMo           tabMouseOver;
 /* NOTE: If add an appearance setting, increase the number of custmo gradients to match! */
     EAppearance      appearance,
+                     bgndAppearance,
+                     menuBgndAppearance,
                      menubarAppearance,
                      menuitemAppearance,
                      toolbarAppearance,
@@ -834,9 +859,7 @@ typedef struct
 #if defined QTC_CONFIG_DIALOG || (defined QT_VERSION && (QT_VERSION >= 0x040000)) || !defined __cplusplus
                      selectionAppearance,
 #endif
-#if defined __cplusplus || defined QTC_GTK2_MENU_STRIPE
                      menuStripeAppearance,
-#endif
                      progressAppearance,
                      progressGrooveAppearance,
                      grooveAppearance,
@@ -845,9 +868,7 @@ typedef struct
                      sliderFill;
     EShade           shadeSliders,
                      shadeMenubars,
-#if defined __cplusplus || defined QTC_GTK2_MENU_STRIPE
                      menuStripe,
-#endif
                      shadeCheckRadio,
                      comboBtn;
     EColor           progressGrooveColor;
@@ -858,9 +879,7 @@ typedef struct
                      customSlidersColor,
                      customMenuNormTextColor,
                      customMenuSelTextColor,
-#if defined __cplusplus || defined QTC_GTK2_MENU_STRIPE
                      customMenuStripeColor,
-#endif
                      customCheckRadioColor,
                      customComboBtnColor;
 #if defined __cplusplus
@@ -1403,6 +1422,9 @@ static const Gradient * getGradient(EAppearance app, const Options *opts)
 #define QTC_SLIGHT_ETCH_RADIUS   3
 #endif
 
+#define QTC_MAX_RADIUS_INTERNAL 9.0
+#define QTC_MAX_RADIUS_EXTERNAL (QTC_MAX_RADIUS_INTERNAL+2.0)
+
 typedef enum
 {
     RADIUS_SELECTION,
@@ -1463,7 +1485,10 @@ static double getRadius(const Options *opts, int w, int h, EWidget widget, ERadi
                        || (WIDGET_MDI_WINDOW_BUTTON==widget && (opts->titlebarButtons&QTC_TITLEBAR_BUTTON_ROUND))
 #endif
                        )
-                        return ((w>h ? h : w)-2)/2;
+                    {
+                        double r=((w>h ? h : w)-2)/2;
+                        return r>QTC_MAX_RADIUS_INTERNAL ? QTC_MAX_RADIUS_INTERNAL : r;
+                    }
                     if(w>QTC_MIN_ROUND_MAX_WIDTH && h>QTC_MIN_ROUND_MAX_HEIGHT && QTC_MAX_ROUND_WIDGET(widget))
                         return 8.5;
                 case ROUND_EXTRA:
@@ -1487,7 +1512,10 @@ static double getRadius(const Options *opts, int w, int h, EWidget widget, ERadi
                        || (WIDGET_MDI_WINDOW_BUTTON==widget && (opts->titlebarButtons&QTC_TITLEBAR_BUTTON_ROUND))
 #endif
                       )
-                        return (w>h ? h : w)/2;
+                    {
+                        double r=(w>h ? h : w)/2;
+                        return r>QTC_MAX_RADIUS_EXTERNAL ? QTC_MAX_RADIUS_EXTERNAL : r;
+                    }
                     if(w>QTC_MIN_ROUND_MAX_WIDTH && h>QTC_MIN_ROUND_MAX_HEIGHT && QTC_MAX_ROUND_WIDGET(widget))
                         return 9.5;
                 case ROUND_EXTRA:
@@ -1511,7 +1539,10 @@ static double getRadius(const Options *opts, int w, int h, EWidget widget, ERadi
                        || (WIDGET_MDI_WINDOW_BUTTON==widget && (opts->titlebarButtons&QTC_TITLEBAR_BUTTON_ROUND))
 #endif
                       )
-                        return (w>h ? h : w)/2;
+                    {
+                        double r=(w>h ? h : w)/2;
+                        return r>QTC_MAX_RADIUS_EXTERNAL ? QTC_MAX_RADIUS_EXTERNAL : r;
+                    }
                     if(w>QTC_MIN_ROUND_MAX_WIDTH && h>QTC_MIN_ROUND_MAX_HEIGHT && QTC_MAX_ROUND_WIDGET(widget))
                         return 10.5;
                 case ROUND_EXTRA:

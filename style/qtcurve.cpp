@@ -922,7 +922,8 @@ QtCurveStyle::QtCurveStyle(const QString &name)
         opts.titlebarButtons&=~QTC_TITLEBAR_BUTTON_COLOR;
 
 #if !defined QTC_QT_ONLY
-    QTimer::singleShot(0, this, SLOT(setupKde4()));
+    QMetaObject::invokeMethod(this, "setupKde4", Qt::QueuedConnection);
+    //QTimer::singleShot(0, this, SLOT(setupKde4()));
 #endif
 }
 
@@ -1661,7 +1662,8 @@ bool QtCurveStyle::eventFilter(QObject *object, QEvent *event)
                 QWidget *widget=(QWidget*)object;
                 QPainter painter(widget);
 
-                drawBevelGradientReal(itsLighterPopupMenuBgndCol, &painter, widget->rect(), GT_HORIZ==opts.menuBgndGrad, false,
+                drawBevelGradientReal(USE_LIGHTER_POPUP_MENU ? itsLighterPopupMenuBgndCol : itsBackgroundCols[ORIGINAL_SHADE],
+                                      &painter, widget->rect(), GT_HORIZ==opts.menuBgndGrad, false,
                                       opts.menuBgndAppearance, WIDGET_OTHER);
             }
             else
@@ -1921,6 +1923,9 @@ int QtCurveStyle::pixelMetric(PixelMetric metric, const QStyleOption *option, co
                                 : PM_DefaultChildMargin, option, widget);
         case PM_MenuBarItemSpacing:
             return 0;
+        case PM_FocusFrameVMargin:
+        case PM_FocusFrameHMargin:
+            return 2;
         case PM_MenuBarVMargin:
         case PM_MenuBarHMargin:
 #ifdef QTC_XBAR_SUPPORT
@@ -1934,7 +1939,9 @@ int QtCurveStyle::pixelMetric(PixelMetric metric, const QStyleOption *option, co
         case PM_MenuButtonIndicator:
             return QTC_DO_EFFECT ? 16 : 15;
         case PM_ButtonMargin:
-            return 3;
+            return QTC_DO_EFFECT
+                    ? opts.thinnerBtns ? 4 : 6
+                    : opts.thinnerBtns ? 2 : 4;
         case PM_TabBarTabShiftVertical:
 #ifdef QTC_STYLE_QTABBAR
             if(widget && widget->parentWidget() && !qobject_cast<const QTabWidget *>(widget->parentWidget()))
@@ -1972,7 +1979,7 @@ int QtCurveStyle::pixelMetric(PixelMetric metric, const QStyleOption *option, co
             if (opts.squareScrollViews && widget && ::qobject_cast<const QAbstractScrollArea *>(widget))
                 return opts.gtkScrollViews ? 1 : 2;
 
-            if (USE_LIGHTER_POPUP_MENU && !opts.borderMenuitems &&
+            if ((USE_LIGHTER_POPUP_MENU || !IS_FLAT(opts.menuBgndAppearance)) && !opts.borderMenuitems &&
                 qobject_cast<const QMenu *>(widget))
                 return 1;
 
@@ -2435,7 +2442,7 @@ void QtCurveStyle::drawPrimitive(PrimitiveElement element, const QStyleOption *o
                     if (reverse)
                         painter->drawLine(r.left(), middleV, middleH, middleV);
                     else
-                        painter->drawLine(middleH-constStep, middleV, r.right()-constStep, middleV);
+                        painter->drawLine(middleH-constStep, middleV, r.right()-(state&State_Children ? constStep : QTC_LV_SIZE+4), middleV);
                 if (state&State_Sibling && middleV<r.bottom())
                     painter->drawLine(middleH-constStep, middleV, middleH-constStep, r.bottom());
                 if (state & (State_Open | State_Children | State_Item | State_Sibling))
@@ -2777,7 +2784,7 @@ void QtCurveStyle::drawPrimitive(PrimitiveElement element, const QStyleOption *o
             painter->setPen(use[QT_STD_BORDER]);
             drawRect(painter, r);
 
-            if(!USE_LIGHTER_POPUP_MENU)
+            if(!USE_LIGHTER_POPUP_MENU && IS_FLAT(opts.menuBgndAppearance))
             /*
             {
                 painter->setPen(itsLighterPopupMenuBgndCol);
@@ -5597,7 +5604,7 @@ void QtCurveStyle::drawControl(ControlElement element, const QStyleOption *optio
                             drawTbArrow(this, tb, pr, painter, widget);
                         else
                         {
-                            if (tb->features&QStyleOptionToolButton::HasMenu)
+                            if (!(tb->subControls&SC_ToolButtonMenu) && tb->features&QStyleOptionToolButton::HasMenu)
                                 pr.adjust(-LARGE_ARR_WIDTH, 0, 0, 0);
                             drawItemPixmap(painter, pr, Qt::AlignCenter, pm);
                         }
@@ -6972,17 +6979,27 @@ QSize QtCurveStyle::sizeFromContents(ContentsType type, const QStyleOption *opti
     {
         case CT_PushButton:
         {
+            newSize=size;
             newSize.setWidth(newSize.width()+4);
 
             if (const QStyleOptionButton *btn = qstyleoption_cast<const QStyleOptionButton *>(option))
             {
-                if (!btn->text.isEmpty() && "..."!=btn->text && size.width() < 80 && newSize.width()<size.width())
+                if(!btn->icon.isNull() && size.height()<btn->iconSize.height()+2)
+                    newSize.setHeight(btn->iconSize.height()+2);
+
+                int margin = pixelMetric(PM_ButtonMargin, btn, widget)+
+                             (pixelMetric(PM_DefaultFrameWidth, btn, widget) * 2);
+
+                newSize+=QSize(margin, margin);
+
+                if (!btn->text.isEmpty() && "..."!=btn->text && newSize.width() < 80)
                     newSize.setWidth(80);
                 if (btn->features&QStyleOptionButton::HasMenu)
                     newSize+=QSize(4, 0);
-                newSize+=QSize(0, QTC_DO_EFFECT && !opts.thinnerBtns ? 4 : 2);
-                if (!btn->icon.isNull() && btn->iconSize.height() > 16)
-                    newSize -= QSize(0, 2);
+                newSize.rheight() += ((1 - newSize.rheight()) & 1);
+//                 if (!btn->icon.isNull() && btn->iconSize.height() > 16)
+//                     newSize -= QSize(0, 2);
+
             }
             break;
         }
@@ -7067,7 +7084,17 @@ QSize QtCurveStyle::sizeFromContents(ContentsType type, const QStyleOption *opti
         }
         case CT_ComboBox:
         {
-            newSize+=QSize(0, QTC_DO_EFFECT && !opts.thinnerBtns ? 6 : 4);
+            newSize=size;
+            newSize.setWidth(newSize.width()+4);
+
+            int margin      = pixelMetric(PM_ButtonMargin, option, widget)+
+                              (pixelMetric(PM_DefaultFrameWidth, option, widget) * 2),
+                textMargins = 2*(pixelMetric(PM_FocusFrameHMargin) + 1),
+                // QItemDelegate::sizeHint expands the textMargins two times, thus the 2*textMargins...
+                other = qMax(QTC_DO_EFFECT ? 20 : 18, 2*textMargins + pixelMetric(QStyle::PM_ScrollBarExtent, option, widget));
+
+            newSize+=QSize(margin+other, margin);
+            newSize.rheight() += ((1 - newSize.rheight()) & 1);
             break;
         }
         case CT_MenuItem:
@@ -8207,12 +8234,8 @@ void QtCurveStyle::drawLightBevelReal(QPainter *p, const QRect &rOrig, const QSt
 
     if(r.width()>0 && r.height()>0)
     {
-        double radius=getRadius(&opts, r.width(), r.height(), w, RADIUS_INTERNAL),
-               modW=radius>QTC_EXTRA_ETCH_RADIUS && WIDGET_MDI_WINDOW_BUTTON!=w ? -0.75 : 0,
-               modH=radius>QTC_EXTRA_ETCH_RADIUS ? -0.75 : 0;
-
         p->save();
-        p->setClipPath(buildPath(r, w, round, radius, modW, modH), Qt::IntersectClip);
+        p->setClipPath(buildPath(r, w, round, getRadius(&opts, r.width(), r.height(), w, RADIUS_EXTERNAL)), Qt::IntersectClip);
 
         if(WIDGET_PROGRESSBAR==w && STRIPE_NONE!=opts.stripedProgress)
             drawProgressBevelGradient(p, r.adjusted(1, 1, -1, -1), option, horiz, app);
@@ -8422,7 +8445,7 @@ void QtCurveStyle::drawWindowBackground(QWidget *widget)
     const QWidget *window = widget->window();
     // get coordinates relative to the client area
     const QWidget *w = widget;
-    int           x = 0, y = 0;
+    int           y = 0;
 
     while (!w->isWindow())
     {
@@ -8600,7 +8623,9 @@ void QtCurveStyle::drawBorder(QPainter *p, const QRect &r, const QStyleOption *o
     //             if(window)
     //                 tl.setAlphaF(0.5);
 
-                buildSplitPath(r.adjusted(1, 1, -1, -1), w, round, getRadius(&opts, r.width(), r.height(), w, RADIUS_INTERNAL),
+                QRect inner(r.adjusted(1, 1, -1, -1));
+                
+                buildSplitPath(inner, w, round, getRadius(&opts, inner.width(), inner.height(), w, RADIUS_INTERNAL),
                                topPath, botPath);
 
                 p->setPen((enabled || BORDER_SUNKEN==borderProfile) &&
@@ -8673,7 +8698,7 @@ void QtCurveStyle::drawMdiControl(QPainter *p, const QStyleOptionTitleBar *title
         drawMdiIcon(p, colored && opts.titlebarButtons&QTC_TITLEBAR_BUTTON_COLOR_SYMBOL
                         ? itsTitleBarButtonsCols[btn][ORIGINAL_SHADE]
                         : (SC_TitleBarCloseButton==sc && !(opts.titlebarButtons&QTC_TITLEBAR_BUTTON_COLOR) && (hover || sunken) ? CLOSE_COLOR : textColor),
-                    shadow, rect, hover, sunken, sc,  colored && opts.titlebarButtons&QTC_TITLEBAR_BUTTON_COLOR_SYMBOL);
+                    shadow, rect, hover, sunken, sc);
     }
 }
                 
@@ -8699,22 +8724,20 @@ void QtCurveStyle::drawMdiButton(QPainter *painter, const QRect &r, bool hover, 
 }
 
 void QtCurveStyle::drawMdiIcon(QPainter *painter, const QColor &color, const QColor &shadow, const QRect &r,
-                               bool hover, bool sunken, SubControl button, bool customCol) const
+                               bool hover, bool sunken, SubControl button) const
 {
-    static const int margin(6);
-
     if(!sunken) // && hover && !(opts.titlebarButtons&QTC_TITLEBAR_BUTTON_HOVER_SYMBOL) && !customCol)
-        drawWindowIcon(painter, shadow, r.adjusted(1, 1, 1, 1), sunken, margin, button);
+        drawWindowIcon(painter, shadow, r.adjusted(1, 1, 1, 1), sunken, button);
 
     QColor col(color);
 
     if(!sunken && !hover && opts.titlebarButtons&QTC_TITLEBAR_BUTTON_HOVER_SYMBOL)
         col.setAlphaF(HOVER_BUTTON_ALPHA);
 
-    drawWindowIcon(painter, col, r, sunken, margin, button);
+    drawWindowIcon(painter, col, r, sunken, button);
 }
 
-void QtCurveStyle::drawWindowIcon(QPainter *painter, const QColor &color, const QRect &r, bool sunken, int margin, SubControl button) const
+void QtCurveStyle::drawWindowIcon(QPainter *painter, const QColor &color, const QRect &r, bool sunken, SubControl button) const
 {
     static const int constIconSize=9;
     
@@ -8780,7 +8803,7 @@ void QtCurveStyle::drawEntryField(QPainter *p, const QRect &rx,  const QWidget *
     if(fill)
     {
         p->setClipPath(buildPath(r, WIDGET_ENTRY, round,
-                                 getRadius(&opts, r.width(), r.height(), WIDGET_ENTRY, RADIUS_INTERNAL)));
+                                 getRadius(&opts, r.width()-2, r.height()-2, WIDGET_ENTRY, RADIUS_INTERNAL)));
         p->fillRect(r.adjusted(1, 1, -1, -1), option->palette.brush(QPalette::Base));
         p->setClipping(false);
     }
@@ -9304,7 +9327,7 @@ void QtCurveStyle::drawSliderGroove(QPainter *p, const QRect &groove, const QRec
 
 void QtCurveStyle::drawMenuOrToolBarBackground(QPainter *p, const QRect &r, const QStyleOption *option, bool menu, bool horiz) const
 {
-    if(!(!IS_FLAT(opts.bgndAppearance) && IS_FLAT(menu ? opts.menubarAppearance : opts.toolbarAppearance)))
+    if(!IS_FLAT(menu ? opts.menubarAppearance : opts.toolbarAppearance))
         drawBevelGradient(menu && itsActive && (option->state&State_Enabled || SHADE_NONE!=opts.shadeMenubars)
                             ? itsMenubarCols[ORIGINAL_SHADE]
                             : option->palette.background().color(),
@@ -9738,7 +9761,7 @@ const QColor & QtCurveStyle::menuStripeCol() const
         case SHADE_SELECTED:
             return itsHighlightCols[QTC_MENU_STRIPE_SHADE];
         case SHADE_DARKEN:
-            return opts.lighterPopupMenuBgnd<0
+            return USE_LIGHTER_POPUP_MENU
                 ? itsLighterPopupMenuBgndCol
                 : itsBackgroundCols[QTC_MENU_STRIPE_SHADE];
     }

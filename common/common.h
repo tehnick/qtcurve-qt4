@@ -686,6 +686,13 @@ typedef enum
     GB_3D_FULL
 } EGradientBorder;
 
+typedef enum
+{
+    LV_NONE,
+    LV_NEW,
+    LV_OLD
+} ELvLines;
+
 #ifdef __cplusplus
 struct GradientStopCont : public std::set<GradientStop>
 {
@@ -762,7 +769,6 @@ typedef struct
                      thinnerMenuItems,
                      thinnerBtns,
                      lvButton,
-                     lvLines,
                      drawStatusBarFrames,
                      fillSlider,
                      roundMbTopOnly,
@@ -811,6 +817,7 @@ typedef struct
                      unifyCombo,
                      unifySpin,
                      borderTab;
+    ELvLines         lvLines;
     EGradType        bgndGrad,
                      menuBgndGrad;
 #if defined QTC_CONFIG_DIALOG || (defined QT_VERSION && (QT_VERSION >= 0x040000))
@@ -1474,7 +1481,7 @@ static double getRadius(const Options *opts, int w, int h, EWidget widget, ERadi
 #endif
                        )
                     {
-                        double r=((w>h ? h : w)-2)/2;
+                        double r=(w>h ? h : w)/2;
                         return r>QTC_MAX_RADIUS_INTERNAL ? QTC_MAX_RADIUS_INTERNAL : r;
                     }
                     if(w>(QTC_MIN_ROUND_MAX_WIDTH-2) && h>(QTC_MIN_ROUND_MAX_HEIGHT-2) && QTC_MAX_ROUND_WIDGET(widget))

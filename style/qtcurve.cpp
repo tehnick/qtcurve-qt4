@@ -2416,7 +2416,11 @@ void QtCurveStyle::drawPrimitive(PrimitiveElement element, const QStyleOption *o
         case PE_IndicatorBranch:
         {
             int middleH((r.x() + r.width() / 2)-1),
-                middleV(r.y() + r.height() / 2);
+                middleV(r.y() + r.height() / 2),
+                beforeH(middleH),
+                beforeV(middleV),
+                afterH(middleH),
+                afterV(middleV);
 
             painter->save();
 
@@ -2425,6 +2429,42 @@ void QtCurveStyle::drawPrimitive(PrimitiveElement element, const QStyleOption *o
                 QRect ar(r.x()+((r.width()-(QTC_LV_SIZE+4))>>1), r.y()+((r.height()-(QTC_LV_SIZE+4))>>1), QTC_LV_SIZE+4,
                          QTC_LV_SIZE+4);
 
+                if(LV_OLD==opts.lvLines)
+                {
+                    beforeH=ar.x();
+                    beforeV=ar.y();
+                    afterH=ar.x()+QTC_LV_SIZE+4;
+                    afterV=ar.y()+QTC_LV_SIZE+4;
+
+                    int lo(QTC_ROUNDED ? 2 : 0);
+
+                    painter->setPen(palette.mid().color());
+                    painter->drawLine(ar.x()+lo, ar.y(), (ar.x()+ar.width()-1)-lo, ar.y());
+                    painter->drawLine(ar.x()+lo, ar.y()+ar.height()-1, (ar.x()+ar.width()-1)-lo,
+                                    ar.y()+ar.height()-1);
+                    painter->drawLine(ar.x(), ar.y()+lo, ar.x(), (ar.y()+ar.height()-1)-lo);
+                    painter->drawLine(ar.x()+ar.width()-1, ar.y()+lo, ar.x()+ar.width()-1,
+                                    (ar.y()+ar.height()-1)-lo);
+
+                    if(QTC_ROUNDED)
+                    {
+                        painter->drawPoint(ar.x()+1, ar.y()+1);
+                        painter->drawPoint(ar.x()+1, ar.y()+ar.height()-2);
+                        painter->drawPoint(ar.x()+ar.width()-2, ar.y()+1);
+                        painter->drawPoint(ar.x()+ar.width()-2, ar.y()+ar.height()-2);
+
+                        QColor col(palette.mid().color());
+
+                        col.setAlphaF(0.5);
+                        painter->setPen(col);
+                        painter->drawLine(ar.x()+1, ar.y()+1, ar.x()+2, ar.y());
+                        painter->drawLine(ar.x()+ar.width()-2, ar.y(), ar.x()+ar.width()-1, ar.y()+1);
+                        painter->drawLine(ar.x()+1, ar.y()+ar.height()-2, ar.x()+2, ar.y()+ar.height()-1);
+                        painter->drawLine(ar.x()+ar.width()-2, ar.y()+ar.height()-1, ar.x()+ar.width()-1,
+                                        ar.y()+ar.height()-2);
+                    }
+                }
+                
                 drawArrow(painter, ar, state&State_Open
                                                 ? PE_IndicatorArrowDown
                                                 : reverse
@@ -2432,21 +2472,34 @@ void QtCurveStyle::drawPrimitive(PrimitiveElement element, const QStyleOption *o
                                                     : PE_IndicatorArrowRight, palette.text().color());
             }
 
-            const int constStep=widget && qobject_cast<const QTreeView *>(widget)
-                                    ? ((QTreeView *)widget)->indentation() : 20;
+            const int constStep=LV_OLD==opts.lvLines
+                                    ? 0
+                                    : widget && qobject_cast<const QTreeView *>(widget)
+                                        ? ((QTreeView *)widget)->indentation() : 20;
 
-            if(opts.lvLines && r.x()>=constStep && constStep>0)
+            if(opts.lvLines && (LV_OLD==opts.lvLines || (r.x()>=constStep && constStep>0)))
             {
                 painter->setPen(palette.mid().color());
                 if (state&State_Item)
                     if (reverse)
-                        painter->drawLine(r.left(), middleV, middleH, middleV);
+                        painter->drawLine(r.left(), middleV, afterH, middleV);
                     else
-                        painter->drawLine(middleH-constStep, middleV, r.right()-(state&State_Children ? constStep : QTC_LV_SIZE+4), middleV);
-                if (state&State_Sibling && middleV<r.bottom())
-                    painter->drawLine(middleH-constStep, middleV, middleH-constStep, r.bottom());
-                if (state & (State_Open | State_Children | State_Item | State_Sibling))
-                    painter->drawLine(middleH-constStep, r.y(), middleH-constStep, middleV);
+                    {
+                        if(LV_NEW==opts.lvLines)
+                        {
+                            if(state&State_Children)
+                                painter->drawLine(middleH-constStep, middleV, r.right()-constStep, middleV);
+                            else
+                                drawFadedLine(painter, QRect(middleH-constStep, middleV, r.right()-(middleH-constStep), middleV), palette.mid().color(), 
+                                              false, true, true);
+                        }
+                        else
+                            painter->drawLine(afterH, middleV, r.right(), middleV);
+                    }
+                if (state&State_Sibling && afterV<r.bottom())
+                    painter->drawLine(middleH-constStep, afterV, middleH-constStep, r.bottom());
+                if (state & (State_Open | State_Children | State_Item | State_Sibling) && (LV_NEW==opts.lvLines || beforeV>r.y()))
+                    painter->drawLine(middleH-constStep, r.y(), middleH-constStep, beforeV);
             }
             painter->restore();
             break;
@@ -2967,12 +3020,16 @@ void QtCurveStyle::drawPrimitive(PrimitiveElement element, const QStyleOption *o
                                 painter->save();
 
                                 // Only need to adjust coords if toolbar has a gradient...
-                                if(APPEARANCE_FLAT!=opts.toolbarAppearance && APPEARANCE_RAISED!=opts.toolbarAppearance)
+                                if(!IS_FLAT(opts.toolbarAppearance))
                                 {
                                     r2.setY(-widget->mapTo((QWidget *)tb, QPoint(r.x(), r.y())).y());
                                     r2.setHeight(tb->rect().height());
                                 }
                                 painter->setClipRegion(QRegion(r2).subtract(QRegion(r2.adjusted(2, 2, -2, -2))));
+//                                 if(!IS_FLAT(opts.bgndAppearance))
+//                                     drawWindowBackground((QWidget *)tb);
+//                                     painter->fillRect(r.x(), r.y()+2, r.width(), r.height()-4,
+//                                                      palette.window().color());
                                 drawMenuOrToolBarBackground(painter, r2, &opt, false, horiz);
                                 painter->restore();
                             }
@@ -8120,10 +8177,10 @@ void QtCurveStyle::drawLightBevel(QPainter *p, const QRect &r, const QStyleOptio
         {
             case ROUND_SLIGHT:
             case ROUND_NONE:
-                endSize=4;
+                endSize=WIDGET_SB_SLIDER==w && MO_PLASTIK==opts.coloredMouseOver && option->state&State_MouseOver ? 6 : 4;
                 break;
             case ROUND_FULL:
-                endSize=5;
+                endSize=WIDGET_SB_SLIDER==w && MO_PLASTIK==opts.coloredMouseOver && option->state&State_MouseOver ? 6 : 5;
                 break;
             case ROUND_EXTRA:
                 endSize=7;
@@ -8177,7 +8234,8 @@ void QtCurveStyle::drawLightBevel(QPainter *p, const QRect &r, const QStyleOptio
             {
                 int middle(qMin(r.height()-(2*endSize), middleSize));
                 if(middle>0)
-                    p->drawTiledPixmap(r.x(), r.y()+endSize, pix.width(), r.height()-(2*endSize), pix.copy(0, endSize, pix.width(), middle));
+                    p->drawTiledPixmap(r.x(), r.y()+endSize, pix.width(), r.height()-(2*endSize),
+                                       pix.copy(0, endSize, pix.width(), middle));
                 p->drawPixmap(r.x(), r.y(), pix.copy(0, 0, pix.width(), endSize));
                 p->drawPixmap(r.x(), r.y()+r.height()-endSize, pix.copy(0, pix.height()-endSize, pix.width(), endSize));
             }
@@ -8234,8 +8292,12 @@ void QtCurveStyle::drawLightBevelReal(QPainter *p, const QRect &rOrig, const QSt
 
     if(r.width()>0 && r.height()>0)
     {
+        double radius=getRadius(&opts, r.width()-2, r.height()-2, w, RADIUS_INTERNAL),
+               modW=radius>QTC_EXTRA_ETCH_RADIUS && WIDGET_MDI_WINDOW_BUTTON!=w ? -0.75 : 0,
+               modH=radius>QTC_EXTRA_ETCH_RADIUS ? -0.75 : 0;
+
         p->save();
-        p->setClipPath(buildPath(r, w, round, getRadius(&opts, r.width(), r.height(), w, RADIUS_EXTERNAL)), Qt::IntersectClip);
+        p->setClipPath(buildPath(r, w, round, radius, modW, modH), Qt::IntersectClip);
 
         if(WIDGET_PROGRESSBAR==w && STRIPE_NONE!=opts.stripedProgress)
             drawProgressBevelGradient(p, r.adjusted(1, 1, -1, -1), option, horiz, app);
@@ -8439,7 +8501,7 @@ void QtCurveStyle::drawEtch(QPainter *p, const QRect &r, const QWidget *widget, 
     p->setRenderHint(QPainter::Antialiasing, false);
 }
 
-void QtCurveStyle::drawWindowBackground(QWidget *widget)
+void QtCurveStyle::drawWindowBackground(QWidget *widget) const
 {
     QPainter      p(widget);
     const QWidget *window = widget->window();
@@ -9327,7 +9389,7 @@ void QtCurveStyle::drawSliderGroove(QPainter *p, const QRect &groove, const QRec
 
 void QtCurveStyle::drawMenuOrToolBarBackground(QPainter *p, const QRect &r, const QStyleOption *option, bool menu, bool horiz) const
 {
-    if(!IS_FLAT(menu ? opts.menubarAppearance : opts.toolbarAppearance))
+    if(IS_FLAT(opts.bgndAppearance) || !IS_FLAT(menu ? opts.menubarAppearance : opts.toolbarAppearance))
         drawBevelGradient(menu && itsActive && (option->state&State_Enabled || SHADE_NONE!=opts.shadeMenubars)
                             ? itsMenubarCols[ORIGINAL_SHADE]
                             : option->palette.background().color(),

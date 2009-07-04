@@ -901,7 +901,8 @@ QtCurveStyle::QtCurveStyle(const QString &name)
     switch(opts.shadeCheckRadio)
     {
         default:
-            itsCheckRadioCol=QApplication::palette().color(QPalette::Active, QPalette::ButtonText);
+            itsCheckRadioCol=QApplication::palette().color(QPalette::Active, opts.crButton
+                                                                                ? QPalette::ButtonText : QPalette::Text);
             break;
         case SHADE_BLEND_SELECTED:
         case SHADE_SELECTED:
@@ -1089,7 +1090,8 @@ void QtCurveStyle::polish(QPalette &palette)
     switch(opts.shadeCheckRadio)
     {
         default:
-            itsCheckRadioCol=palette.color(QPalette::Active, QPalette::ButtonText);
+            itsCheckRadioCol=palette.color(QPalette::Active, opts.crButton
+                                                                 ? QPalette::ButtonText : QPalette::Text);
             break;
         case SHADE_BLEND_SELECTED:
         case SHADE_SELECTED:
@@ -1125,7 +1127,8 @@ void QtCurveStyle::polish(QPalette &palette)
 //     }
 
     // Force this to be re-generated!
-    opts.customMenuStripeColor=Qt::black;
+    if(SHADE_BLEND_SELECTED==opts.menuStripe)
+        opts.customMenuStripeColor=Qt::black;
 }
 
 void QtCurveStyle::polish(QWidget *widget)
@@ -2013,7 +2016,7 @@ int QtCurveStyle::pixelMetric(PixelMetric metric, const QStyleOption *option, co
         case PM_ScrollBarSliderMin:
             return opts.sliderWidth+1;
         case PM_SliderThickness:
-            return SLIDER_TRIANGULAR==opts.sliderStyle ? 15 : (QTC_SLIDER_SIZE+(QTC_ROTATED_SLIDER ? 11 : 6));
+            return SLIDER_TRIANGULAR==opts.sliderStyle ? 19 : (QTC_SLIDER_SIZE+(QTC_ROTATED_SLIDER ? 11 : 6));
         case PM_SliderControlThickness:
             return SLIDER_TRIANGULAR==opts.sliderStyle ? 11 : (QTC_SLIDER_SIZE+(QTC_ROTATED_SLIDER ? 6 : -2));
          case PM_SliderTickmarkOffset:
@@ -3542,7 +3545,7 @@ void QtCurveStyle::drawPrimitive(PrimitiveElement element, const QStyleOption *o
             painter->save();
 
             if(const QStyleOptionTabWidgetFrame *twf = qstyleoption_cast<const QStyleOptionTabWidgetFrame *>(option))
-                if(opts.round && widget && ::qobject_cast<const QTabWidget *>(widget))
+                if((opts.round || !IS_FLAT(opts.bgndAppearance)) && widget && ::qobject_cast<const QTabWidget *>(widget))
                 {
                     struct QtcTabWidget : public QTabWidget
                     {
@@ -4399,13 +4402,14 @@ void QtCurveStyle::drawControl(ControlElement element, const QStyleOption *optio
                 else
                 {
                     const QColor &col=state&State_Enabled
-                                        ? ((opts.colorMenubarMouseOver && active) || (!opts.colorMenubarMouseOver && down)) &&
-                                           opts.useHighlightForMenu
+                                        ? ((opts.colorMenubarMouseOver && active) || (!opts.colorMenubarMouseOver && down))
                                             ? opts.customMenuTextColor
                                                 ? opts.customMenuSelTextColor
-                                                : palette.highlightedText().color()
+                                                : opts.useHighlightForMenu
+                                                    ? palette.highlightedText().color()
+                                                    : palette.foreground().color()
                                             : palette.foreground().color()
-                                        : palette.foreground().color();
+                                         : palette.foreground().color();
 
 // #ifdef QTC_XBAR_SUPPORT
 //                     if(palette.foreground().color()==col && palette.foreground().color()!=QApplication::palette().foreground().color() &&
@@ -5115,7 +5119,7 @@ void QtCurveStyle::drawControl(ControlElement element, const QStyleOption *optio
                         }
                         else
                         {
-                            int l(fixLeft ? r2.left()+2 : r2.left()-1),
+                            int l(fixLeft ? r2.left()+(opts.round>ROUND_SLIGHT ? 2 : 1) : r2.left()-1),
                                 r(fixRight ? r2.right()-2 : r2.right()+1);
                             painter->setPen(use[QT_STD_BORDER]);
                             painter->drawLine(l, r2.bottom()-1, r, r2.bottom()-1);
@@ -5181,7 +5185,7 @@ void QtCurveStyle::drawControl(ControlElement element, const QStyleOption *optio
                         }
                         else
                         {
-                            int l(fixLeft ? r2.left()+2 : r2.left()-1),
+                            int l(fixLeft ? r2.left()+(opts.round>ROUND_SLIGHT ? 2 : 1) : r2.left()-1),
                                 r(fixRight ? r2.right()-2 : r2.right());
                             painter->setPen(use[QT_STD_BORDER]);
                             painter->drawLine(l, r2.top()+1, r, r2.top()+1);
@@ -5246,7 +5250,7 @@ void QtCurveStyle::drawControl(ControlElement element, const QStyleOption *optio
                         }
                         else
                         {
-                            int t(firstTab ? r2.top()+2 : r2.top()-1),
+                            int t(firstTab ? r2.top()+(opts.round>ROUND_SLIGHT ? 2 : 1) : r2.top()-1),
                                 b(/*lastTab ? r2.bottom()-2 : */ r2.bottom()+1);
 
                             painter->setPen(use[QT_STD_BORDER]);
@@ -5312,7 +5316,7 @@ void QtCurveStyle::drawControl(ControlElement element, const QStyleOption *optio
                         }
                         else
                         {
-                            int t(firstTab ? r2.top()+2 : r2.top()-1),
+                            int t(firstTab ? r2.top()+(opts.round>ROUND_SLIGHT ? 2 : 1) : r2.top()-1),
                                 b(/*lastTab ? r2.bottom()-2 : */ r2.bottom()+1);
 
                             painter->setPen(use[QT_STD_BORDER]);
@@ -9833,7 +9837,9 @@ const QColor & QtCurveStyle::checkRadioCol(const QStyleOption *opt) const
 {
     return opt->state&State_Enabled
             ? itsCheckRadioCol
-            : opt->palette.buttonText().color();
+            : opts.crButton
+                ? opt->palette.buttonText().color()
+                : opt->palette.text().color();
 }
 
 QColor QtCurveStyle::shade(const QColor &a, float k) const

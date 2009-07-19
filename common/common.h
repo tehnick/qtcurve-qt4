@@ -204,6 +204,10 @@ typedef GdkColor color;
 #define MIN_LIGHTER_POPUP_MENU                  -100
 #define MAX_LIGHTER_POPUP_MENU                   100
 
+#define DEF_TAB_BGND         0
+#define MIN_TAB_BGND        -5
+#define MAX_TAB_BGND         5
+
 #define DEFAULT_MENU_DELAY 100
 #define MIN_MENU_DELAY       0
 #define MAX_MENU_DELAY     500
@@ -229,6 +233,8 @@ typedef GdkColor color;
                           WIDGET_TOOLBAR_BUTTON==(w) )
 #define ETCH_WIDGET(w) (WIDGET_STD_BUTTON==(w) || WIDGET_DEF_BUTTON==(w) || WIDGET_TOGGLE_BUTTON==(w) || WIDGET_SLIDER_TROUGH==(w) || \
                         WIDGET_FILLED_SLIDER_TROUGH==(w) || WIDGET_MDI_WINDOW_BUTTON==(w) || WIDGET_TOOLBAR_BUTTON==(w))
+#define AGUA_WIDGET(w) (WIDGET_STD_BUTTON==(w) || WIDGET_DEF_BUTTON==(w) || WIDGET_TOGGLE_BUTTON==(w) || IS_SLIDER((w)) || \
+                        WIDGET_COMBO==(w) WIDGET_COMBO_BUTTON==(w) || WIDGET_MDI_WINDOW_BUTTON==(w))
 #else
 #define WIDGET_BUTTON(w) (WIDGET_STD_BUTTON==(w) || WIDGET_DEF_BUTTON==(w) || WIDGET_TOGGLE_BUTTON==(w) || WIDGET_CHECKBOX==(w) || \
                           WIDGET_COMBO==(w) || WIDGET_COMBO_BUTTON==(w) || WIDGET_UNCOLOURED_MO_BUTTON==(w) || \
@@ -236,7 +242,13 @@ typedef GdkColor color;
 #define ETCH_WIDGET(w) (WIDGET_STD_BUTTON==(w) || WIDGET_DEF_BUTTON==(w) || WIDGET_TOGGLE_BUTTON==(w) || WIDGET_SLIDER_TROUGH==(w) || \
                         WIDGET_FILLED_SLIDER_TROUGH==(w) || WIDGET_COMBO==(w) || WIDGET_UNCOLOURED_MO_BUTTON==(w) || \
                         WIDGET_TOOLBAR_BUTTON==(w))
+#define AGUA_WIDGET(w) (WIDGET_STD_BUTTON==(w) || WIDGET_DEF_BUTTON==(w) || WIDGET_TOGGLE_BUTTON==(w) || IS_SLIDER((w)) || \
+                        WIDGET_COMBO==(w) WIDGET_COMBO_BUTTON==(w))
 #endif
+
+#define MODIFY_AGUA_X(A, X) (APPEARANCE_AGUA==(A) ?  (X) : (A))
+#define MODIFY_AGUA(A)      MODIFY_AGUA_X((A), APPEARANCE_AGUA_MOD)
+
 #define COLORED_BORDER_SIZE 3
 #define PROGRESS_CHUNK_WIDTH 10
 #define QTC_DRAW_LIGHT_BORDER(SUKEN, WIDGET, APP) \
@@ -385,6 +397,7 @@ typedef enum
     PIX_SLIDER_LIGHT,
     PIX_SLIDER_V,
     PIX_SLIDER_LIGHT_V
+    //PIX_DOT
 #if !defined __cplusplus
     , PIX_BLANK
 #endif
@@ -425,13 +438,13 @@ typedef enum
     WIDGET_MDI_WINDOW,         // Qt4 only
     WIDGET_MDI_WINDOW_TITLE,   // Qt4 only
     WIDGET_MDI_WINDOW_BUTTON,  // Qt4 only
-    WIDGET_FRAME,
     WIDGET_NO_ETCH_BTN,
 #endif
 #if defined QTC_CONFIG_DIALOG || (defined QT_VERSION && (QT_VERSION >= 0x040000)) || !defined __cplusplus
     WIDGET_SELECTION,
-    WIDGET_RUBBER_BAND,
+//    WIDGET_RUBBER_BAND,
 #endif
+    WIDGET_FRAME,
     WIDGET_MENU_BUTTON,        // Qt4 only
     WIDGET_FOCUS,
     WIDGET_TAB_FRAME,
@@ -468,15 +481,19 @@ typedef enum
     APPEARANCE_RAISED,
     APPEARANCE_DULL_GLASS,
     APPEARANCE_SHINY_GLASS,
+    APPEARANCE_AGUA,
     APPEARANCE_SOFT_GRADIENT,
     APPEARANCE_GRADIENT,
     APPEARANCE_HARSH_GRADIENT,
     APPEARANCE_INVERTED,
+    APPEARANCE_DARK_INVERTED,
     APPEARANCE_SPLIT_GRADIENT,
     APPEARANCE_BEVELLED,
         APPEARANCE_FADE, /* Only for poupmenu items! */
         APPEARANCE_LV_BEVELLED, /* To be used only with getGradient */
-    QTC_NUM_STD_APP = APPEARANCE_LV_BEVELLED-QTC_NUM_CUSTOM_GRAD
+        APPEARANCE_AGUA_MOD,
+        APPEARANCE_LV_AGUA,
+    QTC_NUM_STD_APP = APPEARANCE_LV_AGUA-QTC_NUM_CUSTOM_GRAD
 } EAppearance;
 
 #define IS_SLIDER(W)        (WIDGET_SLIDER==(W) || WIDGET_SB_SLIDER==(W))
@@ -520,6 +537,7 @@ typedef enum
     LINE_FLAT,
     LINE_DOTS,
     LINE_DASHES
+    //LINE_1DOT
 } ELine;
 
 typedef enum
@@ -754,7 +772,8 @@ typedef struct
                      highlightFactor,
                      lighterPopupMenuBgnd,
                      menuDelay,
-                     sliderWidth;
+                     sliderWidth,
+                     tabBgnd;
     ERound           round;
     bool             embolden,
                      highlightTab,
@@ -806,6 +825,7 @@ typedef struct
                      squareScrollViews,
                      highlightScrollViews,
                      sunkenScrollViews,
+                     etchEntry,
 #if defined QTC_CONFIG_DIALOG || (defined QT_VERSION && (QT_VERSION >= 0x040000))
                      titlebarBorder,
 #endif
@@ -1366,13 +1386,17 @@ static const Gradient * getGradient(EAppearance app, const Options *opts)
         setupGradient(&stdGradients[APPEARANCE_RAISED-APPEARANCE_RAISED], GB_3D_FULL,2,0.0,1.0,1.0,1.0);
         setupGradient(&stdGradients[APPEARANCE_DULL_GLASS-APPEARANCE_RAISED], GB_LIGHT,4,0.0,1.05,0.499,0.984,0.5,0.928,1.0,1.0);
         setupGradient(&stdGradients[APPEARANCE_SHINY_GLASS-APPEARANCE_RAISED], GB_LIGHT,4,0.0,1.2,0.499,0.984,0.5,0.9,1.0,1.06);
+        setupGradient(&stdGradients[APPEARANCE_AGUA-APPEARANCE_RAISED], GB_NONE, 2,0.0,0.6,1.0,1.1);
         setupGradient(&stdGradients[APPEARANCE_SOFT_GRADIENT-APPEARANCE_RAISED], GB_3D,2,0.0,1.04,1.0,0.98);
         setupGradient(&stdGradients[APPEARANCE_GRADIENT-APPEARANCE_RAISED], GB_3D,2,0.0,1.1,1.0,0.94);
         setupGradient(&stdGradients[APPEARANCE_HARSH_GRADIENT-APPEARANCE_RAISED], GB_3D,2,0.0,1.3,1.0,0.925);
         setupGradient(&stdGradients[APPEARANCE_INVERTED-APPEARANCE_RAISED], GB_3D,2,0.0,0.93,1.0,1.04);
+        setupGradient(&stdGradients[APPEARANCE_DARK_INVERTED-APPEARANCE_RAISED], GB_NONE,3,0.0,0.8,0.7,0.95,1.0,1.0);
         setupGradient(&stdGradients[APPEARANCE_SPLIT_GRADIENT-APPEARANCE_RAISED], GB_3D,4,0.0,1.06,0.499,1.004,0.5,0.986,1.0,0.92);
         setupGradient(&stdGradients[APPEARANCE_BEVELLED-APPEARANCE_RAISED], GB_3D,4,0.0,1.05,0.1,1.02,0.9,0.985,1.0,0.94);
         setupGradient(&stdGradients[APPEARANCE_LV_BEVELLED-APPEARANCE_RAISED], GB_3D,3,0.0,1.00,0.85,1.0,1.0,0.90);
+        setupGradient(&stdGradients[APPEARANCE_AGUA_MOD-APPEARANCE_RAISED], GB_LIGHT,3,0.0,1.5,0.49,0.85,1.0,1.3);
+        setupGradient(&stdGradients[APPEARANCE_LV_AGUA-APPEARANCE_RAISED], GB_NONE,4,0.0,0.98,0.35,0.95,0.4,0.93,1.0,1.15);
         init=true;
     }
 
@@ -1440,6 +1464,49 @@ typedef enum
             (A!=WIDGET_MENU_ITEM && A!=WIDGET_TAB_FRAME && A!=WIDGET_PBAR_TROUGH && A!=WIDGET_PROGRESSBAR)
 #endif
 
+#ifdef __cplusplus
+// **NOTE** MUST KEEP IN SYNC WITH getRadius/RADIUS_ETCH !!!
+ERound getRound(const Options *opts, int w, int h, EWidget widget)
+{
+    ERound r=opts->round;
+
+    if((WIDGET_CHECKBOX==widget || WIDGET_FOCUS==widget) && ROUND_NONE!=r)
+        r=ROUND_SLIGHT;
+
+#if defined __cplusplus && (defined QT_VERSION && (QT_VERSION >= 0x040000))
+    if(WIDGET_MDI_WINDOW_BUTTON==widget && (opts->titlebarButtons&QTC_TITLEBAR_BUTTON_ROUND))
+       r=ROUND_MAX;
+#endif
+    switch(r)
+    {
+        case ROUND_MAX:
+            if(WIDGET_SB_SLIDER==widget || WIDGET_TROUGH==widget
+#if defined __cplusplus && (defined QT_VERSION && (QT_VERSION >= 0x040000))
+                    || (WIDGET_MDI_WINDOW_BUTTON==widget && (opts->titlebarButtons&QTC_TITLEBAR_BUTTON_ROUND))
+#endif
+                )
+            {
+                return ROUND_MAX;
+            }
+            if(w>(QTC_MIN_ROUND_MAX_WIDTH+2) && h>(QTC_MIN_ROUND_MAX_HEIGHT+2) && QTC_MAX_ROUND_WIDGET(widget))
+                return ROUND_MAX;
+        case ROUND_EXTRA:
+            if(QTC_EXTRA_ROUND_WIDGET(widget) &&
+                w>(QTC_MIN_ROUND_EXTRA_SIZE(widget)+2) && h>(QTC_MIN_ROUND_EXTRA_SIZE(widget)+2))
+                return ROUND_EXTRA;
+        case ROUND_FULL:
+            if(w>(QTC_MIN_ROUND_FULL_SIZE+2) && h>(QTC_MIN_ROUND_FULL_SIZE+2))
+                return ROUND_FULL;
+        case ROUND_SLIGHT:
+            return ROUND_SLIGHT;
+        case ROUND_NONE:
+            return ROUND_NONE;
+    }
+    
+    return ROUND_NONE;
+}
+#endif
+
 static double getRadius(const Options *opts, int w, int h, EWidget widget, ERadius rad)
 {
     ERound r=opts->round;
@@ -1459,10 +1526,10 @@ static double getRadius(const Options *opts, int w, int h, EWidget widget, ERadi
             {
                 case ROUND_MAX:
                 case ROUND_EXTRA:
-                    if( (WIDGET_RUBBER_BAND==widget && w>14 && h>14) || (w>48 && h>48))
+                    if(/* (WIDGET_RUBBER_BAND==widget && w>14 && h>14) || */(w>48 && h>48))
                         return 6.0;
                 case ROUND_FULL:
-                    if( (WIDGET_RUBBER_BAND==widget && w>11 && h>11) || (w>48 && h>48))
+                    if( /*(WIDGET_RUBBER_BAND==widget && w>11 && h>11) || */(w>48 && h>48))
                         return 3.0;
                     if(w>QTC_MIN_ROUND_FULL_SIZE && h>QTC_MIN_ROUND_FULL_SIZE)
                         return QTC_FULL_OUTER_RADIUS;
@@ -1526,6 +1593,7 @@ static double getRadius(const Options *opts, int w, int h, EWidget widget, ERadi
                     return 0;
             }
         case RADIUS_ETCH:
+            // **NOTE** MUST KEEP IN SYNC WITH getRound !!!
             switch(r)
             {
                 case ROUND_MAX:

@@ -106,6 +106,8 @@ static ELine toLine(const char *str, ELine def)
             return LINE_DOTS;
         if(0==memcmp(str, "flat", 4))
             return LINE_FLAT;
+//         if(0==memcmp(str, "1dot", 5))
+//             return LINE_1DOT;
     }
     return def;
 }
@@ -162,6 +164,12 @@ static EAppearance toAppearance(const char *str, EAppearance def, bool allowFade
             return APPEARANCE_SHINY_GLASS;
         if(0==memcmp(str, "dullglass", 9))
             return APPEARANCE_DULL_GLASS;
+        if(0==memcmp(str, "agua", 4))
+#if defined __cplusplus && !defined QTC_CONFIG_DIALOG  && defined QT_VERSION && QT_VERSION < 0x040000
+            return APPEARANCE_AGUA_MOD;
+#else
+            return APPEARANCE_AGUA;
+#endif
         if(0==memcmp(str, "inverted", 8))
             return APPEARANCE_INVERTED;
         if(0==memcmp(str, "bevelled", 8))
@@ -952,6 +960,17 @@ static bool readConfig(const char *file, Options *opts, Options *defOpts)
                 copyGradients(def, opts);
 #endif
             /* Check if the config file expects old default values... */
+            if(version<QTC_MAKE_VERSION(0, 66))
+            {
+                def->menuStripeAppearance=APPEARANCE_GRADIENT;
+                def->etchEntry=true;
+                def->gtkScrollViews=false;
+                def->thinSbarGroove=false;
+#if defined QTC_CONFIG_DIALOG || (defined QT_VERSION && (QT_VERSION >= 0x040000))
+                def->titlebarButtons=QTC_TITLEBAR_BUTTON_HOVER_FRAME;
+                def->titlebarIcon=TITLEBAR_ICON_MENU_BUTTON;
+#endif
+            }
             if(version<QTC_MAKE_VERSION(0, 65))
             {
                 def->tabMouseOver=TAB_MO_BOTTOM;
@@ -987,7 +1006,6 @@ static bool readConfig(const char *file, Options *opts, Options *defOpts)
                 def->crButton=false;
                 def->customShades[0]=0;
                 def->stripedProgress=STRIPE_DIAGONAL;
-                def->sunkenScrollViews=false;
                 def->sunkenAppearance=APPEARANCE_INVERTED;
                 def->focus=FOCUS_FILLED;
             }
@@ -1027,6 +1045,7 @@ static bool readConfig(const char *file, Options *opts, Options *defOpts)
             QTC_CFG_READ_INT(menuDelay)
             QTC_CFG_READ_INT(sliderWidth)
             QTC_CFG_READ_INT_BOOL(lighterPopupMenuBgnd)
+            QTC_CFG_READ_INT(tabBgnd)
             QTC_CFG_READ_TB_BORDER(toolbarBorders)
             QTC_CFG_READ_APPEARANCE(appearance, false)
             QTC_CFG_READ_APPEARANCE(bgndAppearance, false)
@@ -1115,7 +1134,7 @@ static bool readConfig(const char *file, Options *opts, Options *defOpts)
             QTC_CFG_READ_BOOL(comboSplitter)
             QTC_CFG_READ_BOOL(squareScrollViews)
             QTC_CFG_READ_BOOL(highlightScrollViews)
-            QTC_CFG_READ_BOOL(sunkenScrollViews)
+            QTC_CFG_READ_BOOL(etchEntry)
             QTC_CFG_READ_BOOL(flatSbarButtons)
             QTC_CFG_READ_BOOL(popupBorder)
             QTC_CFG_READ_BOOL(unifySpinBtns)
@@ -1492,8 +1511,11 @@ static bool readConfig(const char *file, Options *opts, Options *defOpts)
             if(opts->sliderWidth<DEFAULT_SLIDER_WIDTH)
                 opts->sliderThumbs=LINE_NONE;
 
-            if(opts->lighterPopupMenuBgnd>MAX_LIGHTER_POPUP_MENU)
+            if(opts->lighterPopupMenuBgnd<MIN_LIGHTER_POPUP_MENU || opts->lighterPopupMenuBgnd>MAX_LIGHTER_POPUP_MENU)
                 opts->lighterPopupMenuBgnd=DEF_POPUPMENU_LIGHT_FACTOR;
+
+            if(opts->tabBgnd<MIN_TAB_BGND || opts->tabBgnd>MAX_TAB_BGND)
+                opts->tabBgnd=DEF_TAB_BGND;
 
             if(opts->animatedProgress && !opts->stripedProgress)
                 opts->animatedProgress=false;
@@ -1520,17 +1542,22 @@ static bool readConfig(const char *file, Options *opts, Options *defOpts)
             if(IND_GLOW==opts->defBtnIndicator && (EFFECT_NONE==opts->buttonEffect || opts->round<ROUND_FULL))
                 opts->defBtnIndicator=IND_TINT;
 #endif
+#ifndef QTC_CONFIG_DIALOG
             if(opts->round>ROUND_EXTRA)
                 opts->focus=FOCUS_LINE;
 
-            if(opts->squareScrollViews || EFFECT_NONE==opts->buttonEffect)
-                opts->sunkenScrollViews=false;
+            if(EFFECT_NONE==opts->buttonEffect)
+                opts->etchEntry=false;
+
+            if(EFFECT_NONE==opts->buttonEffect)
+                opts->etchEntry=false;
 
             if(opts->squareScrollViews)
                 opts->highlightScrollViews=false;
 
             if(!opts->framelessGroupBoxes)
                 opts->groupBoxLine=false;
+#endif
 #ifndef __cplusplus
             if(!defOpts)
             {
@@ -1540,6 +1567,32 @@ static bool readConfig(const char *file, Options *opts, Options *defOpts)
                     if(def->customGradient[i])
                         free(def->customGradient[i]);
             }
+#endif
+
+#ifndef QTC_CONFIG_DIALOG
+            opts->bgndAppearance=MODIFY_AGUA(opts->bgndAppearance);
+#if (defined QT_VERSION && (QT_VERSION >= 0x040000)) || !defined __cplusplus
+            opts->selectionAppearance=MODIFY_AGUA(opts->selectionAppearance);
+#endif
+            opts->lvAppearance=MODIFY_AGUA_X(opts->lvAppearance, APPEARANCE_LV_AGUA);
+            opts->sbarBgndAppearance=MODIFY_AGUA(opts->sbarBgndAppearance);
+            opts->progressGrooveAppearance=MODIFY_AGUA(opts->progressGrooveAppearance);
+            opts->menuBgndAppearance=MODIFY_AGUA(opts->menuBgndAppearance);
+            opts->menuStripeAppearance=MODIFY_AGUA(opts->menuStripeAppearance);
+            opts->grooveAppearance=MODIFY_AGUA(opts->grooveAppearance);
+            opts->progressAppearance=MODIFY_AGUA(opts->progressAppearance);
+            opts->sliderFill=MODIFY_AGUA(opts->sliderFill);
+            opts->tabAppearance=MODIFY_AGUA(opts->tabAppearance);
+            opts->activeTabAppearance=MODIFY_AGUA(opts->activeTabAppearance);
+            opts->menuitemAppearance=MODIFY_AGUA(opts->menuitemAppearance);
+#ifdef __cplusplus
+            opts->titlebarAppearance=MODIFY_AGUA(opts->titlebarAppearance);
+            opts->inactiveTitlebarAppearance=MODIFY_AGUA(opts->inactiveTitlebarAppearance);
+
+            opts->titlebarButtonAppearance=MODIFY_AGUA(opts->titlebarButtonAppearance);
+#endif
+            if(APPEARANCE_FLAT==opts->tabAppearance)
+                opts->tabAppearance=APPEARANCE_RAISED;
 #endif
             return true;
         }
@@ -1615,6 +1668,7 @@ static void defaultSettings(Options *opts)
     opts->round=ROUND_FULL;
 #endif
     opts->lighterPopupMenuBgnd=DEF_POPUPMENU_LIGHT_FACTOR;
+    opts->tabBgnd=DEF_TAB_BGND;
     opts->animatedProgress=false;
     opts->stripedProgress=STRIPE_NONE;
     opts->sliderStyle=SLIDER_PLAIN;
@@ -1680,24 +1734,24 @@ static void defaultSettings(Options *opts)
     opts->comboSplitter=false;
     opts->squareScrollViews=false;
     opts->highlightScrollViews=false;
-    opts->sunkenScrollViews=true;
+    opts->etchEntry=false;
     opts->flatSbarButtons=true;
     opts->popupBorder=true;
     opts->unifySpinBtns=false;
     opts->unifySpin=true;
     opts->unifyCombo=true;
     opts->borderTab=true;
-    opts->thinSbarGroove=false;
+    opts->thinSbarGroove=true;
     opts->colorSliderMouseOver=false;
 #if defined QTC_CONFIG_DIALOG || (defined QT_VERSION && (QT_VERSION >= 0x040000))
     opts->titlebarBorder=true;
-    opts->titlebarButtons=QTC_TITLEBAR_BUTTON_HOVER_FRAME;
-    opts->titlebarIcon=TITLEBAR_ICON_MENU_BUTTON;
+    opts->titlebarButtons=QTC_TITLEBAR_BUTTON_ROUND|QTC_TITLEBAR_BUTTON_HOVER_SYMBOL;
+    opts->titlebarIcon=TITLEBAR_ICON_NEXT_TO_TITLE;
 #endif
     opts->menuStripe=SHADE_NONE;
-    opts->menuStripeAppearance=APPEARANCE_GRADIENT;
+    opts->menuStripeAppearance=APPEARANCE_DARK_INVERTED;
     opts->shading=SHADING_HSL;
-    opts->gtkScrollViews=false;
+    opts->gtkScrollViews=true;
     opts->comboBtn=SHADE_NONE;
 #ifdef __cplusplus
     opts->stdSidebarButtons=false;
@@ -1778,6 +1832,8 @@ static const char *toStr(ELine ind, bool dashes)
 {
     switch(ind)
     {
+//         case LINE_1DOT:
+//             return "1dot";
         case LINE_DOTS:
             return "dots";
         case LINE_DASHES:
@@ -1851,6 +1907,8 @@ static QString toStr(EAppearance exp)
             return "shinyglass";
         case APPEARANCE_FADE:
             return "fade";
+        case APPEARANCE_AGUA:
+            return "agua";
         default:
         {
             QString app;
@@ -2181,6 +2239,7 @@ bool static writeConfig(KConfig *cfg, const Options &opts, const Options &def, b
         CFG_WRITE_ENTRY(sliderStyle)
         CFG_WRITE_ENTRY(animatedProgress)
         CFG_WRITE_ENTRY_NUM(lighterPopupMenuBgnd)
+        CFG_WRITE_ENTRY_NUM(tabBgnd)
         CFG_WRITE_ENTRY(embolden)
         CFG_WRITE_ENTRY(defBtnIndicator)
         CFG_WRITE_ENTRY_B(sliderThumbs, false)
@@ -2240,7 +2299,7 @@ bool static writeConfig(KConfig *cfg, const Options &opts, const Options &def, b
         CFG_WRITE_ENTRY(comboSplitter)
         CFG_WRITE_ENTRY(squareScrollViews)
         CFG_WRITE_ENTRY(highlightScrollViews)
-        CFG_WRITE_ENTRY(sunkenScrollViews)
+        CFG_WRITE_ENTRY(etchEntry)
         CFG_WRITE_ENTRY(flatSbarButtons)
         CFG_WRITE_ENTRY(popupBorder)
         CFG_WRITE_ENTRY(unifySpinBtns)

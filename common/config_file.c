@@ -960,6 +960,10 @@ static bool readConfig(const char *file, Options *opts, Options *defOpts)
                 copyGradients(def, opts);
 #endif
             /* Check if the config file expects old default values... */
+            if(version<QTC_MAKE_VERSION(0, 67))
+            {
+                def->doubleGtkComboArrow=false;
+            }
             if(version<QTC_MAKE_VERSION(0, 66))
             {
                 def->menuStripeAppearance=APPEARANCE_GRADIENT;
@@ -1067,6 +1071,7 @@ static bool readConfig(const char *file, Options *opts, Options *defOpts)
             QTC_CFG_READ_SHADE(shadeSliders, true, false, &opts->customSlidersColor)
             QTC_CFG_READ_SHADE(shadeMenubars, true, false, &opts->customMenubarsColor)
             QTC_CFG_READ_SHADE(shadeCheckRadio, false, false, &opts->customCheckRadioColor)
+            QTC_CFG_READ_SHADE(sortedLv, true, false, &opts->customSortedLvColor)
             QTC_CFG_READ_APPEARANCE(menubarAppearance, false)
             QTC_CFG_READ_APPEARANCE(menuitemAppearance, true)
             QTC_CFG_READ_APPEARANCE(toolbarAppearance, false)
@@ -1141,6 +1146,7 @@ static bool readConfig(const char *file, Options *opts, Options *defOpts)
             QTC_CFG_READ_BOOL(unifySpin)
             QTC_CFG_READ_BOOL(unifyCombo)
             QTC_CFG_READ_BOOL(borderTab)
+            QTC_CFG_READ_BOOL(borderInactiveTab)
             QTC_CFG_READ_BOOL(thinSbarGroove)
             QTC_CFG_READ_BOOL(colorSliderMouseOver)
 #if defined QTC_CONFIG_DIALOG || (defined QT_VERSION && (QT_VERSION >= 0x040000))
@@ -1154,6 +1160,7 @@ static bool readConfig(const char *file, Options *opts, Options *defOpts)
                 QTC_CFG_READ_COLOR(customMenuStripeColor)
             QTC_CFG_READ_SHADE(comboBtn, true, false, &opts->customComboBtnColor);
             QTC_CFG_READ_BOOL(gtkScrollViews)
+            QTC_CFG_READ_BOOL(doubleGtkComboArrow)
 #ifdef __cplusplus
             QTC_CFG_READ_ALIGN(titlebarAlignment)
             QTC_CFG_READ_BOOL(stdSidebarButtons)
@@ -1466,6 +1473,7 @@ static bool readConfig(const char *file, Options *opts, Options *defOpts)
             checkColor(&opts->shadeCheckRadio, &opts->customCheckRadioColor);
             checkColor(&opts->menuStripe, &opts->customMenuStripeColor);
             checkColor(&opts->comboBtn, &opts->customComboBtnColor);
+            checkColor(&opts->sortedLv, &opts->customSortedLvColor);
             if(APPEARANCE_BEVELLED==opts->toolbarAppearance)
                 opts->toolbarAppearance=APPEARANCE_GRADIENT;
             else if(APPEARANCE_RAISED==opts->toolbarAppearance)
@@ -1702,6 +1710,7 @@ static void defaultSettings(Options *opts)
     opts->shadeSliders=SHADE_NONE;
     opts->shadeMenubars=SHADE_NONE;
     opts->shadeCheckRadio=SHADE_NONE;
+    opts->sortedLv=SHADE_NONE;
     opts->toolbarBorders=TB_NONE;
     opts->toolbarSeparators=LINE_SUNKEN;
     opts->splitters=LINE_FLAT;
@@ -1741,6 +1750,7 @@ static void defaultSettings(Options *opts)
     opts->unifySpin=true;
     opts->unifyCombo=true;
     opts->borderTab=true;
+    opts->borderInactiveTab=false;
     opts->thinSbarGroove=true;
     opts->colorSliderMouseOver=false;
 #if defined QTC_CONFIG_DIALOG || (defined QT_VERSION && (QT_VERSION >= 0x040000))
@@ -1756,6 +1766,7 @@ static void defaultSettings(Options *opts)
 #ifdef __cplusplus
     opts->stdSidebarButtons=false;
     opts->gtkComboMenus=false;
+    opts->doubleGtkComboArrow=true;
     opts->colorTitlebarOnly=false;
     opts->customMenubarsColor.setRgb(0, 0, 0);
     opts->customSlidersColor.setRgb(0, 0, 0);
@@ -2264,6 +2275,7 @@ bool static writeConfig(KConfig *cfg, const Options &opts, const Options &def, b
         CFG_WRITE_ENTRY(thinnerBtns)
         CFG_WRITE_SHADE_ENTRY(shadeSliders, customSlidersColor)
         CFG_WRITE_SHADE_ENTRY(shadeMenubars, customMenubarsColor)
+        CFG_WRITE_SHADE_ENTRY(sortedLv, customSortedLvColor)
         CFG_WRITE_ENTRY(customMenuSelTextColor)
         CFG_WRITE_ENTRY(customMenuNormTextColor)
         CFG_WRITE_SHADE_ENTRY(shadeCheckRadio, customCheckRadioColor)
@@ -2306,6 +2318,7 @@ bool static writeConfig(KConfig *cfg, const Options &opts, const Options &def, b
         CFG_WRITE_ENTRY(unifySpin)
         CFG_WRITE_ENTRY(unifyCombo)
         CFG_WRITE_ENTRY(borderTab)
+        CFG_WRITE_ENTRY(borderInactiveTab)
         CFG_WRITE_ENTRY(thinSbarGroove)
         CFG_WRITE_ENTRY(colorSliderMouseOver)
 #if defined QTC_CONFIG_DIALOG || (defined QT_VERSION && (QT_VERSION >= 0x040000))
@@ -2345,6 +2358,7 @@ bool static writeConfig(KConfig *cfg, const Options &opts, const Options &def, b
         CFG_WRITE_ENTRY(titlebarButtonAppearance)
         CFG_WRITE_ENTRY(gtkScrollViews)
         CFG_WRITE_ENTRY(gtkComboMenus)
+        CFG_WRITE_ENTRY(doubleGtkComboArrow)
         CFG_WRITE_ENTRY(colorTitlebarOnly)
         CFG_WRITE_ENTRY(gtkButtonOrder)
         CFG_WRITE_ENTRY(mapKdeIcons)

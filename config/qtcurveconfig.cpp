@@ -260,7 +260,8 @@ enum ShadeWidget
     SW_SLIDER,
     SW_CHECK_RADIO,
     SW_MENU_STRIPE,
-    SW_COMBO
+    SW_COMBO,
+    SW_LV_HEADER
 };
 
 static void insertShadeEntries(QComboBox *combo, ShadeWidget sw)
@@ -277,6 +278,7 @@ static void insertShadeEntries(QComboBox *combo, ShadeWidget sw)
         case SW_CHECK_RADIO:
             combo->insertItem(SHADE_NONE, i18n("Text"));
             break;
+        case SW_LV_HEADER:
         case SW_MENU_STRIPE:
             combo->insertItem(SHADE_NONE, i18n("None"));
             break;
@@ -484,6 +486,7 @@ QtCurveConfig::QtCurveConfig(QWidget *parent)
     insertShadeEntries(shadeCheckRadio, SW_CHECK_RADIO);
     insertShadeEntries(menuStripe, SW_MENU_STRIPE);
     insertShadeEntries(comboBtn, SW_COMBO);
+    insertShadeEntries(sortedLv, SW_LV_HEADER);
     insertAppearanceEntries(appearance);
     insertAppearanceEntries(menubarAppearance);
     insertAppearanceEntries(toolbarAppearance);
@@ -581,7 +584,9 @@ QtCurveConfig::QtCurveConfig(QWidget *parent)
     connect(darkerBorders, SIGNAL(toggled(bool)), SLOT(updateChanged()));
     connect(comboSplitter, SIGNAL(toggled(bool)), SLOT(updateChanged()));
     connect(comboBtn, SIGNAL(currentIndexChanged(int)), SLOT(comboBtnChanged()));
+    connect(sortedLv, SIGNAL(currentIndexChanged(int)), SLOT(sortedLvChanged()));
     connect(customComboBtnColor, SIGNAL(changed(const QColor &)), SLOT(updateChanged()));
+    connect(customSortedLvColor, SIGNAL(changed(const QColor &)), SLOT(updateChanged()));
     connect(unifySpinBtns, SIGNAL(toggled(bool)), SLOT(unifySpinBtnsToggled()));
     connect(unifySpin, SIGNAL(toggled(bool)), SLOT(unifySpinToggled()));
     connect(unifyCombo, SIGNAL(toggled(bool)), SLOT(updateChanged()));
@@ -592,6 +597,8 @@ QtCurveConfig::QtCurveConfig(QWidget *parent)
     connect(colorSelTab, SIGNAL(toggled(bool)), SLOT(updateChanged()));
     connect(roundAllTabs, SIGNAL(toggled(bool)), SLOT(updateChanged()));
     connect(borderTab, SIGNAL(toggled(bool)), SLOT(updateChanged()));
+    connect(borderInactiveTab, SIGNAL(toggled(bool)), SLOT(updateChanged()));
+    connect(doubleGtkComboArrow, SIGNAL(toggled(bool)), SLOT(updateChanged()));
     connect(tabMouseOver, SIGNAL(currentIndexChanged(int)), SLOT(tabMoChanged()));
     connect(stdSidebarButtons, SIGNAL(toggled(bool)), SLOT(updateChanged()));
     connect(borderMenuitems, SIGNAL(toggled(bool)), SLOT(updateChanged()));
@@ -841,6 +848,12 @@ void QtCurveConfig::menuStripeChanged()
 void QtCurveConfig::comboBtnChanged()
 {
     customComboBtnColor->setEnabled(SHADE_CUSTOM==comboBtn->currentIndex());
+    updateChanged();
+}
+
+void QtCurveConfig::sortedLvChanged()
+{
+    customSortedLvColor->setEnabled(SHADE_CUSTOM==sortedLv->currentIndex());
     updateChanged();
 }
 
@@ -1524,6 +1537,8 @@ void QtCurveConfig::setOptions(Options &opts)
     opts.comboSplitter=comboSplitter->isChecked();
     opts.comboBtn=(EShade)comboBtn->currentIndex();
     opts.customComboBtnColor=customComboBtnColor->color();
+    opts.sortedLv=(EShade)sortedLv->currentIndex();
+    opts.customSortedLvColor=customSortedLvColor->color();
     opts.unifySpinBtns=unifySpinBtns->isChecked();
     opts.unifySpin=unifySpin->isChecked();
     opts.unifyCombo=unifyCombo->isChecked();
@@ -1534,6 +1549,8 @@ void QtCurveConfig::setOptions(Options &opts)
     opts.colorSelTab=colorSelTab->isChecked();
     opts.roundAllTabs=roundAllTabs->isChecked();
     opts.borderTab=borderTab->isChecked();
+    opts.borderInactiveTab=borderInactiveTab->isChecked();
+    opts.doubleGtkComboArrow=doubleGtkComboArrow->isChecked();
     opts.tabMouseOver=(ETabMo)tabMouseOver->currentIndex();
     opts.stdSidebarButtons=stdSidebarButtons->isChecked();
     opts.borderMenuitems=borderMenuitems->isChecked();
@@ -1678,6 +1695,8 @@ void QtCurveConfig::setWidgetOptions(const Options &opts)
     comboSplitter->setChecked(opts.comboSplitter);
     comboBtn->setCurrentIndex(opts.comboBtn);
     customComboBtnColor->setColor(opts.customComboBtnColor);
+    sortedLv->setCurrentIndex(opts.sortedLv);
+    customSortedLvColor->setColor(opts.customSortedLvColor);
     unifySpinBtns->setChecked(opts.unifySpinBtns);
     unifySpin->setChecked(opts.unifySpin);
     unifyCombo->setChecked(opts.unifyCombo);
@@ -1690,7 +1709,10 @@ void QtCurveConfig::setWidgetOptions(const Options &opts)
     roundAllTabs->setChecked(opts.roundAllTabs);
     roundAllTabs_false->setChecked(!opts.roundAllTabs);
     borderTab->setChecked(opts.borderTab);
+    borderInactiveTab->setChecked(opts.borderInactiveTab);
+    doubleGtkComboArrow->setChecked(opts.doubleGtkComboArrow);
     borderTab_false->setChecked(!opts.borderTab);
+    borderInactiveTab_false->setChecked(!opts.borderInactiveTab);
     tabMouseOver->setCurrentIndex(opts.tabMouseOver);
     stdSidebarButtons->setChecked(opts.stdSidebarButtons);
     borderMenuitems->setChecked(opts.borderMenuitems);
@@ -1826,6 +1848,7 @@ bool QtCurveConfig::settingsChanged()
          darkerBorders->isChecked()!=currentStyle.darkerBorders ||
          comboSplitter->isChecked()!=currentStyle.comboSplitter ||
          comboBtn->currentIndex()!=(int)currentStyle.comboBtn ||
+         sortedLv->currentIndex()!=(int)currentStyle.sortedLv ||
          unifySpinBtns->isChecked()!=currentStyle.unifySpinBtns ||
          unifySpin->isChecked()!=currentStyle.unifySpin ||
          unifyCombo->isChecked()!=currentStyle.unifyCombo ||
@@ -1836,6 +1859,8 @@ bool QtCurveConfig::settingsChanged()
          colorSelTab->isChecked()!=currentStyle.colorSelTab ||
          roundAllTabs->isChecked()!=currentStyle.roundAllTabs ||
          borderTab->isChecked()!=currentStyle.borderTab ||
+         borderInactiveTab->isChecked()!=currentStyle.borderInactiveTab ||
+         doubleGtkComboArrow->isChecked()!=currentStyle.doubleGtkComboArrow ||
          tabMouseOver->currentIndex()!=currentStyle.tabMouseOver ||
          stdSidebarButtons->isChecked()!=currentStyle.stdSidebarButtons ||
          borderMenuitems->isChecked()!=currentStyle.borderMenuitems ||
@@ -1913,6 +1938,8 @@ bool QtCurveConfig::settingsChanged()
                customMenuStripeColor->color()!=currentStyle.customMenuStripeColor) ||
          (SHADE_CUSTOM==currentStyle.comboBtn &&
                customComboBtnColor->color()!=currentStyle.customComboBtnColor) ||
+         (SHADE_CUSTOM==currentStyle.sortedLv &&
+               customSortedLvColor->color()!=currentStyle.customSortedLvColor) ||
 
          customGradient!=currentStyle.customGradient ||
 

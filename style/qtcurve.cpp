@@ -2988,7 +2988,7 @@ void QtCurveStyle::drawPrimitive(PrimitiveElement element, const QStyleOption *o
                                                                   RADIUS_INTERNAL)));
                             painter->setRenderHint(QPainter::Antialiasing, false);
                         }
-                        
+
                         drawBorder(painter, r, &opt,
                                    opts.round &&
                                     ( (APP_KMIX==theThemedApp &&  widget && widget->parentWidget() && qobject_cast<const QFrame *>(widget) &&
@@ -6728,7 +6728,7 @@ void QtCurveStyle::drawComplexControl(ComplexControl control, const QStyleOption
 
                 if(state&QtCStateKWinNoBorder)
                     drawBevelGradient(titleCols[ORIGINAL_SHADE], painter, r, true, false,
-                                      MODIFY_AGUA(widgetApp(WIDGET_MDI_WINDOW, &opts, option->state&State_Active)),
+                                      widgetApp(WIDGET_MDI_WINDOW, &opts, option->state&State_Active),
                                       WIDGET_MDI_WINDOW);
                 else
                 {
@@ -8601,7 +8601,8 @@ void QtCurveStyle::drawLightBevel(QPainter *p, const QRect &r, const QStyleOptio
             QString key;
             bool    small(circular || (horiz ? r.width() : r.height())<(2*endSize));
             QPixmap pix(small ? QSize(r.width(), r.height()) : QSize(horiz ? size : r.width(), horiz ? r.height() : size));
-            uint    state(option->state&(State_Raised|State_Sunken|State_On|State_Horizontal|State_HasFocus|State_MouseOver));
+            uint    state(option->state&(State_Raised|State_Sunken|State_On|State_Horizontal|State_HasFocus|State_MouseOver|
+                          (WIDGET_MDI_WINDOW_BUTTON==w || WIDGET_MDI_WINDOW==w || WIDGET_MDI_WINDOW_TITLE==w ? State_Active : State_None)));
 
             key.sprintf("qtc-%x-%d-%x-%x-%x-%x-%x", w, (int)realRound, pix.width(), pix.height(), state, fill.rgba(), (int)(radius*100));
             if(!QPixmapCache::find(key, pix))
@@ -9205,9 +9206,9 @@ void QtCurveStyle::drawBorder(QPainter *p, const QRect &r, const QStyleOption *o
             p->drawPoint(r.x(), r.y()+2);
             p->drawPoint(r.x()+r.width()-1, r.y()+2);
             p->drawPoint(r.x()+r.width()-3, r.y());
-            p->setPen(cols[0]);
-            p->drawPoint(r.x()+1, r.y()+2);
-            p->drawPoint(r.x()+2, r.y()+1);
+//             p->setPen(cols[0]);
+//             p->drawPoint(r.x()+1, r.y()+2);
+//             p->drawPoint(r.x()+2, r.y()+1);
         }
     }
 }

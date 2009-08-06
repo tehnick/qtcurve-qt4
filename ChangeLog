@@ -1,3 +1,10 @@
+0.67.4
+------
+1. Dont create a KComponentData if KGlobal::hasMainComponent() is true. Fixes
+   plasma crash on logout.
+2. Move menu text 2 pixels closer to icon - matches Gtk2 better.
+3. Improve the appearance of QWhatsThis shadows.
+
 0.67.3
 ------
 1. Fix crash in system settings when changing colours.

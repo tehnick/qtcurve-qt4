@@ -839,7 +839,9 @@ typedef struct
                      unifySpin,
                      borderTab,
                      borderInactiveTab,
-                     doubleGtkComboArrow;
+                     doubleGtkComboArrow,
+                     menuIcons,
+                     forceAlternateLvCols;
     ELvLines         lvLines;
     EGradType        bgndGrad,
                      menuBgndGrad;

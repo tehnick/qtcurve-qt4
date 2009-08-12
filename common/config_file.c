@@ -1559,9 +1559,6 @@ static bool readConfig(const char *file, Options *opts, Options *defOpts)
             if(EFFECT_NONE==opts->buttonEffect)
                 opts->etchEntry=false;
 
-            if(EFFECT_NONE==opts->buttonEffect)
-                opts->etchEntry=false;
-
             if(opts->squareScrollViews)
                 opts->highlightScrollViews=false;
 
@@ -1603,7 +1600,14 @@ static bool readConfig(const char *file, Options *opts, Options *defOpts)
 #endif
             if(APPEARANCE_FLAT==opts->tabAppearance)
                 opts->tabAppearance=APPEARANCE_RAISED;
+
+            if(EFFECT_NONE==opts->buttonEffect && MO_GLOW==opts->coloredMouseOver)
+                opts->coloredMouseOver=MO_COLORED_THICK;
+
+            if(EFFECT_NONE==opts->buttonEffect)
+                opts->etchEntry=false;
 #endif
+
             return true;
         }
         else

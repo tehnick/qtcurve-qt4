@@ -42,7 +42,7 @@ static bool usePixmapCache=true;
 #define QTC_FIX_DISABLED_ICONS
 
 #define QTC_MO_ARROW_X(MO, COL) (state&State_Enabled \
-                                    ? (MO_GLOW==opts.coloredMouseOver && MO \
+                                    ? (MO_NONE!=opts.coloredMouseOver && MO \
                                         ? itsMouseOverCols[QT_STD_BORDER] \
                                         : palette.color(COL)) \
                                     : palette.color(QPalette::Disabled, COL))
@@ -449,6 +449,12 @@ static bool isKontactPreviewPane(const QWidget *widget)
            widget->parentWidget()->parentWidget()->inherits("KMReaderWin");
 }
 
+static bool isKateView(const QWidget *widget)
+{
+    return widget && widget->parentWidget() &&
+           ::qobject_cast<const QFrame *>(widget) && widget->parentWidget()->inherits("KateView");
+}
+
 static bool isNoEtchWidget(const QWidget *widget)
 {
     if(APP_KRUNNER==theThemedApp)
@@ -458,7 +464,7 @@ static bool isNoEtchWidget(const QWidget *widget)
     {
         const QWidget *top=widget->window();
 
-        return !top || (!qobject_cast<const QDialog *>(top) || !qobject_cast<const QMainWindow *>(top));
+        return !top || (!qobject_cast<const QDialog *>(top) && !qobject_cast<const QMainWindow *>(top));
     }
 
     if(widget && widget->inherits("QWebView"))
@@ -1063,7 +1069,7 @@ void QtCurveStyle::polish(QApplication *app)
             theThemedApp=APP_KWIN;
         else if("systemsettings"==appName)
             theThemedApp=APP_SYSTEMSETTINGS;
-        else if("plasma"==appName)
+        else if("plasma"==appName || appName.startsWith("plasma-"))
             theThemedApp=APP_PLASMA;
         else if("krunner"==appName || "krunner_lock"==appName || "kscreenlocker"==appName)
             theThemedApp=APP_KRUNNER;
@@ -1081,6 +1087,10 @@ void QtCurveStyle::polish(QApplication *app)
         else if("Designer"==QCoreApplication::applicationName())
             theThemedApp=APP_QTDESIGNER;
 #endif
+
+    // Plasma does not like the 'Fix parentless dialogs' option...
+    if(APP_PLASMA==theThemedApp && opts.fixParentlessDialogs)
+        opts.fixParentlessDialogs=false;
 }
 
 void QtCurveStyle::polish(QPalette &palette)
@@ -2219,14 +2229,11 @@ int QtCurveStyle::pixelMetric(PixelMetric metric, const QStyleOption *option, co
         case PM_ButtonDefaultIndicator:
             return 0;
         case PM_DefaultFrameWidth:
-            if (!opts.popupBorder && widget && widget->inherits("QComboBoxPrivateContainer"))
-                return 0;
+            if ((!opts.popupBorder || opts.gtkComboMenus) && widget && widget->inherits("QComboBoxPrivateContainer"))
+                return opts.gtkComboMenus ? 1 : 0;
 
-            if(opts.gtkComboMenus && widget && widget->inherits("QComboBoxPrivateContainer"))
-                return 1;
-
-            if (!opts.gtkScrollViews && widget && widget->parentWidget() && ::qobject_cast<const QFrame *>(widget) && widget->parentWidget()->inherits("KateView"))
-                return 0;
+            if ((!opts.gtkScrollViews || opts.squareScrollViews) && isKateView(widget))
+                return opts.squareScrollViews ? 1 : 0;
 
             if (opts.squareScrollViews && widget &&
                 (::qobject_cast<const QAbstractScrollArea *>(widget) || isKontactPreviewPane(widget)))
@@ -2924,19 +2931,28 @@ void QtCurveStyle::drawPrimitive(PrimitiveElement element, const QStyleOption *o
             {
                 bool sv(::qobject_cast<const QAbstractScrollArea *>(widget) ||
                         (widget && widget->inherits("Q3ScrollView")) ||
-                        (opts.squareScrollViews && isKontactPreviewPane(widget))),
+                        (opts.squareScrollViews && (isKateView(widget) || isKontactPreviewPane(widget)))),
                      squareSv(sv && (opts.squareScrollViews || (widget && widget->isWindow())));
 
                 if(sv && (opts.etchEntry || squareSv))
                 {
                     if(squareSv)
                     {
-                        const QColor *use(backgroundColors(option));
+                        QColor col(backgroundColors(option)[QT_STD_BORDER]);
 
                         if(APP_ARORA==theThemedApp)
                             painter->fillRect(r, palette.brush(QPalette::Base));
-                        painter->setPen(use[QT_STD_BORDER]);
-                        drawRect(painter, r);
+                        painter->setPen(col);
+
+                        // Flat style...
+                        //drawRect(painter, r);
+                        // 3d style...
+                        painter->drawLine(r.x(), r.y(), r.x(), r.y()+r.height()-1);
+                        painter->drawLine(r.x(), r.y(), r.x()+r.width()-1, r.y());
+                        col.setAlphaF(QT_LOWER_BORDER_ALPHA);
+                        painter->setPen(col);
+                        painter->drawLine(r.x()+r.width()-1, r.y()+1, r.x()+r.width()-1, r.y()+r.height()-1);
+                        painter->drawLine(r.x()+1, r.y()+r.height()-1, r.x()+r.width()-1, r.y()+r.height()-1);
                     }
                     else
                     {
@@ -7045,7 +7061,7 @@ void QtCurveStyle::drawComplexControl(ComplexControl control, const QStyleOption
                     if(opts.thinSbarGroove && slider.isValid())
                     {
                         painter->save();
-                        painter->setClipRegion(QRegion(opt.rect).subtract(slider));
+                        painter->setClipRegion(QRegion(opt.rect).subtract(slider.adjusted(1, 1, -1, -1)));
                     }
                     drawLightBevel(painter, opts.thinSbarGroove
                                                 ? horiz
@@ -7263,7 +7279,7 @@ void QtCurveStyle::drawComplexControl(ComplexControl control, const QStyleOption
                         if(opts.unifyCombo)
                         {
                             field=r;
-                            if(QTC_DO_EFFECT)
+                            if(doEffect)
                                 field.adjust(1, 1, -1, -1);
                         }
                         //field.adjust(-1,-1, 0, 1);
@@ -7531,6 +7547,11 @@ QSize QtCurveStyle::sizeFromContents(ContentsType type, const QStyleOption *opti
 
             newSize+=QSize(margin+other, margin);
             newSize.rheight() += ((1 - newSize.rheight()) & 1);
+
+            if(!opts.etchEntry)
+                if (const QStyleOptionComboBox *combo = qstyleoption_cast<const QStyleOptionComboBox *>(option))
+                    if(combo->editable)
+                        newSize.rheight()-=2;
             break;
         }
         case CT_MenuItem:
@@ -7712,7 +7733,7 @@ QRect QtCurveStyle::subControlRect(ComplexControl control, const QStyleOptionCom
         case CC_ComboBox:
             if (const QStyleOptionComboBox *comboBox = qstyleoption_cast<const QStyleOptionComboBox *>(option))
             {
-                bool doEtch(QTC_DO_EFFECT),
+                bool doEtch(opts.etchEntry && QTC_DO_EFFECT),
                      ed(comboBox->editable);
                 int  x(r.x()),
                      y(r.y()),
@@ -8584,8 +8605,6 @@ void QtCurveStyle::drawLightBevel(QPainter *p, const QRect &r, const QStyleOptio
             {
                 case ROUND_SLIGHT:
                 case ROUND_NONE:
-                    endSize=WIDGET_SB_SLIDER==w && MO_PLASTIK==opts.coloredMouseOver && option->state&State_MouseOver ? 7 : 4;
-                    break;
                 case ROUND_FULL:
                     endSize=WIDGET_SB_SLIDER==w && MO_PLASTIK==opts.coloredMouseOver && option->state&State_MouseOver ? 7 : 5;
                     break;
@@ -8701,7 +8720,7 @@ void QtCurveStyle::drawLightBevelReal(QPainter *p, const QRect &rOrig, const QSt
         r.adjust(1, 1, -1, -1);
 
     p->setRenderHint(QPainter::Antialiasing, true);
-
+    
     if(r.width()>0 && r.height()>0)
     {
         if(WIDGET_PROGRESSBAR==w && STRIPE_NONE!=opts.stripedProgress)
@@ -8717,6 +8736,9 @@ void QtCurveStyle::drawLightBevelReal(QPainter *p, const QRect &rOrig, const QSt
             if(!sunken)
                 if(plastikMouseOver && !sunken)
                 {
+                    p->save();
+                    p->setClipPath(buildPath(br.adjusted(0, 0, 0, -1), w, round,
+                                             getRadius(&opts, br.width()-2, br.height()-2, w, RADIUS_INTERNAL)));
                     if(WIDGET_SB_SLIDER==w)
                     {
                         int len(QTC_SB_SLIDER_MO_LEN(horiz ? r.width() : r.height())+1),
@@ -8770,6 +8792,7 @@ void QtCurveStyle::drawLightBevelReal(QPainter *p, const QRect &rOrig, const QSt
                             }
                         }
                     }
+                    p->restore();
                 }
         }
 
@@ -9083,7 +9106,7 @@ void QtCurveStyle::drawBorder(QPainter *p, const QRect &r, const QStyleOption *o
     bool         enabled(state&State_Enabled),
                  entry(WIDGET_ENTRY==w || (WIDGET_SCROLLVIEW==w && opts.highlightScrollViews)),
                  hasFocus(enabled && entry && state&State_HasFocus),
-                 hasMouseOver(enabled && WIDGET_ENTRY==w && state&State_MouseOver),
+                 hasMouseOver(enabled && WIDGET_ENTRY==w && state&State_MouseOver && QTC_ENTRY_MO),
                  window(WIDGET_MDI_WINDOW==w || WIDGET_MDI_WINDOW_TITLE==w);
     const QColor *cols(enabled && hasMouseOver && opts.coloredMouseOver && entry
                         ? itsMouseOverCols
@@ -9177,7 +9200,7 @@ void QtCurveStyle::drawBorder(QPainter *p, const QRect &r, const QStyleOption *o
                      botPath;
         QColor       col(border);
 
-        col.setAlphaF(0.65);
+        col.setAlphaF(QT_LOWER_BORDER_ALPHA);
         buildSplitPath(r, w, round, getRadius(&opts, r.width(), r.height(), w, RADIUS_EXTERNAL), topPath, botPath);
         p->setPen(enabled ? border : col);
         p->drawPath(topPath);

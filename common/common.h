@@ -145,7 +145,7 @@ typedef GdkColor color;
 
 #define QTC_SIMPLE_SHADING (!shading)
 
-#define QTC_THIN_SBAR_MOD  (opts.sliderWidth<DEFAULT_SLIDER_WIDTH ? 3 : opts.sliderWidth>DEFAULT_SLIDER_WIDTH ? (opts.sliderWidth-9)/2 : 4)
+#define QTC_THIN_SBAR_MOD  ((opts.sliderWidth<DEFAULT_SLIDER_WIDTH ? 3 : opts.sliderWidth>DEFAULT_SLIDER_WIDTH ? (opts.sliderWidth-9)/2 : 4)+(EFFECT_NONE==opts.buttonEffect ? 1 : 0))
 #define QTC_SLIDER_SIZE (opts.sliderWidth<DEFAULT_SLIDER_WIDTH ? DEFAULT_SLIDER_WIDTH-2 : opts.sliderWidth)
 #define QTC_GLOW_MO        1 /*ORIGINAL_SHADE*/
 #define QTC_GLOW_DEFBTN    1
@@ -155,6 +155,7 @@ typedef GdkColor color;
 
 #define QT_STD_BORDER      5
 #define QT_PBAR_BORDER     4
+#define QT_LOWER_BORDER_ALPHA 0.65
 #define QT_DISABLED_BORDER QT_STD_BORDER /*3*/
 #define QT_BORDER(E) (/*(E) ?*/ QT_STD_BORDER/* : QT_DISABLED_BORDER*/)
 #define QT_SLIDER_MO_BORDER 3
@@ -253,10 +254,8 @@ typedef GdkColor color;
 #define COLORED_BORDER_SIZE 3
 #define PROGRESS_CHUNK_WIDTH 10
 #define QTC_DRAW_LIGHT_BORDER(SUKEN, WIDGET, APP) \
-    ((!(SUKEN) && (GB_LIGHT==getGradient(APP, &opts)->border) && WIDGET_MENU_ITEM!=(WIDGET) && !IS_TROUGH(WIDGET) && \
-                          (WIDGET_DEF_BUTTON!=(WIDGET) || IND_COLORED!=opts.defBtnIndicator)) || \
-                          (WIDGET_PROGRESSBAR==(WIDGET) && APPEARANCE_FLAT!=(APP) && \
-                           APPEARANCE_RAISED!=(APP) && APPEARANCE_INVERTED!=(APP) && APPEARANCE_BEVELLED!=(APP)))
+    (!(SUKEN) && (GB_LIGHT==getGradient(APP, &opts)->border) && WIDGET_MENU_ITEM!=(WIDGET) && !IS_TROUGH(WIDGET) && \
+                          (WIDGET_DEF_BUTTON!=(WIDGET) || IND_COLORED!=opts.defBtnIndicator))
 
 #define QTC_DRAW_3D_FULL_BORDER(SUNKEN, APP) \
     (!(SUNKEN) && GB_3D_FULL==getGradient((APP), &opts)->border)
@@ -300,6 +299,8 @@ typedef GdkColor color;
 #else
 #define QTC_DO_EFFECT          (QTC_FULLLY_ROUNDED && EFFECT_NONE!=opts.buttonEffect)
 #endif
+
+#define QTC_ENTRY_MO (opts.unifyCombo && opts.unifySpin)
 
 #if !defined __cplusplus || (defined QT_VERSION && (QT_VERSION >= 0x040000))
 #define QTC_FOCUS_ALPHA              0.08
@@ -1359,6 +1360,12 @@ static EAppearance widgetApp(EWidget w, const Options *opts)
         case WIDGET_TROUGH:
         case WIDGET_SLIDER_TROUGH:
             return opts->grooveAppearance;
+#ifndef __cplusplus     
+        case WIDGET_SPIN_UP:
+        case WIDGET_SPIN_DOWN:
+#endif
+        case WIDGET_SPIN:
+            return MODIFY_AGUA(opts->appearance);
         default:
             break;
     }
@@ -1402,7 +1409,7 @@ static const Gradient * getGradient(EAppearance app, const Options *opts)
         setupGradient(&stdGradients[APPEARANCE_SPLIT_GRADIENT-APPEARANCE_RAISED], GB_3D,4,0.0,1.06,0.499,1.004,0.5,0.986,1.0,0.92);
         setupGradient(&stdGradients[APPEARANCE_BEVELLED-APPEARANCE_RAISED], GB_3D,4,0.0,1.05,0.1,1.02,0.9,0.985,1.0,0.94);
         setupGradient(&stdGradients[APPEARANCE_LV_BEVELLED-APPEARANCE_RAISED], GB_3D,3,0.0,1.00,0.85,1.0,1.0,0.90);
-        setupGradient(&stdGradients[APPEARANCE_AGUA_MOD-APPEARANCE_RAISED], GB_LIGHT,3,0.0,1.5,0.49,0.85,1.0,1.3);
+        setupGradient(&stdGradients[APPEARANCE_AGUA_MOD-APPEARANCE_RAISED], GB_NONE,3,0.0,1.5,0.49,0.85,1.0,1.3);
         setupGradient(&stdGradients[APPEARANCE_LV_AGUA-APPEARANCE_RAISED], GB_NONE,4,0.0,0.98,0.35,0.95,0.4,0.93,1.0,1.15);
         init=true;
     }

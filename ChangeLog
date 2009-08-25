@@ -1,3 +1,16 @@
+0.67.6
+------
+1. Fix corners of round frames where frame background is different to window
+   background.
+2. Only use icon metrics for auto-deault buttons that are either within a
+   QDialogButtonBox, or are on a KFileWidget.
+3. Give toolbar items a 1 pixel spacing - so that there is at least a gap between
+   konqueror's location and search edit fields.
+4. Fix saving of menubar item 'colour on mouse over' setting.
+5. Fix bleed of Agua shine in scrollbar buttons.
+6. Offset sunken slider thumbs to improve appearance.
+7. When shading tab background - dont shade tabs of document mode tab widgets.
+
 0.67.5
 ------
  1. If drawing square scrollviews, give these a similar 3d effect to rounded ones.

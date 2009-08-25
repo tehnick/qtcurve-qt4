@@ -70,6 +70,7 @@ static bool useQt3Settings()
 #include <KDE/KComponentData>
 #include <KDE/KTitleWidget>
 #include <KDE/KTabBar>
+#include <KDE/KFileWidget>
 
 #if !defined QTC_DISABLE_KDEFILEDIALOG_CALLS && !KDE_IS_VERSION(4, 1, 0)
 static int theInstanceCount=0;
@@ -1257,8 +1258,14 @@ void QtCurveStyle::polish(QWidget *widget)
     // Enable hover effects in all itemviews
     if (QAbstractItemView *itemView = qobject_cast<QAbstractItemView*>(widget))
     {
-        itemView->viewport()->setAttribute(Qt::WA_Hover);
-        if(opts.forceAlternateLvCols && !widget->inherits("KFilePlacesView"))
+        QWidget *viewport=itemView->viewport();
+        viewport->setAttribute(Qt::WA_Hover);
+
+        if(opts.forceAlternateLvCols &&
+           viewport->autoFillBackground() && // Dolphins Folders panel
+           255==viewport->palette().color(itemView->viewport()->backgroundRole()).alpha() && // KFilePlacesView
+           (qobject_cast<QTreeView *>(widget) ||
+            (qobject_cast<QListView *>(widget) && QListView::IconMode!=((QListView *)widget)->viewMode())))
             itemView->setAlternatingRowColors(true);
     }
 
@@ -2184,6 +2191,10 @@ int QtCurveStyle::pixelMetric(PixelMetric metric, const QStyleOption *option, co
                                 : PM_DefaultChildMargin, option, widget);
         case PM_MenuBarItemSpacing:
             return 0;
+        case PM_ToolBarItemMargin:
+            return 0;
+        case PM_ToolBarItemSpacing:
+            return 1;
         case PM_FocusFrameVMargin:
         case PM_FocusFrameHMargin:
             return 2;
@@ -3014,6 +3025,15 @@ void QtCurveStyle::drawPrimitive(PrimitiveElement element, const QStyleOption *o
                                                         getRadius(&opts, r.width()-2, r.height()-2, WIDGET_ENTRY,
                                                                   RADIUS_INTERNAL)));
                             painter->setRenderHint(QPainter::Antialiasing, false);
+                        }
+
+                        if(opts.round && IS_FLAT(opts.bgndAppearance) &&
+                           widget && widget->parentWidget()/* &&
+                           widget->palette().background().color()!=widget->parentWidget()->palette().background().color()*/)
+                        {
+                            painter->setPen(widget->parentWidget()->palette().background().color());
+                            painter->drawRect(r);
+                            painter->drawRect(r.adjusted(1, 1, -1, -1));
                         }
 
                         drawBorder(painter, r, &opt,
@@ -4895,7 +4915,10 @@ void QtCurveStyle::drawControl(ControlElement element, const QStyleOption *optio
 
                 int     xm(windowsItemFrame + checkcol + windowsItemHMargin -2),
                         xpos(menuItem->rect.x() + xm);
-                QRect   textRect(xpos, y + windowsItemVMargin, w - xm - windowsRightBorder - tab + 1, h - 2 * windowsItemVMargin),
+                QRect   textRect(xpos, y + windowsItemVMargin,
+                                 opts.menuIcons ? (w - xm - windowsRightBorder - tab + 1)
+                                                : (w - ((xm*2) + tab)),
+                                 h - 2 * windowsItemVMargin),
                         vTextRect = visualRect(option->direction, menuItem->rect, textRect);
                 QString s(menuItem->text);
 
@@ -5321,14 +5344,14 @@ void QtCurveStyle::drawControl(ControlElement element, const QStyleOption *optio
         case CE_TabBarTabShape:
             if (const QStyleOptionTab *tab = qstyleoption_cast<const QStyleOptionTab *>(option))
             {
-                bool onlyBase(widget && widget->parentWidget()
+                bool onlyTab(widget && widget->parentWidget()
                                 ? qobject_cast<const QTabWidget *>(widget->parentWidget()) ? false : true
                                 : false),
                      selected(state&State_Selected),
                      horiz(QTabBar::RoundedNorth==tab->shape || QTabBar::RoundedSouth==tab->shape);
 
 #ifdef QTC_STYLE_QTABBAR
-                if(onlyBase)
+                if(onlyTab)
                 {
                     if(selected || state&State_MouseOver)
                     {
@@ -5358,15 +5381,15 @@ void QtCurveStyle::drawControl(ControlElement element, const QStyleOption *optio
 #endif
                 QRect        r2(r);
                 bool         rtlHorTabs(Qt::RightToLeft==tab->direction && horiz),
-                             onlyTab(QStyleOptionTab::OnlyOneTab==tab->position),
+                             oneTab(QStyleOptionTab::OnlyOneTab==tab->position),
                              leftCornerWidget(tab->cornerWidgets&QStyleOptionTab::LeftCornerWidget),
                              rightCornerWidget(tab->cornerWidgets&QStyleOptionTab::RightCornerWidget),
                              firstTab((tab->position == (Qt::LeftToRight==tab->direction || !horiz ?
-                                       QStyleOptionTab::Beginning : QStyleOptionTab::End)) || onlyTab),
+                                       QStyleOptionTab::Beginning : QStyleOptionTab::End)) || oneTab),
                              lastTab((tab->position == (Qt::LeftToRight==tab->direction  || !horiz ?
-                                     QStyleOptionTab::End : QStyleOptionTab::Beginning)) || onlyTab);
+                                     QStyleOptionTab::End : QStyleOptionTab::Beginning)) || oneTab);
                 int          tabBarAlignment(styleHint(SH_TabBar_Alignment, tab, widget)),
-                             tabOverlap(onlyTab ? 0 : pixelMetric(PM_TabBarTabOverlap, option, widget)),
+                             tabOverlap(oneTab ? 0 : pixelMetric(PM_TabBarTabOverlap, option, widget)),
                              moOffset(ROUNDED_NONE==opts.round || TAB_MO_TOP!=opts.tabMouseOver ? 1 : opts.round),
                              highlightOffset(opts.highlightTab && opts.round>ROUND_SLIGHT ? 2 : 1),
                              highlightBorder(opts.round>ROUND_FULL ? 4 : 3),
@@ -5382,9 +5405,9 @@ void QtCurveStyle::drawControl(ControlElement element, const QStyleOption *optio
                                     false
 #endif
                                    ),
-                             docFixLeft(!leftCornerWidget && leftAligned && firstTab && (docMode || onlyBase)),
-                             fixLeft(!onlyBase && !leftCornerWidget && leftAligned && firstTab && !docMode),
-                             fixRight(!onlyBase && !rightCornerWidget && rightAligned && lastTab && !docMode),
+                             docFixLeft(!leftCornerWidget && leftAligned && firstTab && (docMode || onlyTab)),
+                             fixLeft(!onlyTab && !leftCornerWidget && leftAligned && firstTab && !docMode),
+                             fixRight(!onlyTab && !rightCornerWidget && rightAligned && lastTab && !docMode),
                              mouseOver(state&State_Enabled && state&State_MouseOver),
                              glowMo(!selected && mouseOver && opts.coloredMouseOver && TAB_MO_GLOW==opts.tabMouseOver);
                 const QColor *use(backgroundColors(option));
@@ -5402,7 +5425,7 @@ void QtCurveStyle::drawControl(ControlElement element, const QStyleOption *optio
                     case QTabBar::RoundedNorth:
                     case QTabBar::TriangularNorth:
                     {
-                        int round=selected || onlyTab || TAB_MO_GLOW==opts.tabMouseOver || opts.roundAllTabs
+                        int round=selected || oneTab || TAB_MO_GLOW==opts.tabMouseOver || opts.roundAllTabs
                                         ? ROUNDED_TOP
                                         : firstTab
                                             ? ROUNDED_TOPLEFT
@@ -5415,7 +5438,7 @@ void QtCurveStyle::drawControl(ControlElement element, const QStyleOption *optio
                         if(!firstTab)
                             r.adjust(-tabOverlap, 0, 0, 0);
                         painter->setClipPath(buildPath(r.adjusted(0, 0, 0, 4), WIDGET_TAB_TOP, round, radius));
-                        fillTab(painter, r.adjusted(1+sizeAdjust, 1, -(1+sizeAdjust), 0), option, fill, true, WIDGET_TAB_TOP);
+                        fillTab(painter, r.adjusted(1+sizeAdjust, 1, -(1+sizeAdjust), 0), option, fill, true, WIDGET_TAB_TOP, (docMode || onlyTab));
                         painter->setClipping(false);
                         // This clipping helps with plasma's tabs and nvidia
                         if(selected)
@@ -5484,7 +5507,7 @@ void QtCurveStyle::drawControl(ControlElement element, const QStyleOption *optio
                     case QTabBar::RoundedSouth:
                     case QTabBar::TriangularSouth:
                     {
-                        int round=selected || onlyTab || TAB_MO_GLOW==opts.tabMouseOver || opts.roundAllTabs
+                        int round=selected || oneTab || TAB_MO_GLOW==opts.tabMouseOver || opts.roundAllTabs
                                         ? ROUNDED_BOTTOM
                                         : firstTab
                                             ? ROUNDED_BOTTOMLEFT
@@ -5497,7 +5520,7 @@ void QtCurveStyle::drawControl(ControlElement element, const QStyleOption *optio
                             r.adjust(-tabOverlap, 0, 0, 0);
 
                         painter->setClipPath(buildPath(r.adjusted(0, -4, 0, 0), WIDGET_TAB_BOT, round, radius));
-                        fillTab(painter, r.adjusted(1+sizeAdjust, 0, -(1+sizeAdjust), -1), option, fill, true, WIDGET_TAB_BOT);
+                        fillTab(painter, r.adjusted(1+sizeAdjust, 0, -(1+sizeAdjust), -1), option, fill, true, WIDGET_TAB_BOT, (docMode || onlyTab));
                         painter->setClipping(false);
                         drawBorder(painter, r.adjusted(sizeAdjust, -4, -sizeAdjust, 0), option, round, glowMo ? itsMouseOverCols : 0L, WIDGET_TAB_BOT, borderProfile, false);
                         if(glowMo)
@@ -5557,7 +5580,7 @@ void QtCurveStyle::drawControl(ControlElement element, const QStyleOption *optio
                     case QTabBar::RoundedWest:
                     case QTabBar::TriangularWest:
                     {
-                        int round=selected || onlyTab || TAB_MO_GLOW==opts.tabMouseOver || opts.roundAllTabs
+                        int round=selected || oneTab || TAB_MO_GLOW==opts.tabMouseOver || opts.roundAllTabs
                                         ? ROUNDED_LEFT
                                         : firstTab
                                             ? ROUNDED_TOPLEFT
@@ -5570,7 +5593,7 @@ void QtCurveStyle::drawControl(ControlElement element, const QStyleOption *optio
                         if(!firstTab)
                             r.adjust(0, -tabOverlap, 0, 0);
                         painter->setClipPath(buildPath(r.adjusted(0, 0, 4, 0), WIDGET_TAB_TOP, round, radius));
-                        fillTab(painter, r.adjusted(1, sizeAdjust, 0, -(1+sizeAdjust)), option, fill, false, WIDGET_TAB_TOP);
+                        fillTab(painter, r.adjusted(1, sizeAdjust, 0, -(1+sizeAdjust)), option, fill, false, WIDGET_TAB_TOP, (docMode || onlyTab));
                         painter->setClipping(false);
                         drawBorder(painter, r.adjusted(0, sizeAdjust, 4, -sizeAdjust), option, round, glowMo ? itsMouseOverCols : 0L, WIDGET_TAB_TOP, borderProfile, false);
                         if(glowMo)
@@ -5623,7 +5646,7 @@ void QtCurveStyle::drawControl(ControlElement element, const QStyleOption *optio
                     case QTabBar::RoundedEast:
                     case QTabBar::TriangularEast:
                     {
-                        int round=selected || onlyTab || TAB_MO_GLOW==opts.tabMouseOver || opts.roundAllTabs
+                        int round=selected || oneTab || TAB_MO_GLOW==opts.tabMouseOver || opts.roundAllTabs
                                         ? ROUNDED_RIGHT
                                         : firstTab
                                             ? ROUNDED_TOPRIGHT
@@ -5636,7 +5659,7 @@ void QtCurveStyle::drawControl(ControlElement element, const QStyleOption *optio
                         if(!firstTab)
                             r.adjust(0, -tabOverlap, 0, 0);
                         painter->setClipPath(buildPath(r.adjusted(-4, 0, 0, 0), WIDGET_TAB_BOT, round, radius));
-                        fillTab(painter, r.adjusted(0, sizeAdjust, -1, -(1+sizeAdjust)), option, fill, false, WIDGET_TAB_BOT);
+                        fillTab(painter, r.adjusted(0, sizeAdjust, -1, -(1+sizeAdjust)), option, fill, false, WIDGET_TAB_BOT, (docMode || onlyTab));
                         painter->setClipping(false);
                         drawBorder(painter, r.adjusted(-4, sizeAdjust, 0, -sizeAdjust), option, round, glowMo ? itsMouseOverCols : 0L, WIDGET_TAB_BOT, borderProfile, false);
                         if(glowMo)
@@ -7424,7 +7447,15 @@ QSize QtCurveStyle::sizeFromContents(ContentsType type, const QStyleOption *opti
 
             if (const QStyleOptionButton *btn = qstyleoption_cast<const QStyleOptionButton *>(option))
             {
-                if(btn->features&QStyleOptionButton::AutoDefaultButton)
+                if(btn->features&QStyleOptionButton::AutoDefaultButton &&
+                   widget && widget->parentWidget() &&
+                    (::qobject_cast<const QDialogButtonBox *>(widget->parentWidget()) ||
+#ifdef QTC_QT_ONLY
+                     widget->parentWidget()->inherits("KFileWidget")
+#else
+                     ::qobject_cast<const KFileWidget *>(widget->parentWidget())
+#endif
+                    ))
                 {
                     int iconHeight=btn->icon.isNull() ? btn->iconSize.height() : 16;
                     if(size.height()<iconHeight+2)
@@ -8840,7 +8871,14 @@ void QtCurveStyle::drawLightBevelReal(QPainter *p, const QRect &rOrig, const QSt
             g.setColorAt(0.0, white);
             white.setAlphaF(mo ? (opts.highlightFactor>0 ? 0.3 : 0.1) : 0.2);
             g.setColorAt(1.0, white);
+            if(WIDGET_SB_BUTTON==w)
+            {
+                p->save();
+                p->setClipRect(r);
+            }
             p->fillPath(buildPath(gr, w, round, rad), QBrush(g));
+            if(WIDGET_SB_BUTTON==w)
+                p->restore();
         }
     }
 
@@ -9592,31 +9630,37 @@ void QtCurveStyle::drawSbSliderHandle(QPainter *p, const QRect &rOrig, const QSt
                     ? ROUNDED_ALL : ROUNDED_NONE,
                    getFill(&opt, use, false, SHADE_DARKEN==opts.shadeSliders), use, true, WIDGET_SB_SLIDER);
 
-    const QColor *markers(/*opts.coloredMouseOver && opt.state&State_MouseOver
-                              ? itsMouseOverCols
-                              : */use);
-
-    if(opt.state&State_Horizontal)
-        r.setX(r.x()+1);
-    else
-        r.setY(r.y()+1);
-
     if(LINE_NONE!=opts.sliderThumbs && (slider || ((opt.state&State_Horizontal && r.width()>=min)|| r.height()>=min)))
+    {
+        const QColor *markers(/*opts.coloredMouseOver && opt.state&State_MouseOver
+                                ? itsMouseOverCols
+                                : */use);
+        bool         horiz(opt.state&State_Horizontal);
+
+        if(LINE_SUNKEN==opts.sliderThumbs)
+            if(horiz)
+                r.adjust(0, -1, 0, 0);
+            else
+                r.adjust(-1, 0, 0, 0);
+        else
+            r.adjust(horiz ? 1 : 0, horiz ? 0 : 1, 0, 0);
+    
         switch(opts.sliderThumbs)
         {
 //             case LINE_1DOT:
 //                 p->drawPixmap(r.x()+((r.width()-5)/2), r.y()+((r.height()-5)/2), *getPixmap(markers[QT_STD_BORDER], PIX_DOT, 1.0));
 //                 break;
             case LINE_FLAT:
-                drawLines(p, r, !(opt.state&State_Horizontal), 3, 5, markers, 0, 5, opts.sliderThumbs);
+                drawLines(p, r, !horiz, 3, 5, markers, 0, 5, opts.sliderThumbs);
                 break;
             case LINE_SUNKEN:
-                drawLines(p, r, !(opt.state&State_Horizontal), 4, 3, markers, 0, 3, opts.sliderThumbs);
+                drawLines(p, r, !horiz, 4, 3, markers, 0, 3, opts.sliderThumbs);
                 break;
             case LINE_DOTS:
             default:
-                drawDots(p, r, !(opt.state&State_Horizontal), slider ? 3 : 5, slider ? 5 : 2, markers, 0, 5);
+                drawDots(p, r, !horiz, slider ? 3 : 5, slider ? 5 : 2, markers, 0, 5);
         }
+    }
 }
 
 void QtCurveStyle::drawSliderHandle(QPainter *p, const QRect &r, const QStyleOptionSlider *option) const
@@ -9960,12 +10004,13 @@ void QtCurveStyle::drawHandleMarkers(QPainter *p, const QRect &r, const QStyleOp
     }
 }
 
-void QtCurveStyle::fillTab(QPainter *p, const QRect &r, const QStyleOption *option, const QColor &fill, bool horiz, EWidget tab) const
+void QtCurveStyle::fillTab(QPainter *p, const QRect &r, const QStyleOption *option, const QColor &fill, bool horiz,
+                           EWidget tab, bool tabOnly) const
 {
     bool   invertedSel=option->state&State_Selected && APPEARANCE_INVERTED==opts.appearance;
     QColor col(invertedSel ? option->palette.background().color() : fill);
 
-    if(opts.tabBgnd)
+    if(opts.tabBgnd && !tabOnly)
         col=shade(col, QTC_TO_FACTOR(opts.tabBgnd));
 
     if(invertedSel)

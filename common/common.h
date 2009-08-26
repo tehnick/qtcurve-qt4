@@ -842,7 +842,11 @@ typedef struct
                      borderInactiveTab,
                      doubleGtkComboArrow,
                      menuIcons,
-                     forceAlternateLvCols;
+#if defined QTC_CONFIG_DIALOG || (defined QT_VERSION && (QT_VERSION >= 0x040000))
+                     stdBtnSizes,
+#endif
+                     forceAlternateLvCols,
+                     squareLvSelection;
     ELvLines         lvLines;
     EGradType        bgndGrad,
                      menuBgndGrad;

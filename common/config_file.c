@@ -1151,7 +1151,9 @@ static bool readConfig(const char *file, Options *opts, Options *defOpts)
             QTC_CFG_READ_BOOL(colorSliderMouseOver)
             QTC_CFG_READ_BOOL(menuIcons)
             QTC_CFG_READ_BOOL(forceAlternateLvCols)
+            QTC_CFG_READ_BOOL(squareLvSelection)
 #if defined QTC_CONFIG_DIALOG || (defined QT_VERSION && (QT_VERSION >= 0x040000))
+            QTC_CFG_READ_BOOL(stdBtnSizes)
             QTC_CFG_READ_BOOL(titlebarBorder)
             QTC_CFG_READ_INT(titlebarButtons)
             QTC_CFG_READ_TB_ICON(titlebarIcon)
@@ -1761,7 +1763,9 @@ static void defaultSettings(Options *opts)
     opts->colorSliderMouseOver=false;
     opts->menuIcons=true;
     opts->forceAlternateLvCols=false;
+    opts->squareLvSelection=false;
 #if defined QTC_CONFIG_DIALOG || (defined QT_VERSION && (QT_VERSION >= 0x040000))
+    opts->stdBtnSizes=false;
     opts->titlebarBorder=true;
     opts->titlebarButtons=QTC_TITLEBAR_BUTTON_ROUND|QTC_TITLEBAR_BUTTON_HOVER_SYMBOL;
     opts->titlebarIcon=TITLEBAR_ICON_NEXT_TO_TITLE;
@@ -2332,7 +2336,9 @@ bool static writeConfig(KConfig *cfg, const Options &opts, const Options &def, b
         CFG_WRITE_ENTRY(colorSliderMouseOver)
         CFG_WRITE_ENTRY(menuIcons)
         CFG_WRITE_ENTRY(forceAlternateLvCols)
+        CFG_WRITE_ENTRY(squareLvSelection)
 #if defined QTC_CONFIG_DIALOG || (defined QT_VERSION && (QT_VERSION >= 0x040000))
+        CFG_WRITE_ENTRY(stdBtnSizes)
         CFG_WRITE_ENTRY(titlebarBorder)
         CFG_WRITE_ENTRY_NUM(titlebarButtons)
         CFG_WRITE_ENTRY(titlebarIcon)

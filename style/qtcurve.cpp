@@ -70,7 +70,11 @@ static bool useQt3Settings()
 #include <KDE/KComponentData>
 #include <KDE/KTitleWidget>
 #include <KDE/KTabBar>
+#if KDE_IS_VERSION(4, 3, 0)
 #include <KDE/KFileWidget>
+#else
+#include <kfilewidget.h>
+#endif
 
 #if !defined QTC_DISABLE_KDEFILEDIALOG_CALLS && !KDE_IS_VERSION(4, 1, 0)
 static int theInstanceCount=0;
@@ -3947,7 +3951,7 @@ void QtCurveStyle::drawPrimitive(PrimitiveElement element, const QStyleOption *o
                                         : QPalette::Disabled);
 
             if (v4Opt && (v4Opt->features & QStyleOptionViewItemV2::Alternate))
-                painter->fillRect(option->rect, option->palette.brush(cg, QPalette::AlternateBase));
+                painter->fillRect(r, option->palette.brush(cg, QPalette::AlternateBase));
 
             if (!hover && !(state&State_Selected) && !hasCustomBackground)
                 break;
@@ -3966,6 +3970,12 @@ void QtCurveStyle::drawPrimitive(PrimitiveElement element, const QStyleOption *o
                 QColor color(hasCustomBackground && hasSolidBackground
                                 ? v4Opt->backgroundBrush.color()
                                 : palette.color(cg, QPalette::Highlight));
+                bool   square(opts.squareLvSelection &&
+                              v4Opt->widget &&
+                              !v4Opt->widget->inherits("KFilePlacesView") &&
+                              (dynamic_cast<const QTreeView *>(v4Opt->widget) ||
+                                (dynamic_cast<const QListView *>(v4Opt->widget) &&
+                                QListView::IconMode!=((const QListView *)v4Opt->widget)->viewMode())));
 
                 if (hover && !hasCustomBackground)
                 {
@@ -3975,60 +3985,65 @@ void QtCurveStyle::drawPrimitive(PrimitiveElement element, const QStyleOption *o
                         color = color.lighter(110);
                 }
 
-                QPixmap pix(QSize(24, r.height()));
-                QString key;
-
-                key.sprintf("qtc-sel-%x-%x", pix.height(), color.rgba());
-                if(!usePixmapCache || !QPixmapCache::find(key, pix))
+                if(square)
+                    drawBevelGradient(color, painter, r, true, false, opts.selectionAppearance, WIDGET_SELECTION);
+                else
                 {
-                    pix.fill(Qt::transparent);
+                    QPixmap pix(QSize(24, r.height()));
+                    QString key;
 
-                    QPainter pixPainter(&pix);
-                    QRect    border(0, 0, pix.width(), pix.height());
-                    double   radius(getRadius(&opts, r.width(), r.height(), WIDGET_OTHER, RADIUS_SELECTION));
-
-                    pixPainter.setRenderHint(QPainter::Antialiasing, true);
-                    drawBevelGradient(color, &pixPainter, border,
-                                      buildPath(border, WIDGET_OTHER, ROUNDED_ALL, radius), true, false,
-                                      opts.selectionAppearance, WIDGET_SELECTION, !usePixmapCache);
-                    pixPainter.setBrush(Qt::NoBrush);
-                    pixPainter.setPen(color);
-                    pixPainter.drawPath(buildPath(border, WIDGET_SELECTION, ROUNDED_ALL, radius));
-                    pixPainter.end();
-
-                    if(usePixmapCache)
-                        QPixmapCache::insert(key, pix);
-                }
-
-                bool roundedLeft  = false,
-                     roundedRight = false;
-
-                if (v4Opt)
-                {
-                    roundedLeft  = (QStyleOptionViewItemV4::Beginning==v4Opt->viewItemPosition);
-                    roundedRight = (QStyleOptionViewItemV4::End==v4Opt->viewItemPosition);
-                    if (QStyleOptionViewItemV4::OnlyOne==v4Opt->viewItemPosition ||
-                        QStyleOptionViewItemV4::Invalid==v4Opt->viewItemPosition ||
-                        (view && view->selectionBehavior() != QAbstractItemView::SelectRows))
+                    key.sprintf("qtc-sel-%x-%x", pix.height(), color.rgba());
+                    if(!usePixmapCache || !QPixmapCache::find(key, pix))
                     {
-                        roundedLeft=roundedRight=true;
+                        pix.fill(Qt::transparent);
+
+                        QPainter pixPainter(&pix);
+                        QRect    border(0, 0, pix.width(), pix.height());
+                        double   radius(getRadius(&opts, r.width(), r.height(), WIDGET_OTHER, RADIUS_SELECTION));
+
+                        pixPainter.setRenderHint(QPainter::Antialiasing, true);
+                        drawBevelGradient(color, &pixPainter, border,
+                                          buildPath(border, WIDGET_OTHER, ROUNDED_ALL, radius), true, false,
+                                          opts.selectionAppearance, WIDGET_SELECTION, !usePixmapCache);
+                        pixPainter.setBrush(Qt::NoBrush);
+                        pixPainter.setPen(color);
+                        pixPainter.drawPath(buildPath(border, WIDGET_SELECTION, ROUNDED_ALL, radius));
+                        pixPainter.end();
+
+                        if(usePixmapCache)
+                            QPixmapCache::insert(key, pix);
                     }
-                }
 
-                int size(roundedLeft && roundedRight ? qMin(8, r.width()/2) : 8);
+                    bool roundedLeft  = false,
+                         roundedRight = false;
 
-                if (!reverse ? roundedLeft : roundedRight)
-                {
-                    painter->drawPixmap(r.topLeft(), pix.copy(0, 0, size, r.height()));
-                    r.adjust(size, 0, 0, 0);
+                    if (v4Opt)
+                    {
+                        roundedLeft  = (QStyleOptionViewItemV4::Beginning==v4Opt->viewItemPosition);
+                        roundedRight = (QStyleOptionViewItemV4::End==v4Opt->viewItemPosition);
+                        if (QStyleOptionViewItemV4::OnlyOne==v4Opt->viewItemPosition ||
+                            QStyleOptionViewItemV4::Invalid==v4Opt->viewItemPosition ||
+                            (view && view->selectionBehavior() != QAbstractItemView::SelectRows))
+                        {
+                            roundedLeft=roundedRight=true;
+                        }
+                    }
+
+                    int size(roundedLeft && roundedRight ? qMin(8, r.width()/2) : 8);
+
+                    if (!reverse ? roundedLeft : roundedRight)
+                    {
+                        painter->drawPixmap(r.topLeft(), pix.copy(0, 0, size, r.height()));
+                        r.adjust(size, 0, 0, 0);
+                    }
+                    if (!reverse ? roundedRight : roundedLeft)
+                    {
+                        painter->drawPixmap(r.right() - size + 1, r.top(), pix.copy(24-size, 0, size, r.height()));
+                        r.adjust(0, 0, -size, 0);
+                    }
+                    if (r.isValid())
+                        painter->drawTiledPixmap(r, pix.copy(7, 0, 8, r.height()));
                 }
-                if (!reverse ? roundedRight : roundedLeft)
-                {
-                    painter->drawPixmap(r.right() - size + 1, r.top(), pix.copy(24-size, 0, size, r.height()));
-                    r.adjust(0, 0, -size, 0);
-                }
-                if (r.isValid())
-                    painter->drawTiledPixmap(r, pix.copy(7, 0, 8, r.height()));
             }
             break;
         }
@@ -5052,7 +5067,7 @@ void QtCurveStyle::drawControl(ControlElement element, const QStyleOption *optio
                                  iconSpacing (4);//### 4 is currently hardcoded in QPushButton::sizeHint()
 
                     if (!button->text.isEmpty())
-                        labelWidth += (button->fontMetrics.boundingRect(option->rect, tf, button->text).width() + iconSpacing);
+                        labelWidth += (button->fontMetrics.boundingRect(r, tf, button->text).width() + iconSpacing);
 
                     QRect iconRect(r.x() + (r.width() - labelWidth) / 2,
                                    r.y() + (r.height() - labelHeight) / 2,
@@ -7447,7 +7462,8 @@ QSize QtCurveStyle::sizeFromContents(ContentsType type, const QStyleOption *opti
 
             if (const QStyleOptionButton *btn = qstyleoption_cast<const QStyleOptionButton *>(option))
             {
-                if(btn->features&QStyleOptionButton::AutoDefaultButton &&
+                if(!opts.stdBtnSizes &&
+                   btn->features&QStyleOptionButton::AutoDefaultButton &&
                    widget && widget->parentWidget() &&
                     (::qobject_cast<const QDialogButtonBox *>(widget->parentWidget()) ||
 #ifdef QTC_QT_ONLY
@@ -7569,9 +7585,10 @@ QSize QtCurveStyle::sizeFromContents(ContentsType type, const QStyleOption *opti
 //             int iconHeight=/*btn->icon.isNull() ? btn->iconSize.height() : */16;
 //             if(size.height()<iconHeight+2)
 //                 newSize.setHeight(iconHeight+2);
-                    
+
             int margin      = (pixelMetric(PM_ButtonMargin, option, widget)+
-                              (pixelMetric(PM_DefaultFrameWidth, option, widget) * 2))-QTC_MAX_ROUND_BTN_PAD,
+                               (pixelMetric(PM_DefaultFrameWidth, option, widget) * (opts.stdBtnSizes ? 1 : 2)))
+                               -QTC_MAX_ROUND_BTN_PAD,
                 textMargins = 2*(pixelMetric(PM_FocusFrameHMargin) + 1),
                 // QItemDelegate::sizeHint expands the textMargins two times, thus the 2*textMargins...
                 other = qMax(QTC_DO_EFFECT ? 20 : 18, 2*textMargins + pixelMetric(QStyle::PM_ScrollBarExtent, option, widget));

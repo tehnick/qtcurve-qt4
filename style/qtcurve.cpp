@@ -2149,17 +2149,16 @@ int QtCurveStyle::pixelMetric(PixelMetric metric, const QStyleOption *option, co
     switch(metric)
     {
 #ifndef QTC_QT_ONLY
-        case PM_ButtonIconSize:
         case PM_SmallIconSize:
-        {
-            KConfigGroup g(KGlobal::config(), "SmallIcons");
-            return g.readEntry("Size", 16);
-        }
+        case PM_ButtonIconSize:
+            return KIconLoader::global()->currentSize(KIconLoader::Small);
         case PM_ToolBarIconSize:
-        {
-            KConfigGroup g(KGlobal::config(), "MainToolbarIcons");
-            return g.readEntry("Size", 22);
-        }
+            return KIconLoader::global()->currentSize(KIconLoader::Toolbar);
+        case PM_LargeIconSize:
+            return KIconLoader::global()->currentSize(KIconLoader::Dialog);
+        case PM_MessageBoxIconSize:
+            // TODO return KIconLoader::global()->currentSize(KIconLoader::MessageBox);
+            return KIconLoader::SizeHuge;
 #endif
 #if QT_VERSION >= 0x040500
         case PM_SubMenuOverlap:
@@ -2213,7 +2212,8 @@ int QtCurveStyle::pixelMetric(PixelMetric metric, const QStyleOption *option, co
         case PM_MenuVMargin:
             return 0;
         case PM_MenuButtonIndicator:
-            return QTC_DO_EFFECT ? 16 : 15;
+            return (QTC_DO_EFFECT ? 10 : 9)+
+                    (!widget || qobject_cast<const QToolButton *>(widget) ? 6 : 0);
         case PM_ButtonMargin:
             return (QTC_DO_EFFECT
                     ? opts.thinnerBtns ? 4 : 6
@@ -2947,7 +2947,8 @@ void QtCurveStyle::drawPrimitive(PrimitiveElement element, const QStyleOption *o
                 bool sv(::qobject_cast<const QAbstractScrollArea *>(widget) ||
                         (widget && widget->inherits("Q3ScrollView")) ||
                         (opts.squareScrollViews && (isKateView(widget) || isKontactPreviewPane(widget)))),
-                     squareSv(sv && (opts.squareScrollViews || (widget && widget->isWindow())));
+                     squareSv(sv && (opts.squareScrollViews || (widget && widget->isWindow()))),
+                     inQAbstractItemView(widget && widget->parentWidget() && isInQAbstractItemView(widget->parentWidget()));
 
                 if(sv && (opts.etchEntry || squareSv))
                 {
@@ -2977,7 +2978,7 @@ void QtCurveStyle::drawPrimitive(PrimitiveElement element, const QStyleOption *o
                         // but is when painted. So check here if it should not be etched.
                         // Also, see not in getLowerEtchCol()
                         if(QTC_DO_EFFECT && widget && widget->parentWidget() && !theNoEtchWidgets.contains(widget) &&
-                           isInQAbstractItemView(widget->parentWidget()))
+                           inQAbstractItemView)
                             theNoEtchWidgets.insert(widget);
 
                         // If we are set to have sunken scrollviews, then the frame width is set to 3.
@@ -3032,7 +3033,7 @@ void QtCurveStyle::drawPrimitive(PrimitiveElement element, const QStyleOption *o
                         }
 
                         if(opts.round && IS_FLAT(opts.bgndAppearance) &&
-                           widget && widget->parentWidget()/* &&
+                           widget && widget->parentWidget() && !inQAbstractItemView/* &&
                            widget->palette().background().color()!=widget->parentWidget()->palette().background().color()*/)
                         {
                             painter->setPen(widget->parentWidget()->palette().background().color());
@@ -5032,10 +5033,10 @@ void QtCurveStyle::drawControl(ControlElement element, const QStyleOption *optio
                 {
                     int   mbi(pixelMetric(PM_MenuButtonIndicator, btn, widget));
                     QRect ar(Qt::LeftToRight==btn->direction
-                                ? btn->rect.right() - mbi
+                                ? btn->rect.right() - (mbi+6)
                                 : btn->rect.x() + 6,
                              ((btn->rect.height() - mbi)/2),
-                             mbi - 6, mbi);
+                             mbi, mbi);
 
                     if(option->state &(State_On | State_Sunken))
                         ar.adjust(1, 1, 1, 1);
@@ -7458,20 +7459,23 @@ QSize QtCurveStyle::sizeFromContents(ContentsType type, const QStyleOption *opti
         case CT_PushButton:
         {
             newSize=size;
-            newSize.setWidth(newSize.width()+8);
+            newSize.setWidth(newSize.width()+(ROUND_MAX==opts.round ? 12 : 8));
 
             if (const QStyleOptionButton *btn = qstyleoption_cast<const QStyleOptionButton *>(option))
             {
-                if(!opts.stdBtnSizes &&
-                   btn->features&QStyleOptionButton::AutoDefaultButton &&
-                   widget && widget->parentWidget() &&
-                    (::qobject_cast<const QDialogButtonBox *>(widget->parentWidget()) ||
+                bool dialogButton=
+                            // Cant rely on AutoDefaultButton - as VirtualBox does not set this!!!
+                            // btn->features&QStyleOptionButton::AutoDefaultButton &&
+                            widget && widget->parentWidget() &&
+                            (::qobject_cast<const QDialogButtonBox *>(widget->parentWidget()) ||
 #ifdef QTC_QT_ONLY
-                     widget->parentWidget()->inherits("KFileWidget")
+                                widget->parentWidget()->inherits("KFileWidget")
 #else
-                     ::qobject_cast<const KFileWidget *>(widget->parentWidget())
+                                ::qobject_cast<const KFileWidget *>(widget->parentWidget())
 #endif
-                    ))
+                            );
+
+                if(!opts.stdBtnSizes && dialogButton)
                 {
                     int iconHeight=btn->icon.isNull() ? btn->iconSize.height() : 16;
                     if(size.height()<iconHeight+2)
@@ -7483,10 +7487,20 @@ QSize QtCurveStyle::sizeFromContents(ContentsType type, const QStyleOption *opti
 
                 newSize+=QSize(margin, margin);
 
-                if (!btn->text.isEmpty() && "..."!=btn->text && newSize.width() < 80)
-                    newSize.setWidth(80);
                 if (btn->features&QStyleOptionButton::HasMenu)
                     newSize+=QSize(4, 0);
+
+//                 if (!btn->text.isEmpty() && "..."!=btn->text)
+//                 {
+//                     if(size.width()+22>newSize.width())
+//                         newSize.setWidth(size.width()+22);
+//                     if(newSize.width() < 80 && dialogButton)
+//                         newSize.setWidth(80);
+//                 }
+
+                if (!btn->text.isEmpty() && "..."!=btn->text && newSize.width() < 80)
+                    newSize.setWidth(80);
+
                 newSize.rheight() += ((1 - newSize.rheight()) & 1);
 //                 if (!btn->icon.isNull() && btn->iconSize.height() > 16)
 //                     newSize -= QSize(0, 2);
@@ -7586,9 +7600,8 @@ QSize QtCurveStyle::sizeFromContents(ContentsType type, const QStyleOption *opti
 //             if(size.height()<iconHeight+2)
 //                 newSize.setHeight(iconHeight+2);
 
-            int margin      = (pixelMetric(PM_ButtonMargin, option, widget)+
-                               (pixelMetric(PM_DefaultFrameWidth, option, widget) * (opts.stdBtnSizes ? 1 : 2)))
-                               -QTC_MAX_ROUND_BTN_PAD,
+            int margin = (pixelMetric(PM_ButtonMargin, option, widget)+
+                             (pixelMetric(PM_DefaultFrameWidth, option, widget) * 2))-QTC_MAX_ROUND_BTN_PAD,
                 textMargins = 2*(pixelMetric(PM_FocusFrameHMargin) + 1),
                 // QItemDelegate::sizeHint expands the textMargins two times, thus the 2*textMargins...
                 other = qMax(QTC_DO_EFFECT ? 20 : 18, 2*textMargins + pixelMetric(QStyle::PM_ScrollBarExtent, option, widget));
@@ -7596,7 +7609,7 @@ QSize QtCurveStyle::sizeFromContents(ContentsType type, const QStyleOption *opti
             newSize+=QSize(margin+other, margin);
             newSize.rheight() += ((1 - newSize.rheight()) & 1);
 
-            if(!opts.etchEntry)
+            if(!opts.etchEntry && QTC_DO_EFFECT)
                 if (const QStyleOptionComboBox *combo = qstyleoption_cast<const QStyleOptionComboBox *>(option))
                     if(combo->editable)
                         newSize.rheight()-=2;
@@ -7806,7 +7819,7 @@ QRect QtCurveStyle::subControlRect(ComplexControl control, const QStyleOptionCom
                             r.adjust(2, 0, 0, 0);
                         break;
                     case SC_ComboBoxEditField:
-                        r.setRect(x + margin +1, y + margin + 1, w - 2 * margin - 19, h - 2 * margin -2);
+                        r.setRect(x + (ed && opts.unifyCombo ? 1 : margin) +1, y + margin + 1, w - 2 * margin - (opts.unifyCombo ? 15 : 19), h - 2 * margin -2);
                         if(doEtch)
                             r.adjust(1, 1, -1, -1);
                         if(ed)
@@ -7848,7 +7861,7 @@ QRect QtCurveStyle::subControlRect(ComplexControl control, const QStyleOptionCom
                     case SC_SpinBoxEditField:
                     {
                         int pad=opts.round>ROUND_FULL ? 2 : 0;
-                        return QRect(fw+(reverse ? bs.width() : 0)+pad, fw, (x-fw*2)-pad, r.height()-2*fw);
+                        return QRect(fw+(reverse ? bs.width() : 0), fw, (x-fw*2)-pad, r.height()-2*fw);
                     }
                     case SC_SpinBoxFrame:
                         return reverse
@@ -9045,9 +9058,27 @@ void QtCurveStyle::drawWindowBackground(QWidget *widget) const
 
     p.setClipRegion(widget->rect(), Qt::IntersectClip);
 
-    drawBevelGradientReal(window->palette().window().color(), &p,
-                          QRect(widget->rect().x(), y, widget->rect().width(), window->rect().height()),
-                          GT_HORIZ==opts.bgndGrad, false, opts.bgndAppearance, WIDGET_OTHER);
+    static const int constPixmapWidth  = 16;
+    static const int constPixmapHeight = 256;
+    QString key;
+    QColor  col(window->palette().window().color());
+    QSize   scaledSize(GT_HORIZ==opts.bgndGrad ? constPixmapWidth : window->rect().width(),
+                                 GT_HORIZ==opts.bgndGrad ? window->rect().height() : constPixmapWidth);
+    QPixmap pix(QSize(GT_HORIZ==opts.bgndGrad ? constPixmapWidth : constPixmapHeight,
+                      GT_HORIZ==opts.bgndGrad ? constPixmapHeight : constPixmapWidth));
+
+    key.sprintf("qtc-bgnd-%x", col.rgba());
+    if(!usePixmapCache || !QPixmapCache::find(key, pix))
+    {
+        QPainter pixPainter(&pix);
+
+        drawBevelGradientReal(col, &pixPainter, QRect(0, 0, pix.width(), pix.height()),
+                              GT_HORIZ==opts.bgndGrad, false, opts.bgndAppearance, WIDGET_OTHER);
+                            
+    }
+
+    p.drawTiledPixmap(QRect(widget->rect().x(), y, widget->rect().width(), window->rect().height()),
+                      scaledSize==pix.size() ? pix : pix.scaled(scaledSize, Qt::IgnoreAspectRatio));
 }
 
 QPainterPath QtCurveStyle::buildPath(const QRectF &r, EWidget w, int round, double radius) const

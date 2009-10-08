@@ -173,8 +173,10 @@ MacMenu::activate(QMenuBar *menu)
     // register the menu via dbus
     QStringList entries;
     foreach (QAction* action, menu->actions())
-        entries << action->text();
-    
+        if (action->isSeparator())
+            entries << "<XBAR_SEPARATOR/>";
+        else
+            entries << action->text();
     xbar->call(QDBus::NoBlock, "registerMenu", service, (qlonglong)menu, title, entries);
     // TODO cause of now async call, the following should - maybe - attached to the above?!!
     if (menu->isActiveWindow())
@@ -321,6 +323,8 @@ MacMenu::popDown(qlonglong key)
             continue;
         disconnect (pop, SIGNAL(aboutToHide()), this, SLOT(menuClosed()));
         pop->hide();
+//         menu->activateWindow();
+        break;
     }
 }
 
@@ -347,14 +351,34 @@ MacMenu::hover(qlonglong key, int idx,  int x, int y)
     }
 }
 
+static QMenuBar *bar4menu(QMenu *menu)
+{
+    if (!menu->menuAction())
+        return 0;
+    if (menu->menuAction()->associatedWidgets().isEmpty())
+        return 0;
+    foreach (QWidget *w, menu->menuAction()->associatedWidgets())
+        if (qobject_cast<QMenuBar*>(w))
+            return static_cast<QMenuBar *>(w);
+    return 0;
+}
+
 void
 MacMenu::menuClosed()
 {
-    if (!sender()) return;
+    QObject * _sender = sender();
+    
+    if (!_sender)
+        return;
+
     disconnect (sender(), SIGNAL(aboutToHide()), this, SLOT(menuClosed()));
     if (!inHover)
     {
         xbar->call(QDBus::NoBlock, "setOpenPopup", -500);
+
+        if (QMenu *menu = qobject_cast<QMenu*>(_sender))
+        if (QMenuBar *bar = bar4menu(menu))
+            bar->activateWindow(); // CDP: QtCurve fix 'setActiveWindow' is in Qt3Support! ORIG: bar->setActiveWindow();
     }
 }
 
@@ -362,17 +386,18 @@ void
 MacMenu::changeAction(QMenuBar *menu, QActionEvent *ev)
 {
     int idx;
+    const QString title = ev->action()->isSeparator() ? "<XBAR_SEPARATOR/>" : ev->action()->text();
     if (ev->type() == QEvent::ActionAdded)
     {
         idx = ev->before() ? menu->actions().indexOf(ev->before())-1 : -1;
-        xbar->call(QDBus::NoBlock, "addEntry", (qlonglong)menu, idx, ev->action()->text());
+        xbar->call(QDBus::NoBlock, "addEntry", (qlonglong)menu, idx, title);
         actions[menu].insert(idx, ev->action());
         return;
     }
     if (ev->type() == QEvent::ActionChanged)
     {
         idx = menu->actions().indexOf(ev->action());
-        xbar->call(QDBus::NoBlock, "changeEntry", (qlonglong)menu, idx, ev->action()->text());
+        xbar->call(QDBus::NoBlock, "changeEntry", (qlonglong)menu, idx, title);
     }
     else
     { // remove

@@ -580,6 +580,7 @@ QtCurveConfig::QtCurveConfig(QWidget *parent)
     connect(fillSlider, SIGNAL(toggled(bool)), SLOT(updateChanged()));
     connect(sliderStyle, SIGNAL(currentIndexChanged(int)), SLOT(updateChanged()));
     connect(roundMbTopOnly, SIGNAL(toggled(bool)), SLOT(updateChanged()));
+    connect(menubarHiding, SIGNAL(toggled(bool)), SLOT(updateChanged()));
     connect(fillProgress, SIGNAL(toggled(bool)), SLOT(updateChanged()));
     connect(darkerBorders, SIGNAL(toggled(bool)), SLOT(updateChanged()));
     connect(comboSplitter, SIGNAL(toggled(bool)), SLOT(updateChanged()));
@@ -598,6 +599,7 @@ QtCurveConfig::QtCurveConfig(QWidget *parent)
     connect(roundAllTabs, SIGNAL(toggled(bool)), SLOT(updateChanged()));
     connect(borderTab, SIGNAL(toggled(bool)), SLOT(updateChanged()));
     connect(borderInactiveTab, SIGNAL(toggled(bool)), SLOT(updateChanged()));
+    connect(invertBotTab, SIGNAL(toggled(bool)), SLOT(updateChanged()));
     connect(doubleGtkComboArrow, SIGNAL(toggled(bool)), SLOT(updateChanged()));
     connect(tabMouseOver, SIGNAL(currentIndexChanged(int)), SLOT(tabMoChanged()));
     connect(stdSidebarButtons, SIGNAL(toggled(bool)), SLOT(updateChanged()));
@@ -1536,6 +1538,7 @@ void QtCurveConfig::setOptions(Options &opts)
     opts.fillSlider=fillSlider->isChecked();
     opts.sliderStyle=(ESliderStyle)sliderStyle->currentIndex();
     opts.roundMbTopOnly=roundMbTopOnly->isChecked();
+    opts.menubarHiding=menubarHiding->isChecked();
     opts.fillProgress=fillProgress->isChecked();
     opts.darkerBorders=darkerBorders->isChecked();
     opts.comboSplitter=comboSplitter->isChecked();
@@ -1554,6 +1557,7 @@ void QtCurveConfig::setOptions(Options &opts)
     opts.roundAllTabs=roundAllTabs->isChecked();
     opts.borderTab=borderTab->isChecked();
     opts.borderInactiveTab=borderInactiveTab->isChecked();
+    opts.invertBotTab=invertBotTab->isChecked();
     opts.doubleGtkComboArrow=doubleGtkComboArrow->isChecked();
     opts.tabMouseOver=(ETabMo)tabMouseOver->currentIndex();
     opts.stdSidebarButtons=stdSidebarButtons->isChecked();
@@ -1698,6 +1702,7 @@ void QtCurveConfig::setWidgetOptions(const Options &opts)
     fillSlider->setChecked(opts.fillSlider);
     sliderStyle->setCurrentIndex(opts.sliderStyle);
     roundMbTopOnly->setChecked(opts.roundMbTopOnly);
+    menubarHiding->setChecked(opts.menubarHiding);
     fillProgress->setChecked(opts.fillProgress);
     darkerBorders->setChecked(opts.darkerBorders);
     comboSplitter->setChecked(opts.comboSplitter);
@@ -1718,9 +1723,11 @@ void QtCurveConfig::setWidgetOptions(const Options &opts)
     roundAllTabs_false->setChecked(!opts.roundAllTabs);
     borderTab->setChecked(opts.borderTab);
     borderInactiveTab->setChecked(opts.borderInactiveTab);
+    invertBotTab->setChecked(opts.invertBotTab);
     doubleGtkComboArrow->setChecked(opts.doubleGtkComboArrow);
     borderTab_false->setChecked(!opts.borderTab);
     borderInactiveTab_false->setChecked(!opts.borderInactiveTab);
+    invertBotTab_false->setChecked(!opts.invertBotTab);
     tabMouseOver->setCurrentIndex(opts.tabMouseOver);
     stdSidebarButtons->setChecked(opts.stdSidebarButtons);
     borderMenuitems->setChecked(opts.borderMenuitems);
@@ -1856,6 +1863,7 @@ bool QtCurveConfig::settingsChanged()
          fillSlider->isChecked()!=currentStyle.fillSlider ||
          sliderStyle->currentIndex()!=currentStyle.sliderStyle ||
          roundMbTopOnly->isChecked()!=currentStyle.roundMbTopOnly ||
+         menubarHiding->isChecked()!=currentStyle.menubarHiding ||
          fillProgress->isChecked()!=currentStyle.fillProgress ||
          darkerBorders->isChecked()!=currentStyle.darkerBorders ||
          comboSplitter->isChecked()!=currentStyle.comboSplitter ||
@@ -1872,6 +1880,7 @@ bool QtCurveConfig::settingsChanged()
          roundAllTabs->isChecked()!=currentStyle.roundAllTabs ||
          borderTab->isChecked()!=currentStyle.borderTab ||
          borderInactiveTab->isChecked()!=currentStyle.borderInactiveTab ||
+         invertBotTab->isChecked()!=currentStyle.invertBotTab ||
          doubleGtkComboArrow->isChecked()!=currentStyle.doubleGtkComboArrow ||
          tabMouseOver->currentIndex()!=currentStyle.tabMouseOver ||
          stdSidebarButtons->isChecked()!=currentStyle.stdSidebarButtons ||

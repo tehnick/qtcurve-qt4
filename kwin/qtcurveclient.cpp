@@ -91,12 +91,12 @@ int QtCurveClient::layoutMetric(LayoutMetric lm, bool respectWindowState,
         case LM_BorderBottom:
             return respectWindowState && maximized ? 0 : Handler()->borderSize();
         case LM_TitleEdgeTop:
-            return respectWindowState && maximized ? 0 : (Handler()->smallBorder() ? 1 : 3);
+            return respectWindowState && maximized ? 0 : Handler()->borderEdgeSize();
         case LM_TitleEdgeBottom:
-            return /*respectWindowState && maximized ? 1 : */ (Handler()->smallBorder() ? 1 : 3);
+            return /*respectWindowState && maximized ? 1 : */ Handler()->borderEdgeSize();
         case LM_TitleEdgeLeft:
         case LM_TitleEdgeRight:
-            return respectWindowState && maximized ? 0 : (Handler()->smallBorder() ? 1 : 3);
+            return respectWindowState && maximized ? 0 : Handler()->borderEdgeSize();
         case LM_TitleBorderLeft:
         case LM_TitleBorderRight:
             return 5;
@@ -167,7 +167,8 @@ void QtCurveClient::activeChange()
 
 void QtCurveClient::drawBtnBgnd(QPainter *p, const QRect &r, bool active)
 {
-    int    state(active ? 1 : 0);
+    bool   mximised(maximizeMode()==MaximizeFull && !options()->moveResizeMaximizedWindows());
+    int    state((active ? 1 : 0)+((mximised ? 1 : 0)<<1));
     QColor col(KDecoration::options()->color(KDecoration::ColorTitleBar, active));
     bool   diffSize(itsButtonBackground[state].pix.width()!=r.width() ||
                     itsButtonBackground[state].pix.height()!=r.height());
@@ -181,8 +182,9 @@ void QtCurveClient::drawBtnBgnd(QPainter *p, const QRect &r, bool active)
         QRect                br(r);
         QStyleOptionTitleBar opt;
         QPainter             pixPainter(&(itsButtonBackground[state].pix));
+        int                  border(Handler()->borderEdgeSize());
 
-        br.adjust(-3, -3, 3, 3);
+        br.adjust(-6, -border, 6, 0);
         opt.rect=br;
 
         opt.state=QStyle::State_Horizontal|QStyle::State_Enabled|QStyle::State_Raised|
@@ -221,12 +223,13 @@ void QtCurveClient::paintEvent(QPaintEvent *e)
                          titleBarHeight(titleHeight+titleEdgeTop+titleEdgeBottom+maximiseOffset),
                          borderSize(Handler()->borderSize()),
                          round=Handler()->wStyle()->pixelMetric((QStyle::PixelMetric)QtC_Round, NULL, NULL);
-    int                  rectX, rectY, rectX2, rectY2;
+    int                  rectX, rectY, rectX2, rectY2,
+                         border(Handler()->borderEdgeSize());
 
     r.getCoords(&rectX, &rectY, &rectX2, &rectY2);
 
-    QColor    col(KDecoration::options()->color(KDecoration::ColorTitleBar, active)),
-              windowCol(widget()->palette().color(QPalette::Window));
+    QColor col(KDecoration::options()->color(KDecoration::ColorTitleBar, active)),
+           windowCol(widget()->palette().color(QPalette::Window));
 
 #if KDE_IS_VERSION(4,1,80) && !KDE_IS_VERSION(4,2,80)
     if(!(Handler()->coloredShadow() && shadowsActive() && active))
@@ -241,7 +244,7 @@ void QtCurveClient::paintEvent(QPaintEvent *e)
     opt.init(widget());
 
     if(mximised)
-        r.adjust(-3, -3, 3, 0);
+        r.adjust(-3, -border, 3, 0);
     opt.palette.setColor(QPalette::Button, col);
     opt.palette.setColor(QPalette::Window, windowCol);
     opt.rect=QRect(r.x(), r.y()+6, r.width(), r.height()-6);
@@ -413,9 +416,17 @@ void QtCurveClient::paintEvent(QPaintEvent *e)
             }
 
         painter.setClipRect(itsCaptionRect.adjusted(-2, 0, 2, 0));
-        painter.setPen(shadowColor(KDecoration::options()->color(KDecoration::ColorFont, active)));
+        QColor shadow(Qt::black);
+        shadow.setAlphaF(WINDOW_TEXT_SHADOW_ALPHA);
+        painter.setPen(shadow);
         painter.drawText(textRect.adjusted(1, 1, 1, 1), alignment, str);
-        painter.setPen(KDecoration::options()->color(KDecoration::ColorFont, active));
+
+        QColor color(KDecoration::options()->color(KDecoration::ColorFont, active));
+
+        if (!active && QTC_DARK_WINDOW_TEXT(color))
+             color.setAlpha((color.alpha() * 180) >> 8);
+
+        painter.setPen(color);
         painter.drawText(textRect, alignment, str);
         painter.setClipping(false);
     }

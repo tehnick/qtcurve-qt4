@@ -87,9 +87,10 @@ class QtCurveHandler : public QObject,
     bool            menuClose() const       { return itsMenuClose; }
     bool            showResizeGrip() const  { return itsShowResizeGrip; }
     bool            roundBottom() const     { return itsRoundBottom && itsBorderSize>1; }
-    bool            noBorder() const        { return itsNoBorder; }
+    bool            outerBorder() const     { return itsOuterBorder; }
     QStyle *        wStyle() const          { return itsStyle ? itsStyle : QApplication::style(); }
     int             borderEdgeSize() const;
+    int             titleBarPad() const     { return itsTitleBarPad; }
 
     QList<QtCurveHandler::BorderSize>  borderSizes() const;
 
@@ -110,11 +111,12 @@ class QtCurveHandler : public QObject,
             itsMenuClose,
             itsShowResizeGrip,
             itsRoundBottom,
-            itsNoBorder;
+            itsOuterBorder;
     int     itsBorderSize,
             itsTitleHeight,
             itsTitleHeightTool,
-            itsTimeStamp;
+            itsTimeStamp,
+            itsTitleBarPad;
     QFont   itsTitleFont,
             itsTitleFontTool;
     QStyle  *itsStyle;

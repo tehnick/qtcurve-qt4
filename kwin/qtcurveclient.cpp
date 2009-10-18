@@ -184,7 +184,7 @@ void QtCurveClient::drawBtnBgnd(QPainter *p, const QRect &r, bool active)
         QPainter             pixPainter(&(itsButtonBackground[state].pix));
         int                  border(Handler()->borderEdgeSize());
 
-        br.adjust(-6, -border, 6, 0);
+        br.adjust(-6, -border, 6, border);
         opt.rect=br;
 
         opt.state=QStyle::State_Horizontal|QStyle::State_Enabled|QStyle::State_Raised|
@@ -213,7 +213,7 @@ void QtCurveClient::paintEvent(QPaintEvent *e)
                                         NULL, NULL)),
                          mximised(maximizeMode()==MaximizeFull && !options()->moveResizeMaximizedWindows()),
                          roundBottom(Handler()->roundBottom()),
-                         noBorder(Handler()->noBorder());
+                         outerBorder(Handler()->outerBorder());
     const int            maximiseOffset(mximised ? 3 : 0),
                          titleHeight(layoutMetric(LM_TitleHeight)),
                          titleEdgeTop(layoutMetric(LM_TitleEdgeTop)),
@@ -262,9 +262,8 @@ void QtCurveClient::paintEvent(QPaintEvent *e)
 
     if(!roundBottom)
         opt.state|=QtCStateKWinNotFull;
-    if(noBorder)
-        opt.state|=QtCStateKWinNoBorder;
-    else
+
+    if(outerBorder)
     {
 #ifdef QTC_DRAW_INTO_PIXMAPS
         if(!compositing)
@@ -286,6 +285,8 @@ void QtCurveClient::paintEvent(QPaintEvent *e)
 #endif
             Handler()->wStyle()->drawPrimitive(QStyle::PE_FrameWindow, &opt, &painter, widget());
     }
+    else
+        opt.state|=QtCStateKWinNoBorder;
 
     if(round>=ROUND_FULL && !colorTitleOnly && col!=windowCol && roundBottom)
     {
@@ -409,7 +410,7 @@ void QtCurveClient::paintEvent(QPaintEvent *e)
                 }
                 else
                 {
-                    iconX=textRect.x()+textRect.width()-textWidth;
+                    iconX=textRect.x()+textRect.width()-(textWidth+constPad);
                     if(iconX<textRect.x())
                         iconX=textRect.x();
                 }
@@ -570,6 +571,12 @@ void QtCurveClient::reset(unsigned long changed)
     // Set note in init() above
     if(0==changed)
         widget()->setAttribute(Qt::WA_PaintOnScreen, !KWindowSystem::compositingActive());
+    else  if (changed&(SettingColors|SettingFont|SettingBorder))
+    {
+        // Reset button backgrounds...
+        for(int i=0; i<constNumButtonStates; ++i)
+           itsButtonBackground[i].pix=QPixmap();
+    }
     
     if (changed&SettingBorder)
         if (maximizeMode() == MaximizeFull)

@@ -9,7 +9,7 @@ msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: http://sourceforge.net/tracker/?"
 "group_id=50231&atid=459007\n"
-"POT-Creation-Date: 2009-10-14 20:05+0100\n"
+"POT-Creation-Date: 2009-10-17 11:07+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -1788,57 +1788,79 @@ msgstr ""
 msgid "Options"
 msgstr ""
 
-#. i18n: file: kwinconfig/qtcurvekwinconfigwidget.ui:17
-#. i18n: ectx: property (whatsThis), widget (QCheckBox, coloredShadow)
+#. i18n: file: kwinconfig/qtcurvekwinconfigwidget.ui:35
+#. i18n: ectx: property (text), widget (QLabel, label_3)
 #: po/rc.cpp:613 rc.cpp:613
-msgid ""
-"Check this option if you want the active window to have a colored glow "
-"instead of a shadow."
+msgid "Closing:"
 msgstr ""
 
-#. i18n: file: kwinconfig/qtcurvekwinconfigwidget.ui:20
-#. i18n: ectx: property (text), widget (QCheckBox, coloredShadow)
-#: po/rc.cpp:616 rc.cpp:616
-msgid "Give active window a 'glow' when shadows are enabled"
-msgstr ""
-
-#. i18n: file: kwinconfig/qtcurvekwinconfigwidget.ui:27
+#. i18n: file: kwinconfig/qtcurvekwinconfigwidget.ui:42
 #. i18n: ectx: property (whatsThis), widget (QCheckBox, menuClose)
-#: po/rc.cpp:619 rc.cpp:619
+#: po/rc.cpp:616 rc.cpp:616
 msgid ""
 "Check this option if you want windows to be closed when you double click the "
 "menu button, similar to Microsoft Windows."
 msgstr ""
 
-#. i18n: file: kwinconfig/qtcurvekwinconfigwidget.ui:30
+#. i18n: file: kwinconfig/qtcurvekwinconfigwidget.ui:45
 #. i18n: ectx: property (text), widget (QCheckBox, menuClose)
-#: po/rc.cpp:622 rc.cpp:622
+#: po/rc.cpp:619 rc.cpp:619
 msgid "Close windows by double clicking the menu button"
 msgstr ""
 
-#. i18n: file: kwinconfig/qtcurvekwinconfigwidget.ui:37
+#. i18n: file: kwinconfig/qtcurvekwinconfigwidget.ui:52
+#. i18n: ectx: property (text), widget (QLabel, label_4)
+#: po/rc.cpp:622 rc.cpp:622
+msgid "Borders:"
+msgstr ""
+
+#. i18n: file: kwinconfig/qtcurvekwinconfigwidget.ui:59
 #. i18n: ectx: property (text), widget (QCheckBox, resizeGrip)
 #: po/rc.cpp:625 rc.cpp:625
 msgid "Show resize grip"
 msgstr ""
 
-#. i18n: file: kwinconfig/qtcurvekwinconfigwidget.ui:44
+#. i18n: file: kwinconfig/qtcurvekwinconfigwidget.ui:66
 #. i18n: ectx: property (text), widget (QCheckBox, roundBottom)
 #: po/rc.cpp:628 rc.cpp:628
-msgid ""
-"Round bottom corners (applies only when style is round, and borders are not "
-"tiny)"
+msgid "Round bottom corners (style must be rounded, and borders not tiny)"
 msgstr ""
 
-#. i18n: file: kwinconfig/qtcurvekwinconfigwidget.ui:51
-#. i18n: ectx: property (text), widget (QCheckBox, noBorder)
+#. i18n: file: kwinconfig/qtcurvekwinconfigwidget.ui:73
+#. i18n: ectx: property (text), widget (QCheckBox, outerBorder)
 #: po/rc.cpp:631 rc.cpp:631
-msgid "Dont draw outer dark border."
+msgid "Draw dark outer border."
 msgstr ""
 
-#. i18n: file: kwinconfig/qtcurvekwinconfigwidget.ui:74
-#. i18n: ectx: property (text), widget (QLabel, label)
+#. i18n: file: kwinconfig/qtcurvekwinconfigwidget.ui:80
+#. i18n: ectx: property (whatsThis), widget (QCheckBox, coloredShadow)
 #: po/rc.cpp:634 rc.cpp:634
+msgid ""
+"Check this option if you want the active window to have a colored glow "
+"instead of a shadow."
+msgstr ""
+
+#. i18n: file: kwinconfig/qtcurvekwinconfigwidget.ui:83
+#. i18n: ectx: property (text), widget (QCheckBox, coloredShadow)
+#: po/rc.cpp:637 rc.cpp:637
+msgid "Give active window a 'glow' when shadows are enabled"
+msgstr ""
+
+#. i18n: file: kwinconfig/qtcurvekwinconfigwidget.ui:90
+#. i18n: ectx: property (text), widget (QLabel, label_2)
+#: po/rc.cpp:640 rc.cpp:640
+msgid "Titlebar padding:"
+msgstr ""
+
+#. i18n: file: kwinconfig/qtcurvekwinconfigwidget.ui:97
+#. i18n: ectx: property (suffix), widget (KIntSpinBox, titleBarPad)
+#: po/rc.cpp:643 rc.cpp:643
+msgid "px"
+msgstr ""
+
+#. i18n: file: kwinconfig/qtcurvekwinconfigwidget.ui:123
+#. i18n: ectx: property (text), widget (QLabel, label)
+#: po/rc.cpp:646 rc.cpp:646
 msgid ""
 "<p><b>NOTE:</b><i>This window decoration uses the QtCurve widget style, and "
 "shares its configuration. To alter settings such as the titlebar gradient, "
@@ -1846,12 +1868,12 @@ msgid ""
 "i></p>"
 msgstr ""
 
-#: po/rc.cpp:635 rc.cpp:635
+#: po/rc.cpp:647 rc.cpp:647
 msgctxt "NAME OF TRANSLATORS"
 msgid "Your names"
 msgstr ""
 
-#: po/rc.cpp:636 rc.cpp:636
+#: po/rc.cpp:648 rc.cpp:648
 msgctxt "EMAIL OF TRANSLATORS"
 msgid "Your emails"
 msgstr ""

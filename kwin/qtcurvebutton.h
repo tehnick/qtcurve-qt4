@@ -1,6 +1,6 @@
 /*
   QtCurve KWin window decoration
-  Copyright (C) 2007 - 2009 Craig Drummond <craig_p_drummond@yahoo.co.uk>
+  Copyright (C) 2007 - 2010 Craig Drummond <craig.p.drummond@googlemail.com>
 
   based on the window decoration "Plastik":
   Copyright (C) 2003-2005 Sandro Giessl <sandro@giessl.com>
@@ -58,6 +58,7 @@ class QtCurveButton : public KCommonDecorationButton
     void enterEvent(QEvent *e);
     void leaveEvent(QEvent *e);
     void drawButton(QPainter *painter);
+    void updateMask();
 
     private:
 

@@ -1,6 +1,6 @@
 /*
   QtCurve KWin window decoration
-  Copyright (C) 2007 - 2009 Craig Drummond <craig_p_drummond@yahoo.co.uk>
+  Copyright (C) 2007 - 2010 Craig Drummond <craig.p.drummond@googlemail.com>
 
   based on the window decoration "Plastik":
   Copyright (C) 2003-2005 Sandro Giessl <sandro@giessl.com>
@@ -43,7 +43,7 @@
 #include "qtcurvehandler.h"
 #include "qtcurveclient.h"
 #include "qtcurvebutton.h"
-#include "resizecorner.h"
+#include "qtcurvesizegrip.h"
 #define QTC_KWIN
 #include "common.h"
 
@@ -51,14 +51,16 @@ namespace KWinQtCurve
 {
 
 QtCurveClient::QtCurveClient(KDecorationBridge *bridge, KDecorationFactory *factory)
-#if KDE_IS_VERSION(4,1,80) && !KDE_IS_VERSION(4,2,92)
-             : KCommonDecorationUnstable(bridge, factory),
-#else
              : KCommonDecoration(bridge, factory),
-#endif
                itsResizeGrip(0L),
-               itsTitleFont(QFont())
+               itsTitleFont(QFont()),
+               itsIsPreview(!QApplication::applicationName().startsWith("kwin"))
 {
+}
+
+QtCurveClient::~QtCurveClient()
+{
+    deleteSizeGrip();
 }
 
 QString QtCurveClient::visibleName() const
@@ -82,21 +84,19 @@ bool QtCurveClient::decorationBehaviour(DecorationBehaviour behaviour) const
 int QtCurveClient::layoutMetric(LayoutMetric lm, bool respectWindowState,
                                 const KCommonDecorationButton *btn) const
 {
-    bool maximized(maximizeMode()==MaximizeFull && !options()->moveResizeMaximizedWindows());
-
     switch (lm)
     {
         case LM_BorderLeft:
         case LM_BorderRight:
         case LM_BorderBottom:
-            return respectWindowState && maximized ? 0 : Handler()->borderSize();
+            return respectWindowState && isMaximized() ? 0 : Handler()->borderSize();
         case LM_TitleEdgeTop:
-            return respectWindowState && maximized ? 0 : Handler()->borderEdgeSize();
+            return respectWindowState && isMaximized() ? 0 : Handler()->borderEdgeSize();
         case LM_TitleEdgeBottom:
-            return /*respectWindowState && maximized ? 1 : */ Handler()->borderEdgeSize();
+            return /*respectWindowState && isMaximized() ? 1 : */ Handler()->borderEdgeSize();
         case LM_TitleEdgeLeft:
         case LM_TitleEdgeRight:
-            return respectWindowState && maximized ? 0 : Handler()->borderEdgeSize();
+            return respectWindowState && isMaximized() ? 0 : Handler()->borderEdgeSize();
         case LM_TitleBorderLeft:
         case LM_TitleBorderRight:
             return 5;
@@ -144,59 +144,34 @@ void QtCurveClient::init()
     widget()->setAttribute(Qt::WA_PaintOnScreen, !KWindowSystem::compositingActive());
     widget()->setAutoFillBackground(false);
     widget()->setAttribute(Qt::WA_OpaquePaintEvent, true);
-    
-    if(Handler()->showResizeGrip() && isResizable())
-        itsResizeGrip=new ResizeCorner(this, KDecoration::options()->color(KDecoration::ColorTitleBar, isActive()));
+
+    if(Handler()->showResizeGrip())
+        createSizeGrip();
 }
 
 void QtCurveClient::maximizeChange()
 {
     reset(SettingBorder);
+    if(itsResizeGrip)
+        itsResizeGrip->setVisible(!(isShade() || isMaximized()));
     KCommonDecoration::maximizeChange();
+}
+
+void QtCurveClient::shadeChange()
+{
+    if(itsResizeGrip)
+        itsResizeGrip->setVisible(!(isShade() || isMaximized()));
+    KCommonDecoration::shadeChange();
 }
 
 void QtCurveClient::activeChange()
 {
-    if (itsResizeGrip)
+    if(itsResizeGrip && !(isShade() || isMaximized()))
     {
-        itsResizeGrip->setColor(KDecoration::options()->color(KDecoration::ColorTitleBar, isActive()));
+        itsResizeGrip->activeChange();
         itsResizeGrip->update();
     }
     KCommonDecoration::activeChange();
-}
-
-void QtCurveClient::drawBtnBgnd(QPainter *p, const QRect &r, bool active)
-{
-    bool   mximised(maximizeMode()==MaximizeFull && !options()->moveResizeMaximizedWindows());
-    int    state((active ? 1 : 0)+((mximised ? 1 : 0)<<1));
-    QColor col(KDecoration::options()->color(KDecoration::ColorTitleBar, active));
-    bool   diffSize(itsButtonBackground[state].pix.width()!=r.width() ||
-                    itsButtonBackground[state].pix.height()!=r.height());
-    int    app(Handler()->wStyle()->pixelMetric((QStyle::PixelMetric)QtC_TitleBarButtonAppearance, NULL, NULL));
-
-    if(diffSize || itsButtonBackground[state].col!=col || itsButtonBackground[state].app!=app)
-    {
-        if(diffSize)
-            itsButtonBackground[state].pix=QPixmap(r.width(), r.height());
-
-        QRect                br(r);
-        QStyleOptionTitleBar opt;
-        QPainter             pixPainter(&(itsButtonBackground[state].pix));
-        int                  border(Handler()->borderEdgeSize());
-
-        br.adjust(-6, -border, 6, border);
-        opt.rect=br;
-
-        opt.state=QStyle::State_Horizontal|QStyle::State_Enabled|QStyle::State_Raised|
-                 (active ? QStyle::State_Active : QStyle::State_None);
-        opt.titleBarState=(active ? QStyle::State_Active : QStyle::State_None);
-        opt.palette.setColor(QPalette::Button, col);
-        Handler()->wStyle()->drawComplexControl(QStyle::CC_TitleBar, &opt, &pixPainter, widget());
-        itsButtonBackground[state].col=col;
-        itsButtonBackground[state].app=app;
-    }
-
-    p->drawPixmap(r, itsButtonBackground[state].pix);
 }
 
 void QtCurveClient::paintEvent(QPaintEvent *e)
@@ -211,39 +186,38 @@ void QtCurveClient::paintEvent(QPaintEvent *e)
     bool                 active(isActive()),
                          colorTitleOnly(Handler()->wStyle()->pixelMetric((QStyle::PixelMetric)QtC_TitleBarColorTopOnly,
                                         NULL, NULL)),
-                         mximised(maximizeMode()==MaximizeFull && !options()->moveResizeMaximizedWindows()),
                          roundBottom(Handler()->roundBottom()),
                          outerBorder(Handler()->outerBorder());
-    const int            maximiseOffset(mximised ? 3 : 0),
+    const int            borderSize(Handler()->borderSize()),
+                         border(Handler()->borderEdgeSize()),
                          titleHeight(layoutMetric(LM_TitleHeight)),
                          titleEdgeTop(layoutMetric(LM_TitleEdgeTop)),
                          titleEdgeBottom(layoutMetric(LM_TitleEdgeBottom)),
                          titleEdgeLeft(layoutMetric(LM_TitleEdgeLeft)),
                          titleEdgeRight(layoutMetric(LM_TitleEdgeRight)),
-                         titleBarHeight(titleHeight+titleEdgeTop+titleEdgeBottom+maximiseOffset),
-                         borderSize(Handler()->borderSize()),
+                         titleBarHeight(titleHeight+titleEdgeTop+titleEdgeBottom+(isMaximized() ? border : 0)),
                          round=Handler()->wStyle()->pixelMetric((QStyle::PixelMetric)QtC_Round, NULL, NULL);
-    int                  rectX, rectY, rectX2, rectY2,
-                         border(Handler()->borderEdgeSize());
+    int                  rectX, rectY, rectX2, rectY2;
 
     r.getCoords(&rectX, &rectY, &rectX2, &rectY2);
 
     QColor col(KDecoration::options()->color(KDecoration::ColorTitleBar, active)),
            windowCol(widget()->palette().color(QPalette::Window));
 
-#if KDE_IS_VERSION(4,1,80) && !KDE_IS_VERSION(4,2,80)
-    if(!(Handler()->coloredShadow() && shadowsActive() && active))
-#endif
-    {
-        painter.setClipRegion(e->region());
-        painter.fillRect(r, windowCol); // Makes hings look nicer for kcmshell preview...
-    }
-    painter.setClipRegion(e->region().intersected(getMask(round, r.width(), r.height())));
+//     if(!isShade())
+//     {
+//         painter.setClipRegion(e->region());
+//         painter.fillRect(r, windowCol); // Makes things look nicer for kcmshell preview...
+//     }
+    if(isMaximized())
+         painter.setClipRegion(e->region());
+    else
+        painter.setClipRegion(e->region().intersected(getMask(round, r.width(), r.height())));
     painter.fillRect(r, colorTitleOnly ? windowCol : col);
 
     opt.init(widget());
 
-    if(mximised)
+    if(isMaximized())
         r.adjust(-3, -border, 3, 0);
     opt.palette.setColor(QPalette::Button, col);
     opt.palette.setColor(QPalette::Window, windowCol);
@@ -251,22 +225,15 @@ void QtCurveClient::paintEvent(QPaintEvent *e)
     opt.state=QStyle::State_Horizontal|QStyle::State_Enabled|QStyle::State_Raised|
              (active ? QStyle::State_Active : QStyle::State_None)|QtC_StateKWin;
 
-#if KDE_IS_VERSION(4,1,80) && !KDE_IS_VERSION(4,2,80)
-    if(Handler()->coloredShadow() && shadowsActive())
-    {
-        opt.state|=QtC_StateKWinShadows;
-        if(active)
-            opt.state|=QtC_StateKWinHighlight;
-    }
-#endif
-
     if(!roundBottom)
-        opt.state|=QtCStateKWinNotFull;
+        opt.state|=QtC_StateKWinNotFull;
+    if(isShade())
+        opt.state|=QtC_StateKWinShaded;
 
     if(outerBorder)
     {
 #ifdef QTC_DRAW_INTO_PIXMAPS
-        if(!compositing)
+        if(!compositing || itsIsPreview)
         {
             // For some reason, on Jaunty drawing directly is *hideously* slow on intel graphics card!
             QPixmap pix(32, 32);
@@ -286,33 +253,34 @@ void QtCurveClient::paintEvent(QPaintEvent *e)
             Handler()->wStyle()->drawPrimitive(QStyle::PE_FrameWindow, &opt, &painter, widget());
     }
     else
-        opt.state|=QtCStateKWinNoBorder;
+        opt.state|=QtC_StateKWinNoBorder;
 
-    if(round>=ROUND_FULL && !colorTitleOnly && col!=windowCol && roundBottom)
-    {
-        QColor cornerCol(col);
-        painter.setPen(windowCol);
-        painter.drawRect(rx.x()+borderSize-1, rx.y()+borderSize-1,
-                         rx.x()+rx.width()-((borderSize*2)-1), rx.y()+rx.height()-((borderSize*2)-1));
-        painter.setPen(cornerCol);
-        painter.drawPoint(rx.x()+borderSize-1, rx.y()+rx.height()-(borderSize));
-        painter.drawPoint(rx.x()+rx.width()-borderSize, rx.y()+rx.height()-borderSize);
-        cornerCol.setAlphaF(0.5);
-        painter.setPen(cornerCol);
-        painter.drawPoint(rx.x()+borderSize, rx.y()+rx.height()-(borderSize));
-        painter.drawPoint(rx.x()+borderSize-1, rx.y()+rx.height()-(borderSize+1));
-        painter.drawPoint(rx.x()+rx.width()-borderSize-1, rx.y()+rx.height()-borderSize);
-        painter.drawPoint(rx.x()+rx.width()-borderSize, rx.y()+rx.height()-(borderSize+1));
-    }
+// Commented out as leads to a 1 pixel window coloured line down the side of konsole windows...
+//     if(round>=ROUND_FULL && !colorTitleOnly && col!=windowCol && roundBottom)
+//     {
+//         QColor cornerCol(col);
+//         painter.setPen(windowCol);
+//         painter.drawRect(rx.x()+borderSize-1, rx.y()+borderSize-1,
+//                          rx.x()+rx.width()-((borderSize*2)-1), rx.y()+rx.height()-((borderSize*2)-1));
+//         painter.setPen(cornerCol);
+//         painter.drawPoint(rx.x()+borderSize-1, rx.y()+rx.height()-(borderSize));
+//         painter.drawPoint(rx.x()+rx.width()-borderSize, rx.y()+rx.height()-borderSize);
+//         cornerCol.setAlphaF(0.5);
+//         painter.setPen(cornerCol);
+//         painter.drawPoint(rx.x()+borderSize, rx.y()+rx.height()-(borderSize));
+//         painter.drawPoint(rx.x()+borderSize-1, rx.y()+rx.height()-(borderSize+1));
+//         painter.drawPoint(rx.x()+rx.width()-borderSize-1, rx.y()+rx.height()-borderSize);
+//         painter.drawPoint(rx.x()+rx.width()-borderSize, rx.y()+rx.height()-(borderSize+1));
+//     }
 
     opt.palette.setColor(QPalette::Button, col);
     opt.rect=QRect(r.x(), r.y(), r.width(), titleBarHeight);
     opt.titleBarState=(active ? QStyle::State_Active : QStyle::State_None)|QtC_StateKWin;
-    if(KDecoration::options()->color(KDecoration::ColorTitleBar, true)!=windowCol ||
-       KDecoration::options()->color(KDecoration::ColorTitleBar, false)!=windowCol)
-       opt.titleBarState|=QtCStateKWinDrawLine;
+//     if(KDecoration::options()->color(KDecoration::ColorTitleBar, true)!=windowCol ||
+//        KDecoration::options()->color(KDecoration::ColorTitleBar, false)!=windowCol)
+//        opt.titleBarState|=QtC_StateKWinDrawLine;
 #ifdef QTC_DRAW_INTO_PIXMAPS
-    if(!compositing)
+    if(!compositing || itsIsPreview)
     {
         QPixmap  tPix(32, titleBarHeight);
         QPainter tPainter(&tPix);
@@ -364,6 +332,7 @@ void QtCurveClient::paintEvent(QPaintEvent *e)
                                     : itsCaptionRect);
         int           textWidth=alignFull || (showIcon && alignment&Qt::AlignHCenter)
                                     ? fm.boundingRect(str).width()+(showIcon ? iconSize+constPad : 0) : 0;
+        EEffect       effect((EEffect)(Handler()->wStyle()->pixelMetric((QStyle::PixelMetric)QtC_TitleBarEffect)));
 
         if(alignFull)
             if(itsCaptionRect.left()>((textRect.width()-textWidth)>>1))
@@ -417,15 +386,18 @@ void QtCurveClient::paintEvent(QPaintEvent *e)
             }
 
         painter.setClipRect(itsCaptionRect.adjusted(-2, 0, 2, 0));
-        QColor shadow(Qt::black);
-        shadow.setAlphaF(WINDOW_TEXT_SHADOW_ALPHA);
-        painter.setPen(shadow);
-        painter.drawText(textRect.adjusted(1, 1, 1, 1), alignment, str);
-
         QColor color(KDecoration::options()->color(KDecoration::ColorFont, active));
 
-        if (!active && QTC_DARK_WINDOW_TEXT(color))
-             color.setAlpha((color.alpha() * 180) >> 8);
+        if(EFFECT_NONE!=effect)
+        {
+            QColor shadow(WINDOW_SHADOW_COLOR(effect));
+            shadow.setAlphaF(WINDOW_TEXT_SHADOW_ALPHA(effect));
+            painter.setPen(shadow);
+            painter.drawText(textRect.adjusted(1, 1, 1, 1), alignment, str);
+
+            if (!active && QTC_DARK_WINDOW_TEXT(color))
+                color.setAlpha((color.alpha() * 180) >> 8);
+        }
 
         painter.setPen(color);
         painter.drawText(textRect, alignment, str);
@@ -440,14 +412,18 @@ void QtCurveClient::paintEvent(QPaintEvent *e)
 
 void QtCurveClient::updateWindowShape()
 {
-    setMask(getMask(Handler()->wStyle()->pixelMetric((QStyle::PixelMetric)QtC_Round, NULL, NULL),
-                    widget()->width(), widget()->height(),
-                    maximizeMode()==MaximizeFull && !options()->moveResizeMaximizedWindows()));
+    if(isMaximized())
+        clearMask();
+    else
+        setMask(getMask(Handler()->wStyle()->pixelMetric((QStyle::PixelMetric)QtC_Round, NULL, NULL),
+                        widget()->width(), widget()->height()));
 }
 
-QRegion QtCurveClient::getMask(int round, int w, int h, bool maximised) const
+QRegion QtCurveClient::getMask(int round, int w, int h) const
 {  
-    switch(maximised ? ROUND_NONE : round)
+//     if(isShade())
+//         round=ROUND_SLIGHT;
+    switch(round)
     {
         case ROUND_NONE:
             return  QRegion(0, 0, w, h);
@@ -462,7 +438,7 @@ QRegion QtCurveClient::getMask(int round, int w, int h, bool maximised) const
         default: // ROUND_FULL
         {
             QRegion mask(5, 0, w-10, h);
-            bool    roundBottom=Handler()->roundBottom();
+            bool    roundBottom=isShade() || Handler()->roundBottom();
 
             if(roundBottom)
             {
@@ -530,41 +506,6 @@ bool QtCurveClient::eventFilter(QObject *o, QEvent *e)
 
     return KCommonDecoration::eventFilter(o, e);
 }
-
-#if KDE_IS_VERSION(4,1,80) && !KDE_IS_VERSION(4,2,92)
-// Taken form Oxygen! rev873805
-QList<QRect> QtCurveClient::shadowQuads(ShadowType type) const
-{
-    Q_UNUSED(type)
-
-    QSize size = widget()->size();
-    int outside=20, underlap=5, cornersize=25;
-    // These are underlap under the decoration so the corners look nicer 10px on the outside
-    QList<QRect> quads;
-    quads.append(QRect(-outside, size.height()-underlap, cornersize, cornersize));
-    quads.append(QRect(underlap, size.height()-underlap, size.width()-2*underlap, cornersize));
-    quads.append(QRect(size.width()-underlap, size.height()-underlap, cornersize, cornersize));
-    quads.append(QRect(-outside, underlap, cornersize, size.height()-2*underlap));
-    quads.append(QRect(size.width()-underlap, underlap, cornersize, size.height()-2*underlap));
-    quads.append(QRect(-outside, -outside, cornersize, cornersize));
-    quads.append(QRect(underlap, -outside, size.width()-2*underlap, cornersize));
-    quads.append(QRect(size.width()-underlap, -outside, cornersize, cornersize));
-    return quads;
-}
-
-double QtCurveClient::shadowOpacity(ShadowType type) const
-{
-    switch( type ) {
-        case ShadowBorderedActive:
-            return isActive() ? 1.0 : 0.0;
-        case ShadowBorderedInactive:
-            return isActive() ? 0.0 : 1.0;
-        default:
-            return 0;
-    }
-    return 0;
-}
-#endif
     
 void QtCurveClient::reset(unsigned long changed)
 {
@@ -601,8 +542,31 @@ void QtCurveClient::reset(unsigned long changed)
         updateLayout();
         widget()->update();
     }
-    
+
+    if(Handler()->showResizeGrip())
+        createSizeGrip();
+    else
+        deleteSizeGrip();
+
     KCommonDecoration::reset(changed);
+}
+
+void QtCurveClient::createSizeGrip()
+{
+    if(!itsResizeGrip && ((isResizable() && 0!=windowId()) || isPreview()))
+    {
+        itsResizeGrip=new QtCurveSizeGrip(this);
+        itsResizeGrip->setVisible(!(isMaximized() || isShade()));
+    }
+}
+
+void QtCurveClient::deleteSizeGrip()
+{
+    if(itsResizeGrip)
+    {
+        delete itsResizeGrip;
+        itsResizeGrip=0L;
+    }
 }
 
 }

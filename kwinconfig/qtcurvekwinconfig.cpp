@@ -1,6 +1,6 @@
 /*
   QtCurve KWin window decoration
-  Copyright (C) 2007 - 2009 Craig Drummond <craig_p_drummond@yahoo.co.uk>
+  Copyright (C) 2007 - 2010 Craig Drummond <craig.p.drummond@googlemail.com>
 
   based on the window decoration "Plastik":
   Copyright (C) 2003-2005 Sandro Giessl <sandro@giessl.com>
@@ -42,17 +42,13 @@ QtCurveKWinConfig::QtCurveKWinConfig(KConfig *config, QWidget *parent)
 
     itsWidget->show();
 
-#if !KDE_IS_VERSION(4,1,80) || KDE_IS_VERSION(4,2,80)
-    itsWidget->coloredShadow->setVisible(false);
-#endif
     load(configGroup);
 
     connect(itsWidget->menuClose, SIGNAL(toggled(bool)),  this, SIGNAL(changed()));
-    connect(itsWidget->coloredShadow, SIGNAL(toggled(bool)), this, SIGNAL(changed()));
     connect(itsWidget->resizeGrip, SIGNAL(toggled(bool)), this, SIGNAL(changed()));
     connect(itsWidget->roundBottom, SIGNAL(toggled(bool)), this, SIGNAL(changed()));
     connect(itsWidget->outerBorder, SIGNAL(toggled(bool)), this, SIGNAL(changed()));
-    connect(itsWidget->titleBarPad, SIGNAL(toggled(bool)), this, SIGNAL(changed()));
+    connect(itsWidget->titleBarPad, SIGNAL(valueChanged(int)), this, SIGNAL(changed()));
 }
 
 QtCurveKWinConfig::~QtCurveKWinConfig()
@@ -66,9 +62,6 @@ void QtCurveKWinConfig::load(const KConfigGroup &)
     KConfigGroup configGroup(itsConfig, "General");
 
     itsWidget->menuClose->setChecked(configGroup.readEntry("CloseOnMenuDoubleClick", true));
-#if !KDE_IS_VERSION(4,1,80) || KDE_IS_VERSION(4,2,80)
-    itsWidget->coloredShadow->setChecked(configGroup.readEntry("ColoredShadow", false));
-#endif
     itsWidget->resizeGrip->setChecked(configGroup.readEntry("ShowResizeGrip", false));
     itsWidget->roundBottom->setChecked(configGroup.readEntry("RoundBottom", true));
     itsWidget->outerBorder->setChecked(configGroup.hasKey("NoBorder")
@@ -82,9 +75,6 @@ void QtCurveKWinConfig::save(KConfigGroup &)
     KConfigGroup configGroup(itsConfig, "General");
 
     configGroup.writeEntry("CloseOnMenuDoubleClick", itsWidget->menuClose->isChecked());
-#if !KDE_IS_VERSION(4,1,80) || KDE_IS_VERSION(4,2,80)
-    configGroup.writeEntry("ColoredShadow", itsWidget->coloredShadow->isChecked());
-#endif
     configGroup.writeEntry("ShowResizeGrip", itsWidget->resizeGrip->isChecked());
     configGroup.writeEntry("RoundBottom", itsWidget->roundBottom->isChecked());
     configGroup.writeEntry("OuterBorder", itsWidget->outerBorder->isChecked());
@@ -96,9 +86,6 @@ void QtCurveKWinConfig::save(KConfigGroup &)
 void QtCurveKWinConfig::defaults()
 {
     itsWidget->menuClose->setChecked(true);
-#if !KDE_IS_VERSION(4,1,80) || KDE_IS_VERSION(4,2,80)
-    itsWidget->coloredShadow->setChecked(false);
-#endif
     itsWidget->resizeGrip->setChecked(false);
     itsWidget->roundBottom->setChecked(true);
     itsWidget->outerBorder->setChecked(true);

@@ -1,6 +1,6 @@
 /*
   QtCurve KWin window decoration
-  Copyright (C) 2007 - 2009 Craig Drummond <craig_p_drummond@yahoo.co.uk>
+  Copyright (C) 2007 - 2010 Craig Drummond <craig.p.drummond@googlemail.com>
 
   based on the window decoration "Plastik":
   Copyright (C) 2003-2005 Sandro Giessl <sandro@giessl.com>
@@ -111,9 +111,11 @@ void QtCurveButton::leaveEvent(QEvent *e)
     repaint();
 }
 
-void QtCurveButton::paintEvent(QPaintEvent *)
+void QtCurveButton::paintEvent(QPaintEvent *ev)
 {
     QPainter p(this);
+    p.setClipRect(rect().intersected(ev->rect()));
+    p.setRenderHints(QPainter::Antialiasing);
     drawButton(&p);
 }
 
@@ -140,15 +142,13 @@ void QtCurveButton::drawButton(QPainter *painter)
                        (itsHover || sunken || !(flags&QTC_TITLEBAR_BUTTON_HOVER_FRAME))),
              iconForMenu(TITLEBAR_ICON_MENU_BUTTON==
                             Handler()->wStyle()->pixelMetric((QStyle::PixelMetric)QtC_TitleBarIcon, 0L, 0L));
-    QPixmap  tempPixmap;
     QColor   buttonColor(KDecoration::options()->color(KDecoration::ColorTitleBar, active));
     QPixmap  buffer(width(), height());
+    buffer.fill(Qt::transparent);
     QPainter bP(&buffer);
-
+    
 //     if(CloseButton==type())
 //         buttonColor=midColor(QColor(180,64,32), buttonColor);
-
-    itsClient->drawBtnBgnd(&bP, r, active);
 
     if(flags&QTC_TITLEBAR_BUTTON_COLOR)
         switch(type())
@@ -216,7 +216,7 @@ void QtCurveButton::drawButton(QPainter *painter)
         }
         bP.drawPixmap(dX, dY, menuIcon);
     }
-    else
+    else if(!(flags&QTC_TITLEBAR_BUTTON_HOVER_SYMBOL_FULL) || sunken || itsHover)
     {
         const QBitmap &icon(Handler()->buttonBitmap(itsIconType, size(), decoration()->isToolWindow()));
         bool          customCol(false),
@@ -224,6 +224,7 @@ void QtCurveButton::drawButton(QPainter *painter)
         QColor        col(KDecoration::options()->color(KDecoration::ColorFont, active/* || faded*/));
         int           dX(r.x()+(r.width()-icon.width())/2),
                       dY(r.y()+(r.height()-icon.height())/2);
+        EEffect       effect((EEffect)(style()->pixelMetric((QStyle::PixelMetric)QtC_TitleBarEffect)));
 
         if(flags&QTC_TITLEBAR_BUTTON_COLOR && flags&QTC_TITLEBAR_BUTTON_COLOR_SYMBOL &&
            (itsHover || !(flags&QTC_TITLEBAR_BUTTON_HOVER_SYMBOL)))
@@ -241,11 +242,11 @@ void QtCurveButton::drawButton(QPainter *painter)
             dY++;
             dX++;
         }
-        else if (!faded)
+        else if (!faded && EFFECT_NONE!=effect)
         {
-            QColor shadow(Qt::black);
+            QColor shadow(WINDOW_SHADOW_COLOR(effect));
 
-            shadow.setAlphaF(WINDOW_TEXT_SHADOW_ALPHA);
+            shadow.setAlphaF(WINDOW_TEXT_SHADOW_ALPHA(effect));
             bP.setPen(shadow);
             bP.drawPixmap(dX+1, dY+1, icon);
         }
@@ -255,6 +256,8 @@ void QtCurveButton::drawButton(QPainter *painter)
 
         if(faded)
             col.setAlphaF(HOVER_BUTTON_ALPHA(col));
+        else // If dont set an alpha level here, then (at least on intel) the background colour is used!
+            col.setAlphaF(0.99);
 
         bP.setPen(col);
         bP.drawPixmap(dX, dY, icon);

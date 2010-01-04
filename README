@@ -16,9 +16,6 @@ The following options may be supplied to cmake:
     -DQTC_DISABLE_KDEFILEDIALOG_CALLS=true
         Do not override Qt's file dialogs with KDE ones.
 
-    -DQTC_XBAR_SUPPORT=true
-        Include support for Bespin's XBar
-
     -DQTC_OLD_NVIDIA_ARROW_FIX=true
         Due to QtCurve mixing AA-drawing, with non-AA drawing (specifically for
         arrows) - sometimes the arrows would not draw correctly under NVidia. To
@@ -26,10 +23,14 @@ The following options may be supplied to cmake:
         non-AA drawing for the edges. As of 0.69.0 this code is no longer enabled
         by default - use this config option to re-enable the code.
 
+    -DQTC_STYLE_SUPPORT=true
+       Support QtCurve style files. These are stored as
+       <kde prefix>/share/apps/kstyle/themes/qtc_<stylename>.themerc
+
 XBar/MacMenu
 ------------
 The XBar support was copied directly from Bespin. The relevant files are named macmenu*
-These were taken from revision 435
+These were taken from revision 652
 
 Themes
 ------

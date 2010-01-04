@@ -1,3 +1,123 @@
+1.0.0
+-----
+ 1. Added option to colour selected check/radios.
+ 2. Added option to use a smaller dot for radios.
+ 3. Made check/radio and splitter highlight options a configurable % - i.e.
+    not based on standard hightlight %
+ 4. When highlighting check/radio/splitter background, round the corners and
+    use the selection gradient..
+ 5. Added new splitter/handle/thumb style: single dot.
+ 6. Default check/radio/splitter/expander highlight set to 3%
+ 7. Don't do coloured mouse over for buttons of editable combos, spin buttons,
+    or scrollbar buttons.
+ 8. Don't do regular coloured mouse over of sliders when these are set to be
+    coloured on mouse over.
+ 9. Allow to specify strength when colouring selected tab.
+10. Remove support for QtCurve styles (these appear as unique KDE styles in the
+    main KDE style selection dialog). Re-enable support by passing
+    -DQTC_STYLE_SUPPORT=true to cmake.
+11. Slightly lighter shade used for coloured mouse over of arrows.
+12. Dont draw border around rounded selection.
+13. Add option to specify appearance of dock-widget titlebars.
+14. Made XBar support a config, and not cmake, option.
+15. Added option to specify effect for window titlebar text/icon: shadow/etch/none.
+16. Fix window corners when 'shaded'.
+17. Work-around issue with Intel 2.9 Xorg driver - doesnt seem to like drawing
+    lines with an alpha channel set but anti-aliasing disabled. Affects MDI window
+    icons (when 'hover icon' is enabled) - instead of using an alpha channel, the colour
+    is mixed with the background colour.
+18. Fix KDE4.4's palette changes to KFilePlacesView.
+19. Fix slight redraw error with the inner shadow of sunken frames.
+20. Get kwin decoration to update on style change. Config file has changed to
+    qtcurve/stylerc - so need to monitor that one!
+21. Remove 1 pixel background colour border from kwin decoration - was only used
+    to provide softer rounded corners at the bottom.
+22. Completely remove old code for coloured shadows.
+23. Dont draw dark line between titlebar and contents when colouring titlebar only.
+24. Only draw toolbar gradients for toolbars in main window. Removes gradient from
+    file selector toolbar.
+25. Style toolbar-extension icons (the arrows that appear when window is too small for
+    toolbar).
+26. Better positioning of close button on tabs.
+27. When saving settings to $XDG_CONFIG_HOME/qtcurve/stylerc, remove the older
+    $XDG_CONFIG_HOME/qtcurvestylerc, and $XDG_CONFIG_HOME/qtcurve.gtk-icons if they
+    exist.
+28. Setup KDE4 palette and fonts in constructor.
+29. Fix K3B buttons.
+30. Only draw toolbuttons as toolbar buttons if they are set to auto raise or have
+    a menu.
+31. Add arora and kaffeine to default list of KDE4 apps that needs manual saving of
+    menubar state.
+32. Fix hidding of kaffeine menu when exiting full screen.
+33. Enable 'Apply' button on kwnin config when change padding setting.
+34. Add options to use titlebar button style, colour, font, text aligntment, and
+    text effect for dock widget titlebars.
+35. Add option to only round the top/left of dock widget titlebars.
+36. If compiled against KDE, use configured window font for MDI windows and dock
+    widget titlebars.
+37. Use custum gradient 1 for dock widget titlebars.
+38. Round gradients of dock-widget titlebars - top/left only be default.
+39. Reduce number of supplied presets.
+40. Add a 'Presets and Preview' initial page to the settings dialog - allowing to
+    save custom presets, and preview before applying.
+41. Nicer 'Agua' look for MDI/window/dock widget buttons.
+42. Added option to hide MDI/window/dock widget button icons until mouse-over.
+43. Added 'Whats This?' text to most config items.
+44. Correctly theme menu separators with titles.
+45. Draw titles in KMenu's the same as menu separators with titles - bold, and
+    with no icon.
+46. Fade ends of tab widget base - used in document mode tabs.
+47. Added option to draw Air-like background rings in windows and/or menus.
+    Note: to use an SVG instead of the hard-coded air-like rings, edit
+          ~/.config/qtcurve/stylerc (or /etc/qtcurvestylerc) and add:
+
+          bgndImage=file
+          bgndImage.file=/path/to/svg/file.svg
+          bgndImage.width=120
+          bgndImage.height=160
+          
+          (Use menuBgndImage for menus)
+
+48. Added option to add a 'glow' to progressbars.
+49. Fix QToolBox background when using background image and/or gradients.
+50. Unset non-editable combobox popup menu palette when unpolishing the widget.
+51. To disable background gradient, or image,  for a particular app, edit
+    ~/.config/qtcurve/stylerc  and add:
+        noBgndGradientApps=inkscape,gimp
+        noBgndImageApps=inkscape,gimp
+
+    ...using 'gtk' (e.g. noBgndImageApps=gtk) will disable for all Gtk apps.
+52. Added a option to manually re-order the buttons of Gtk dialogs to match
+    KDE style. Note: This is experimental, and may produce unexpected results!
+53. Disable parentless-dialog fix for Kate (not required anyway), as this causes
+    disappearing pointers when using embedded konsole!
+54. Alter the size of a QtoolBarExtension if its width/height is greater than
+    its parent - as occurs on Amarok's thin toolbars.
+55. Add option to control whether tabs that are in toolbars are drawn as tabs, or
+    as per side bar button settings.
+56. Googleearth crashes when using file dialogs, if linked to KDE4. So, for googleearth
+    the usage of KDE4 dialogs is removed. To remove for other apps, edit
+    ~/.config/qtcurve/stylerc  and add:
+        useQtFileDialogApps=googleearth-bin
+57. Added 'Applications' page to config dialog where you can set which apps will
+    not have background gradients, background image, should use Qt file dialog,
+    need menubar state saving, not use menustripe, and should not use 'parentless
+    dialog' fix.
+58. If drawing standard buttons for sidebar buttons, then draw these as per toolbar
+    buttons.
+59. Dont use highlighted text for selected sidebar buttons if drawing as per toolbar
+    buttons.
+60. Better Agua gradients for large buttons.
+61. Fix flat flat square in bottom right of scrollviews when using external scrollbars
+    and background gradient.
+62. Remove titlebar from 'Places' dock widget in KFileDialog.
+63. Fix icon position on konsole toolbuttons.
+64. Add option to blend titlebar into background colour.
+65. Fix appearance of some disabled icons.
+66. Fix borders of large circular window buttons.
+67. Improve OpenOffice.org menus a little - disable menu stripe, border to left and
+    right, and if drawing borderd menu items then add gaps to the left and right.
+
 0.69.2
 ------
 1. Change 'Dont draw outer dark border' to 'Draw dark outer border'
@@ -6,10 +126,9 @@
 4. Better postion of dots on slider handles.
 5. If custom button colours have been defined for window buttons, use the same
    colours to colour dock widget buttons.
-6. Add option to add extra paddnig to kwin titlebars.
+6. Add option to add extra padding to kwin titlebars.
 7. Add vlc and smplayer to default list of KDE4 apps that needs manual
    saving of menubar state.
-
 
 0.69.1
 ------

@@ -2,7 +2,7 @@
 #define __QTCURVE_H__
 
 /*
-  QtCurve (C) Craig Drummond, 2007 - 2009 craig_p_drummond@yahoo.co.uk
+  QtCurve (C) Craig Drummond, 2007 - 2010 craig.p.drummond@googlemail.com
 
   ----
 
@@ -30,6 +30,7 @@
 #include <QCache>
 #include <QColor>
 #include <QStyleOption>
+#include <QBitmap>
 #if (QT_VERSION >= QT_VERSION_CHECK(4, 4, 0))
 #include <QFormLayout>
 #endif
@@ -61,19 +62,37 @@ class QtCurveStyle : public QWindowsStyle
 
     public:
 
+#if QT_VERSION < 0x040500
     enum Version
     {
         VER_UNKNOWN,
         VER_4x,  // <=4.4
         VER_45   // >=4.5
     };
+#endif
 
     enum CustomElements
     {
         CE_QtC_KCapacityBar = CE_CustomBase+0xFFFF00
     };
-    
+
+    enum Icon
+    {
+        ICN_MIN,
+        ICN_MAX,
+        ICN_MENU,
+        ICN_RESTORE,
+        ICN_CLOSE,
+        ICN_UP,
+        ICN_DOWN,
+        ICN_RIGHT
+    };
+
+#ifdef QTC_STYLE_SUPPORT
     QtCurveStyle(const QString &name=QString());
+#else
+    QtCurveStyle();
+#endif
     ~QtCurveStyle();
 
     void polish(QApplication *app);
@@ -105,8 +124,10 @@ class QtCurveStyle : public QWindowsStyle
 
     private:
 
+    void drawSideBarButton(QPainter *painter, const QRect &r, const QStyleOption *option, const QWidget *widget) const;
     void drawHighlight(QPainter *p, const QRect &r, bool horiz, bool inc) const;
-    void drawFadedLine(QPainter *p, const QRect &r, const QColor &col, bool fadeStart, bool fadeEnd, bool horiz) const;
+    void drawFadedLine(QPainter *p, const QRect &r, const QColor &col, bool fadeStart, bool fadeEnd, bool horiz,
+                       double fadeSizeStart=QTC_FADE_SIZE, double fadeSizeEnd=QTC_FADE_SIZE) const;
     void drawLines(QPainter *p, const QRect &r, bool horiz, int nLines, int offset, const QColor *cols, int startOffset,
                    int dark, ELine type) const;
     void drawProgressBevelGradient(QPainter *p, const QRect &origRect, const QStyleOption *option, bool horiz,
@@ -133,7 +154,8 @@ class QtCurveStyle : public QWindowsStyle
                             const QColor *custom, bool doBorder, EWidget w, bool useCache, ERound realRound) const;
     void drawGlow(QPainter *p, const QRect &r, EWidget w) const;
     void drawEtch(QPainter *p, const QRect &r,  const QWidget *widget, EWidget w, bool raised=false) const;
-    void drawWindowBackground(QWidget *widget) const;
+    void drawBgndRing(QPainter &painter, int x, int y, int size, int size2, bool isWindow) const;
+    void drawBackground(QWidget *widget, bool isWindow=true) const;
     QPainterPath buildPath(const QRectF &r, EWidget w, int round, double radius) const;
     QPainterPath buildPath(const QRect &r, EWidget w, int round, double radius) const;
     void buildSplitPath(const QRect &r, EWidget w, int round, double radius, QPainterPath &tl, QPainterPath &br) const;
@@ -141,15 +163,18 @@ class QtCurveStyle : public QWindowsStyle
                     EWidget w=WIDGET_OTHER, EBorder borderProfile=BORDER_FLAT, bool doBlend=true, int borderVal=QT_STD_BORDER) const;
     void drawMdiControl(QPainter *p, const QStyleOptionTitleBar *titleBar, SubControl sc, const QWidget *widget,
                         ETitleBarButtons btn, const QColor &iconColor, const QColor &shadow, const QColor *btnCols, const QColor *bgndCols) const;
-    void drawMdiButton(QPainter *painter, const QRect &r, bool hover, bool sunken, const QColor *cols) const;
-    void drawMdiIcon(QPainter *painter, const QColor &color, const QColor &shadow, const QColor *btnCols, const QRect &r,
-                     bool hover, bool sunken, SubControl button) const;
-    void drawWindowIcon(QPainter *painter, const QColor &color, const QRect &r, bool sunken, SubControl button, bool stdSize=true) const;
+    void drawDwtControl(QPainter *p, const QFlags<State> &state, const QRect &rect, ETitleBarButtons btn, Icon icon,
+                        const QColor &iconColor, const QColor &shadow,
+                        const QColor *btnCols, const QColor *bgndCols) const;
+    bool drawMdiButton(QPainter *painter, const QRect &r, bool hover, bool sunken, const QColor *cols) const;
+    void drawMdiIcon(QPainter *painter, const QColor &color, const QColor &bgnd, const QColor &shadow, const QRect &r,
+                     bool hover, bool sunken, Icon icon, bool stdSize=true) const;
+    void drawIcon(QPainter *painter, const QColor &color, const QRect &r, bool sunken, Icon icon, bool stdSize=true) const;
     void drawEntryField(QPainter *p, const QRect &rx,  const QWidget *widget, const QStyleOption *option, int round,
                         bool fill, bool doEtch, EWidget w=WIDGET_ENTRY) const;
     void drawMenuItem(QPainter *p, const QRect &r, const QStyleOption *option, bool mbi, int round, const QColor *cols) const;
     void drawProgress(QPainter *p, const QRect &r, const QStyleOption *option, int round, bool vertical=false, bool reverse=false) const;
-    void drawArrow(QPainter *p, const QRect &r, PrimitiveElement pe, QColor col, bool small=false, bool mdi=false) const;
+    void drawArrow(QPainter *p, const QRect &r, PrimitiveElement pe, QColor col, bool small=false) const;
     void drawSbSliderHandle(QPainter *p, const QRect &r, const QStyleOption *option, bool slider=false) const;
     void drawSliderHandle(QPainter *p, const QRect &r, const QStyleOptionSlider *option) const;
     void drawSliderGroove(QPainter *p, const QRect &groove, const QRect &handle, const QStyleOptionSlider *slider, const QWidget *widget) const;
@@ -159,6 +184,7 @@ class QtCurveStyle : public QWindowsStyle
     void colorTab(QPainter *p, const QRect &r, bool horiz, EWidget tab, int round) const;
     void shadeColors(const QColor &base, QColor *vals) const;
     const QColor * buttonColors(const QStyleOption *option) const;
+    const QColor * checkRadioColors(const QStyleOption *option) const;
     const QColor * sliderColors(const QStyleOption *option) const;
     const QColor * backgroundColors(const QColor &col) const;
     const QColor * backgroundColors(const QStyleOption *option) const
@@ -174,7 +200,9 @@ class QtCurveStyle : public QWindowsStyle
     const QColor & menuStripeCol() const;
     QPixmap *      getPixmap(const QColor col, EPixmap p, double shade=1.0) const;
     int            konqMenuBarSize(const QMenuBar *menu) const;
+#if QT_VERSION < 0x040500
     Version        qtVersion() const;
+#endif
     const QColor & checkRadioCol(const QStyleOption *opt) const;
     QColor         shade(const QColor &a, float k) const;
     void           shade(const color &ca, color *cb, double k) const;
@@ -188,11 +216,13 @@ class QtCurveStyle : public QWindowsStyle
                                                Qt::Orientation orientation, const QStyleOption *option,
                                                const QWidget *widget) const;
     void           kdeGlobalSettingsChange(int type, int);
-    void           setupKde4();
 
     private:
 
 #if !defined QTC_QT_ONLY
+    void           setupKde4();
+
+
     void           setDecorationColors();
     void           applyKdeSettings(bool pal);
 #endif
@@ -208,11 +238,14 @@ class QtCurveStyle : public QWindowsStyle
                                        *itsSliderCols,
                                        *itsDefBtnCols,
                                        *itsComboBtnCols,
+                                       *itsCheckRadioSelCols,
                                        *itsSortedLvColors,
                                        itsButtonCols[TOTAL_SHADES+1],
                                        itsLighterPopupMenuBgndCol,
                                        itsCheckRadioCol;
-    bool                               itsSaveMenuBarStatus;
+    bool                               itsSaveMenuBarStatus,
+                                       itsUsePixmapCache,
+                                       itsIsPreview;
     mutable QColor                     *itsSidebarButtonsCols;
     mutable QColor                     *itsActiveMdiColors;
     mutable QColor                     *itsMdiColors;
@@ -235,7 +268,9 @@ class QtCurveStyle : public QWindowsStyle
     // Required for Q3Header hover...
     QPoint                             itsPos;
     QWidget                            *itsHoverWidget;
+#if QT_VERSION < 0x040500
     mutable Version                    itsQtVersion;
+#endif
     mutable QScrollBar                 *itsSViewSBar;
     mutable QMap<QWidget *, QSet<QWidget *> > itsSViewContainers;
 #if !defined QTC_QT_ONLY

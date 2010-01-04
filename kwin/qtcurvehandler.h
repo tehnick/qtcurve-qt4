@@ -1,6 +1,6 @@
 /*
   QtCurve KWin window decoration
-  Copyright (C) 2007 - 2009 Craig Drummond <craig_p_drummond@yahoo.co.uk>
+  Copyright (C) 2007 - 2010 Craig Drummond <craig.p.drummond@googlemail.com>
 
   based on the window decoration "Plastik":
   Copyright (C) 2003-2005 Sandro Giessl <sandro@giessl.com>
@@ -27,8 +27,9 @@
 #ifndef KWIN_QTCURVE_H
 #define KWIN_QTCURVE_H
 
-#include <QFont>
+#include <QtGui/QFont>
 #include <QtGui/QApplication>
+#include <QtGui/QBitmap>
 #include <kdeversion.h>
 #include <kdecoration.h>
 #include <kdecorationfactory.h>
@@ -59,11 +60,7 @@ enum ButtonIcon
 };
 
 class QtCurveHandler : public QObject,
-#if KDE_IS_VERSION(4,1,80) && !KDE_IS_VERSION(4,2,92)
-                       public KDecorationFactoryUnstable
-#else
                        public KDecorationFactory
-#endif
 {
     Q_OBJECT
 
@@ -94,13 +91,6 @@ class QtCurveHandler : public QObject,
 
     QList<QtCurveHandler::BorderSize>  borderSizes() const;
 
-#if KDE_IS_VERSION(4,1,80) && !KDE_IS_VERSION(4,2,92)
-    virtual QList< QList<QImage> > shadowTextures();
-    virtual int shadowTextureList( ShadowType type ) const;
-    virtual QList<QRect> shadowQuads( ShadowType type, QSize size ) const;
-    virtual double shadowOpacity( ShadowType type ) const;
-#endif
-
     private:
 
     bool readConfig();
@@ -120,7 +110,7 @@ class QtCurveHandler : public QObject,
     QFont   itsTitleFont,
             itsTitleFontTool;
     QStyle  *itsStyle;
-    QBitmap *itsBitmaps[2][NumButtonIcons];
+    QBitmap itsBitmaps[2][NumButtonIcons];
 };
 
 QtCurveHandler * Handler();

@@ -1,6 +1,6 @@
 /*
   QtCurve KWin window decoration
-  Copyright (C) 2007 - 2009 Craig Drummond <craig_p_drummond@yahoo.co.uk>
+  Copyright (C) 2007 - 2010 Craig Drummond <craig.p.drummond@googlemail.com>
 
   based on the window decoration "Plastik":
   Copyright (C) 2003-2005 Sandro Giessl <sandro@giessl.com>
@@ -36,18 +36,14 @@
 namespace KWinQtCurve
 {
 
-class ResizeCorner;
+class QtCurveSizeGrip;
 
-#if KDE_IS_VERSION(4,1,80) && !KDE_IS_VERSION(4,2,92)
-class QtCurveClient : public KCommonDecorationUnstable
-#else
 class QtCurveClient : public KCommonDecoration
-#endif
 {
     public:
 
     QtCurveClient(KDecorationBridge *bridge, KDecorationFactory *factory);
-    ~QtCurveClient() { }
+    virtual ~QtCurveClient();
 
     QString                   visibleName() const;
     bool                      decorationBehaviour(DecorationBehaviour behaviour) const;
@@ -56,23 +52,22 @@ class QtCurveClient : public KCommonDecoration
     KCommonDecorationButton * createButton(ButtonType type);
     void                      init();
     void                      maximizeChange();
+    void                      shadeChange();
     void                      activeChange();
     void                      reset(unsigned long changed);
-    void                      drawBtnBgnd(QPainter *p, const QRect &r, bool active);
     void                      paintEvent(QPaintEvent *e);
     void                      updateWindowShape();
-    QRegion                   getMask(int round, int w, int h, bool maximised=false) const;
+    QRegion                   getMask(int round, int w, int h) const;
     void                      updateCaption();
     bool                      eventFilter(QObject *o, QEvent *e);
-
-#if KDE_IS_VERSION(4,1,80) && !KDE_IS_VERSION(4,2,92)
-    virtual QList<QRect>      shadowQuads(ShadowType type) const;
-    virtual double            shadowOpacity(ShadowType type) const;
-#endif
+    bool isPreview() const   { return itsIsPreview; }
+    bool isMaximized() const { return maximizeMode()==MaximizeFull && !options()->moveResizeMaximizedWindows();  }
 
     private:
 
     QRect                     captionRect() const;
+    void                      createSizeGrip();
+    void                      deleteSizeGrip();
 
     private:
 
@@ -83,13 +78,14 @@ class QtCurveClient : public KCommonDecoration
         QColor  col;
     };
 
-    static const int constNumButtonStates=4;
+    static const int constNumButtonStates=2;
 
-    ResizeCorner *itsResizeGrip;
-    ButtonBgnd   itsButtonBackground[constNumButtonStates];
-    QRect        itsCaptionRect;
-    QString      itsOldCaption;
-    QFont        itsTitleFont;
+    QtCurveSizeGrip *itsResizeGrip;
+    ButtonBgnd      itsButtonBackground[constNumButtonStates];
+    QRect           itsCaptionRect;
+    QString         itsOldCaption;
+    QFont           itsTitleFont;
+    bool            itsIsPreview;
 };
 
 }

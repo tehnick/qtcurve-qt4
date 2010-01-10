@@ -1113,7 +1113,7 @@ QtCurveStyle::QtCurveStyle()
     // NOTE: This call will never actually happen, its only here so that the qtcurve.so
     // contains a kio link so that this is not removed by some 'optimisation' of the
     // link process.
-    if((int)this==(int)itsHoverWidget)
+    if(itsPos.x()>65534)
         (void)KFileDialog::getSaveFileName();
 #endif
 }
@@ -1223,7 +1223,14 @@ void QtCurveStyle::polish(QApplication *app)
     // Plasma and Kate do not like the 'Fix parentless dialogs' option...
     if(opts.fixParentlessDialogs && (APP_PLASMA==theThemedApp || opts.noDlgFixApps.contains(appName)))
         opts.fixParentlessDialogs=false;
-      
+
+    if(APP_OPENOFFICE==theThemedApp)
+    {
+        if(APPEARANCE_FADE==opts.menuitemAppearance)
+            opts.menuitemAppearance=APPEARANCE_GRADIENT;
+        opts.borderMenuitems=false;
+    }
+
 #ifndef QTC_QT_ONLY
     if(opts.useQtFileDialogApps.contains(appName))
     {
@@ -3111,7 +3118,12 @@ void QtCurveStyle::drawPrimitive(PrimitiveElement element, const QStyleOption *o
                 r.adjust(1, 1, 1, 1);
             if(col.alpha()<255 && PE_IndicatorArrowRight==element && widget && widget->inherits("KUrlButton"))
             {
+#if defined QTC_QT_ONLY
+                QColor bgnd=palette.background().color();
+                col=ColorUtils_mix(&bgnd, &col, col.alphaF());
+#else
                 col=KColorUtils::mix(palette.background().color(), col, col.alphaF());
+#endif
                 col.setAlpha(255);
             }
             drawArrow(painter, r, element, col, false);
@@ -8997,14 +9009,13 @@ void QtCurveStyle::drawLines(QPainter *p, const QRect &r, bool horiz, int nLines
     p->setRenderHint(QPainter::Antialiasing, false);
 }
 
-void QtCurveStyle::drawProgressBevelGradient(QPainter *p, const QRect &origRect, const QStyleOption *option, bool horiz, EAppearance bevApp) const
+void QtCurveStyle::drawProgressBevelGradient(QPainter *p, const QRect &origRect, const QStyleOption *option, bool horiz, EAppearance bevApp, const QColor *cols) const
 {
-    const QColor *use=option->state&State_Enabled || ECOLOR_BACKGROUND==opts.progressGrooveColor ? itsHighlightCols : itsBackgroundCols;
     bool    vertical(!horiz),
             inCache(true);
     QRect   r(0, 0, horiz ? PROGRESS_CHUNK_WIDTH*2 : origRect.width(),
                     horiz ? origRect.height() : PROGRESS_CHUNK_WIDTH*2);
-    QtcKey  key(createKey(horiz ? r.height() : r.width(), use[ORIGINAL_SHADE], horiz, bevApp, WIDGET_PROGRESSBAR));
+    QtcKey  key(createKey(horiz ? r.height() : r.width(), cols[ORIGINAL_SHADE], horiz, bevApp, WIDGET_PROGRESSBAR));
     QPixmap *pix(itsPixmapCache.object(key));
 
     if(!pix)
@@ -9014,9 +9025,9 @@ void QtCurveStyle::drawProgressBevelGradient(QPainter *p, const QRect &origRect,
         QPainter pixPainter(pix);
 
         if(IS_FLAT(bevApp))
-            pixPainter.fillRect(r, use[ORIGINAL_SHADE]);
+            pixPainter.fillRect(r, cols[ORIGINAL_SHADE]);
         else
-            drawBevelGradientReal(use[ORIGINAL_SHADE], &pixPainter, r, horiz, false,
+            drawBevelGradientReal(cols[ORIGINAL_SHADE], &pixPainter, r, horiz, false,
                                   bevApp, WIDGET_PROGRESSBAR);
 
         switch(opts.stripedProgress)
@@ -9031,9 +9042,9 @@ void QtCurveStyle::drawProgressBevelGradient(QPainter *p, const QRect &origRect,
                             : QRect(r.x(), r.y(), r.width(), PROGRESS_CHUNK_WIDTH));
 
                 if(IS_FLAT(bevApp))
-                    pixPainter.fillRect(r2, use[1]);
+                    pixPainter.fillRect(r2, cols[1]);
                 else
-                    drawBevelGradientReal(use[1], &pixPainter, r2, horiz, false, bevApp,
+                    drawBevelGradientReal(cols[1], &pixPainter, r2, horiz, false, bevApp,
                                           WIDGET_PROGRESSBAR);
                 break;
             }
@@ -9062,9 +9073,9 @@ void QtCurveStyle::drawProgressBevelGradient(QPainter *p, const QRect &origRect,
 
                 pixPainter.setClipRegion(reg);
                 if(IS_FLAT(bevApp))
-                    pixPainter.fillRect(r, use[1]);
+                    pixPainter.fillRect(r, cols[1]);
                 else
-                    drawBevelGradientReal(use[1], &pixPainter, r, horiz, false, bevApp, WIDGET_PROGRESSBAR);
+                    drawBevelGradientReal(cols[1], &pixPainter, r, horiz, false, bevApp, WIDGET_PROGRESSBAR);
             }
         }
 
@@ -9373,7 +9384,7 @@ void QtCurveStyle::drawLightBevelReal(QPainter *p, const QRect &rOrig, const QSt
     if(r.width()>0 && r.height()>0)
     {
         if(WIDGET_PROGRESSBAR==w && STRIPE_NONE!=opts.stripedProgress)
-            drawProgressBevelGradient(p, r.adjusted(1, 1, -1, -1), option, horiz, app);
+            drawProgressBevelGradient(p, r.adjusted(1, 1, -1, -1), option, horiz, app, custom);
         else
         {
             QRect br(r.adjusted(0, 0, 0,  WIDGET_MDI_WINDOW_TITLE==w ? 1 : 0));
@@ -10090,7 +10101,11 @@ void QtCurveStyle::drawMdiIcon(QPainter *painter, const QColor &color, const QCo
         if(!sunken && !faded && EFFECT_NONE!=opts.titlebarEffect)
     //         // && hover && !(opts.titlebarButtons&QTC_TITLEBAR_BUTTON_HOVER_SYMBOL) && !customCol)
         {
+#if defined QTC_QT_ONLY
+            QColor sh=ColorUtils_mix(&bgnd, &shadow, shadow.alphaF());
+#else
             QColor sh=KColorUtils::mix(bgnd, shadow, shadow.alphaF());
+#endif
 
             sh.setAlpha(255);
             drawIcon(painter, sh, r.adjusted(1, 1, 1, 1), sunken, icon, stdSize);
@@ -10098,8 +10113,13 @@ void QtCurveStyle::drawMdiIcon(QPainter *painter, const QColor &color, const QCo
 
         QColor col(color);
 
+#if defined QTC_QT_ONLY
+        if(faded)
+            col=ColorUtils_mix(&bgnd, &col, HOVER_BUTTON_ALPHA(col));
+#else
         if(faded)
             col=KColorUtils::mix(bgnd, col, HOVER_BUTTON_ALPHA(col));
+#endif
 
         drawIcon(painter, col, r, sunken, icon, stdSize);
     }
@@ -10280,7 +10300,8 @@ void QtCurveStyle::drawProgress(QPainter *p, const QRect &r, const QStyleOption 
         rx.setWidth(3);
 
     int          length(vertical ? rx.height() : rx.width());
-    const QColor *use=option->state&State_Enabled || ECOLOR_BACKGROUND==opts.progressGrooveColor
+    // KTorrent's progressbars seem to have state==State_None
+    const QColor *use=option->state&State_Enabled || State_None==option->state || ECOLOR_BACKGROUND==opts.progressGrooveColor
                     ? itsHighlightCols : itsBackgroundCols;
 
     drawLightBevel(p, rx, &opt, 0L, opts.fillProgress ? ROUNDED_ALL : round, use[ORIGINAL_SHADE], use, false,
@@ -11281,7 +11302,7 @@ QColor QtCurveStyle::getLowerEtchCol(const QWidget *widget) const
 
 void QtCurveStyle::widgetDestroyed(QObject *o)
 {
-    QWidget *w=static_cast<const QWidget *>(o);
+    QWidget *w=static_cast<QWidget *>(o);
     theNoEtchWidgets.remove(w);
     if(APP_KONTACT==theThemedApp)
     {

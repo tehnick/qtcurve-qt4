@@ -1227,7 +1227,7 @@ void QtCurveStyle::polish(QApplication *app)
     if(APP_OPENOFFICE==theThemedApp)
     {
         if(APPEARANCE_FADE==opts.menuitemAppearance)
-            opts.menuitemAppearance=APPEARANCE_GRADIENT;
+            opts.menuitemAppearance=APPEARANCE_FLAT;
         opts.borderMenuitems=false;
     }
 
@@ -1507,6 +1507,10 @@ void QtCurveStyle::polish(QWidget *widget)
             pal.setColor(QPalette::Inactive, QPalette::HighlightedText, pal.color(QPalette::Active, QPalette::HighlightedText));
             widget->setPalette(pal);
         }
+        QFont font(widget->font());
+
+        font.setBold(true);
+        widget->setFont(font);
         widget->installEventFilter(this);
     }
     else if (widget->inherits("Q3Header"))
@@ -1593,8 +1597,8 @@ void QtCurveStyle::polish(QWidget *widget)
             widget->parentWidget()->parentWidget() &&
             widget->parentWidget()->parentWidget()->parentWidget() &&
             qobject_cast<QSplitter *>(widget->parentWidget()) &&
-            widget->parentWidget()->parentWidget()->inherits("KFileWidget") &&
-            widget->parentWidget()->parentWidget()->parentWidget()->inherits("KFileDialog"))
+            widget->parentWidget()->parentWidget()->inherits("KFileWidget") /*&&
+            widget->parentWidget()->parentWidget()->parentWidget()->inherits("KFileDialog")*/)
         ((QDockWidget *)widget)->setTitleBarWidget(new QtCurveDockWidgetTitleBar(widget));
     else if(opts.fixParentlessDialogs)
         if(APP_KPRINTER==theThemedApp || APP_KDIALOG==theThemedApp || APP_KDIALOGD==theThemedApp)
@@ -1718,12 +1722,11 @@ void QtCurveStyle::polish(QWidget *widget)
 #if (QT_VERSION >= QT_VERSION_CHECK(4, 4, 0))
 static QFontMetrics styledFontMetrics(const QStyleOption *option, const QWidget *widget)
 {
-    if (option) {
-        return option->fontMetrics;
-    } else if (widget) {
-        return widget->fontMetrics();
-    }
-    return qApp->fontMetrics();
+    return option
+            ? option->fontMetrics
+            : widget
+                ? widget->fontMetrics()
+                : qApp->fontMetrics();
 }
 
 static int fontHeight(const QStyleOption *option, const QWidget *widget)
@@ -1780,12 +1783,14 @@ void QtCurveStyle::polishFormLayout(QFormLayout *layout)
             continue;
 
         int fieldHeight = fieldItem->sizeHint().height();
+#if QT_VERSION < 0x040600
         // work around KIntNumInput::sizeHint() bug
         if (fieldItem->widget() && fieldItem->widget()->inherits("KIntNumInput"))
         {
             fieldHeight -= 2;
             fieldItem->widget()->setMaximumHeight(fieldHeight);
         }
+#endif
         /* for large fields, we don't center */
         if (fieldHeight <= 2 * fontHeight(0, label) + addedHeight)
         {
@@ -1798,8 +1803,12 @@ void QtCurveStyle::polishFormLayout(QFormLayout *layout)
             label->setMinimumHeight(labelHeight);
         else
         {
+#if QT_VERSION >= 0x040602
+            label->setMinimumHeight((labelHeight * 4 + 6) / 7);
+#else
             // QFormLayout determines label size as height * 5 / 4, so revert that
             label->setMinimumHeight((labelHeight * 4 + 4) / 5);
+#endif
         }
     }
 }
@@ -1972,8 +1981,8 @@ void QtCurveStyle::unpolish(QWidget *widget)
             widget->parentWidget()->parentWidget() &&
             widget->parentWidget()->parentWidget()->parentWidget() &&
             qobject_cast<QSplitter *>(widget->parentWidget()) &&
-            widget->parentWidget()->parentWidget()->inherits("KFileWidget") &&
-            widget->parentWidget()->parentWidget()->parentWidget()->inherits("KFileDialog"))
+            widget->parentWidget()->parentWidget()->inherits("KFileWidget") /*&&
+            widget->parentWidget()->parentWidget()->parentWidget()->inherits("KFileDialog")*/)
     {
         delete ((QDockWidget *)widget)->titleBarWidget();
         ((QDockWidget *)widget)->setTitleBarWidget(0L);
@@ -2542,7 +2551,7 @@ int QtCurveStyle::pixelMetric(PixelMetric metric, const QStyleOption *option, co
             else
                 return 2;
         case PM_SpinBoxFrameWidth:
-            return QTC_DO_EFFECT ? 3 : 2;
+            return QTC_DO_EFFECT && opts.etchEntry ? 3 : 2;
         case PM_IndicatorWidth:
         case PM_IndicatorHeight:
             return QTC_DO_EFFECT
@@ -2801,7 +2810,17 @@ int QtCurveStyle::styleHint(StyleHint hint, const QStyleOption *option, const QW
             // Tell the calling app that we can handle certain custom widgets...
             if(hint>=SH_CustomBase && widget)
                 if("CE_CapacityBar"==widget->objectName())
+                {
+                    if (!widget->property("qtc-set-bold").isValid())
+                    {
+                        QWidget *w=(QWidget *)widget;
+                        QFont font(w->font());
+                        font.setBold(true);
+                        w->setFont(font);
+                        w->setProperty("qtc-set-bold", true);
+                    }
                     return CE_QtC_KCapacityBar;
+                }
 #endif
             return QTC_BASE_STYLE::styleHint(hint, option, widget, returnData);
    }
@@ -3891,10 +3910,10 @@ void QtCurveStyle::drawPrimitive(PrimitiveElement element, const QStyleOption *o
                 else
                 {
                     //Figuring out in what beast we are painting...
-                    bool view((widget && ((dynamic_cast<const QAbstractScrollArea*>(widget)) ||
+                    bool view((widget && ((qobject_cast<const QAbstractScrollArea*>(widget)) ||
                                         widget->inherits("Q3ScrollView"))) ||
                                          (widget && widget->parent() &&
-                                            ((dynamic_cast<const QAbstractScrollArea*>(widget->parent())) ||
+                                            ((qobject_cast<const QAbstractScrollArea*>(widget->parent())) ||
                                               widget->parent()->inherits("Q3ScrollView"))));
                     painter->save();
                     QColor c(view && state&State_Selected
@@ -4274,8 +4293,8 @@ void QtCurveStyle::drawPrimitive(PrimitiveElement element, const QStyleOption *o
                                 : palette.color(cg, QPalette::Highlight));
                 bool   square(opts.squareLvSelection && widget &&
                               !widget->inherits("KFilePlacesView") &&
-                              (dynamic_cast<const QTreeView *>(widget) ||
-                                (dynamic_cast<const QListView *>(widget) &&
+                              (qobject_cast<const QTreeView *>(widget) ||
+                                (qobject_cast<const QListView *>(widget) &&
                                 QListView::IconMode!=((const QListView *)widget)->viewMode())));
 
                 if (hover && !hasCustomBackground)
@@ -4305,8 +4324,7 @@ void QtCurveStyle::drawPrimitive(PrimitiveElement element, const QStyleOption *o
 
                         pixPainter.setRenderHint(QPainter::Antialiasing, true);
                         drawBevelGradient(color, &pixPainter, border,
-                                          buildPath(QRectF(border.x(), border.y(), border.width(), border.height()),
-                                                    WIDGET_OTHER, ROUNDED_ALL, radius), true,
+                                          buildPath(QRectF(border), WIDGET_OTHER, ROUNDED_ALL, radius), true,
                                           false, opts.selectionAppearance, WIDGET_SELECTION, false);
 //                         pixPainter.setBrush(Qt::NoBrush);
 //                         pixPainter.setPen(color);
@@ -4501,8 +4519,7 @@ void QtCurveStyle::drawControl(ControlElement element, const QStyleOption *optio
                         double   radius(getRadius(&opts, r.width(), r.height(), WIDGET_OTHER, RADIUS_SELECTION));
 
                         drawBevelGradient(shade(palette.background().color(), QTC_TO_FACTOR(opts.splitterHighlight)),
-                                          painter, r, buildPath(QRectF(r.x(), r.y(), r.width(), r.height()),
-                                                                WIDGET_OTHER, ROUNDED_ALL, radius),
+                                          painter, r, buildPath(QRectF(r), WIDGET_OTHER, ROUNDED_ALL, radius),
                                           !(state&State_Horizontal), false, opts.selectionAppearance, WIDGET_SELECTION, false);
                         painter->restore();
                     }
@@ -4644,6 +4661,7 @@ void QtCurveStyle::drawControl(ControlElement element, const QStyleOption *optio
                     QRect fillRect(r);
                     if(widget && widget->inherits("KoDockWidgetTitleBar"))
                         fillRect.adjust(-r.x(), -r.y(), 0, 0);
+
                     painter->save();
 
                     QColor col((opts.dwtSettings&QTC_DWT_COLOR_AS_PER_TITLEBAR)
@@ -4663,8 +4681,7 @@ void QtCurveStyle::drawControl(ControlElement element, const QStyleOption *optio
 #endif
                         painter->setRenderHint(QPainter::Antialiasing, true);
                         drawBevelGradient(col, painter, fillRect,
-                                          buildPath(QRectF(r.x(), r.y(), r.width(), r.height()),
-                                                    WIDGET_OTHER, round, radius), !verticalTitleBar,
+                                          buildPath(QRectF(fillRect), WIDGET_OTHER, round, radius), !verticalTitleBar,
                                           false, opts.dwtAppearance, WIDGET_DOCK_WIDGET_TITLE, false);
                     }
 
@@ -5059,11 +5076,11 @@ void QtCurveStyle::drawControl(ControlElement element, const QStyleOption *optio
                 painter->save();
 
                 QRect leftRect;
-                QFont font;
-
-                font.setBold(true);
-                painter->setFont(font);
-                painter->setPen(palette.text().color());
+//                 QFont font;
+// 
+//                 font.setBold(true);
+//                 painter->setFont(font);
+//                 painter->setPen(palette.text().color());
 
 #if QT_VERSION >= 0x040300
                 if (vertical)
@@ -5114,12 +5131,13 @@ void QtCurveStyle::drawControl(ControlElement element, const QStyleOption *optio
                         painter->setPen(palette.text().color());
                 }
 
-                painter->drawText(r, bar->text, QTextOption(Qt::AlignAbsolute | Qt::AlignHCenter | Qt::AlignVCenter));
+                QString text = bar->fontMetrics.elidedText(bar->text, Qt::ElideRight, r.width());
+                painter->drawText(r, text, QTextOption(Qt::AlignAbsolute | Qt::AlignHCenter | Qt::AlignVCenter));
                 if (!leftRect.isNull())
                 {
                     painter->setPen(flip ? palette.text().color() : palette.highlightedText().color());
                     painter->setClipRect(leftRect, Qt::IntersectClip);
-                    painter->drawText(r, bar->text, QTextOption(Qt::AlignAbsolute | Qt::AlignHCenter | Qt::AlignVCenter));
+                    painter->drawText(r, text, QTextOption(Qt::AlignAbsolute | Qt::AlignHCenter | Qt::AlignVCenter));
                 }
 
                 painter->restore();
@@ -5178,6 +5196,11 @@ void QtCurveStyle::drawControl(ControlElement element, const QStyleOption *optio
                       reverse(Qt::RightToLeft==menuItem->direction);
                 int   checkcol(qMax(menuItem->maxIconWidth, 20)),
                       stripeWidth(qMax(checkcol, constMenuPixmapWidth)-2);
+
+#if QT_VERSION < 0x040600
+                if(!(comboMenu && opts.gtkComboMenus))
+                  r.adjust(0, 0, -1, 0);
+#endif
                 QRect rx(r);
 
                 if(APP_OPENOFFICE==theThemedApp)
@@ -5253,11 +5276,7 @@ void QtCurveStyle::drawControl(ControlElement element, const QStyleOption *optio
                                         false, opts.menuStripeAppearance, WIDGET_OTHER);
 
                 if (selected && enabled)
-                    drawMenuItem(painter,
-                                 comboMenu && opts.gtkComboMenus
-                                    ? r
-                                    : r.adjusted(0, 0, -1, 0),
-                                 option, false, ROUNDED_ALL,
+                    drawMenuItem(painter, r, option, false, ROUNDED_ALL,
                                  opts.useHighlightForMenu ? itsHighlightCols : itsBackgroundCols);
 
                 if(comboMenu)
@@ -6578,9 +6597,7 @@ void QtCurveStyle::drawControl(ControlElement element, const QStyleOption *optio
 
                             drawBevelGradient(shade(palette.background().color(), QTC_TO_FACTOR(opts.crHighlight)),
                                               painter, highlightRect,
-                                              buildPath(QRectF(highlightRect.x(), highlightRect.y(),
-                                                               highlightRect.width(), highlightRect.height()),
-                                                        WIDGET_OTHER, ROUNDED_ALL, radius), true,
+                                              buildPath(QRectF(highlightRect), WIDGET_OTHER, ROUNDED_ALL, radius), true,
                                               false, opts.selectionAppearance, WIDGET_SELECTION, false);
                             painter->restore();
                         }
@@ -7070,11 +7087,17 @@ void QtCurveStyle::drawComplexControl(ComplexControl control, const QStyleOption
                       downIsActive(SC_SpinBoxDown==spinBox->activeSubControls),
                       doEtch(QTC_DO_EFFECT && opts.etchEntry);
 
+                if(up.isValid())
+                    if(reverse)
+                        frame.adjust(up.width(), 0, 0, 0);
+                    else
+                        frame.adjust(0, 0, -up.width(), 0);
+
                 if(doEtch)
                 {
                     drawEtch(painter, all, widget, WIDGET_SPIN);
                     down.adjust(reverse ? 1 : 0, 0, reverse ? 0 : -1, -1);
-                    up.adjust(reverse ? 1 : 0, 1, reverse ? 0 : -1, 0);
+                        up.adjust(reverse ? 1 : 0, 1, reverse ? 0 : -1, 0);
                     frame.adjust(reverse ? 0 : 1, 1, reverse ? -1 : 0, -1);
                     all.adjust(1, 1, -1, -1);
                 }
@@ -8023,11 +8046,12 @@ QSize QtCurveStyle::sizeFromContents(ContentsType type, const QStyleOption *opti
                     newSize = QSize(scrollBarExtent, scrollBarExtent * numButtons(opts.scrollbarType) + scrollBarSliderMinimum);
             }
             break;
+        case CT_LineEdit:
+            if (const QStyleOptionFrame *f = qstyleoption_cast<const QStyleOptionFrame *>(option))
+                newSize = size+QSize(2*f->lineWidth, 2*f->lineWidth);
+            break;
         case CT_SpinBox:
-            //newSize.setHeight(sizeFromContents(CT_LineEdit, option, size, widget).height());
-            if(opts.unifySpin)
-                newSize.rheight() --;
-            else
+            if(!opts.unifySpin)
                 newSize.rheight() -= ((1 - newSize.rheight()) & 1);
             break;
         case CT_ToolButton:
@@ -8356,25 +8380,29 @@ QRect QtCurveStyle::subControlRect(ComplexControl control, const QStyleOptionCom
                 switch(subControl)
                 {
                     case SC_SpinBoxUp:
-                        return QRect(x, y, bs.width(), bs.height());
+                        return QAbstractSpinBox::NoButtons==spinbox->buttonSymbols
+                                    ? QRect()
+                                    : QRect(x, y, bs.width(), bs.height());
                     case SC_SpinBoxDown:
-                    {
-                        int extra(bs.height()*2==r.height() ? 0 : 1);
-                        return QRect(x, y+bs.height(), bs.width(), bs.height()+extra);
-                    }
+                        if(QAbstractSpinBox::NoButtons==spinbox->buttonSymbols)
+                            return QRect();
+                        else
+                        {
+                            int extra(bs.height()*2==r.height() ? 0 : 1);
+                            return QRect(x, y+bs.height(), bs.width(), bs.height()+extra);
+                        }
                     case SC_SpinBoxEditField:
                     {
                         int pad=opts.round>ROUND_FULL ? 2 : 0;
-                        return QRect(fw+(reverse ? bs.width() : 0), fw, (x-fw*2)-pad, r.height()-2*fw);
+
+                        if (QAbstractSpinBox::NoButtons==spinbox->buttonSymbols)
+                            return QRect(fw, fw, (x-fw*2)-pad, r.height()-2*fw);
+                        else
+                            return QRect(fw+(reverse ? bs.width() : 0), fw, (x-fw*2)-pad, r.height()-2*fw);
                     }
                     case SC_SpinBoxFrame:
-                        return reverse
-                                ? QRect(r.x()+bs.width(), r.y(),
-                                        r.width()-bs.width()-1, r.height())
-                                : QRect(r.x(), r.y(),
-                                        r.width()-bs.width(), r.height());
                     default:
-                        break; // Remove compiler warnings...
+                        return visualRect(spinbox->direction, spinbox->rect, spinbox->rect);
                 }
             }
             break;
@@ -9516,7 +9544,7 @@ void QtCurveStyle::drawLightBevelReal(QPainter *p, const QRect &rOrig, const QSt
                 }
 
                 QRectF          gr(horiz ? QRectF(ra.x()+mod, ra.y(), ra.width()-(mod*2)-1, size-1)
-                                        : QRectF(ra.x(), ra.y()+mod, size-1, ra.height()-(mod*2)-1));
+                                         : QRectF(ra.x(), ra.y()+mod, size-1, ra.height()-(mod*2)-1));
                 QLinearGradient g(gr.topLeft(), horiz ? gr.bottomLeft() : gr.topRight());
                 QColor          white(Qt::white);
                 bool            mo(option->state&State_MouseOver && opts.highlightFactor);
@@ -9655,7 +9683,7 @@ void QtCurveStyle::drawEtch(QPainter *p, const QRect &r, const QWidget *widget, 
         if(WIDGET_SLIDER_TROUGH==w && opts.thinSbarGroove && widget && qobject_cast<const QScrollBar *>(widget))
         {
             QColor col(Qt::white);
-            col.setAlphaF(0.25);
+            col.setAlphaF(0.1); // 0.25);
             p->setPen(col);
         }
         else
@@ -10302,7 +10330,7 @@ void QtCurveStyle::drawProgress(QPainter *p, const QRect &r, const QStyleOption 
     int          length(vertical ? rx.height() : rx.width());
     // KTorrent's progressbars seem to have state==State_None
     const QColor *use=option->state&State_Enabled || State_None==option->state || ECOLOR_BACKGROUND==opts.progressGrooveColor
-                    ? itsHighlightCols : itsBackgroundCols;
+                    ? highlightColors(option) : itsBackgroundCols;
 
     drawLightBevel(p, rx, &opt, 0L, opts.fillProgress ? ROUNDED_ALL : round, use[ORIGINAL_SHADE], use, false,
                    WIDGET_PROGRESSBAR);
@@ -10907,6 +10935,17 @@ const QColor * QtCurveStyle::backgroundColors(const QColor &col) const
     return itsBackgroundCols;
 }
 
+const QColor * QtCurveStyle::highlightColors(const QColor &col) const
+{
+    if(col.alpha()!=0 && col!=itsHighlightCols[ORIGINAL_SHADE])
+    {
+        shadeColors(col, itsColoredHighlightCols);
+        return itsColoredHighlightCols;
+    }
+
+    return itsHighlightCols;
+}
+
 const QColor * QtCurveStyle::borderColors(const QStyleOption *option, const QColor *use) const
 {
     return opts.coloredMouseOver && option && option->state&State_MouseOver && option->state&State_Enabled
@@ -11295,7 +11334,7 @@ QColor QtCurveStyle::getLowerEtchCol(const QWidget *widget) const
     }
 
     QColor col(Qt::white);
-    col.setAlphaF(IS_FLAT(opts.bgndAppearance) ? 0.25 : 0.4);
+    col.setAlphaF(0.1); // IS_FLAT(opts.bgndAppearance) ? 0.25 : 0.4);
 
     return col;
 }

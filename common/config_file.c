@@ -1472,6 +1472,9 @@ static bool readConfig(const char *file, Options *opts, Options *defOpts)
             QTC_CFG_READ_BOOL(squareLvSelection)
             QTC_CFG_READ_BOOL(invertBotTab)
             QTC_CFG_READ_BOOL(menubarHiding)
+            QTC_CFG_READ_BOOL(boldProgress)
+            QTC_CFG_READ_BOOL(coloredTbarMo)
+            QTC_CFG_READ_BOOL(borderSelection)
 #if defined QTC_CONFIG_DIALOG || (defined QT_VERSION && (QT_VERSION >= 0x040000))
             QTC_CFG_READ_BOOL(stdBtnSizes)
             QTC_CFG_READ_BOOL(titlebarBorder)
@@ -1497,6 +1500,7 @@ static bool readConfig(const char *file, Options *opts, Options *defOpts)
             QTC_CFG_READ_EFFECT(titlebarEffect)
             QTC_CFG_READ_BOOL(gtkComboMenus)
             QTC_CFG_READ_BOOL(colorTitlebarOnly)
+            QTC_CFG_READ_BOOL(centerTabText)
 /*
 #else
             QTC_CFG_READ_BOOL(setDialogButtonOrder)
@@ -2135,6 +2139,9 @@ static void defaultSettings(Options *opts)
     opts->squareLvSelection=false;
     opts->invertBotTab=true;
     opts->menubarHiding=false;
+    opts->boldProgress=true;
+    opts->coloredTbarMo=false;
+    opts->borderSelection=false;
 #if defined QTC_CONFIG_DIALOG || (defined QT_VERSION && (QT_VERSION >= 0x040000))
     opts->stdBtnSizes=false;
     opts->titlebarBorder=true;
@@ -2162,6 +2169,7 @@ static void defaultSettings(Options *opts)
     opts->customMenuStripeColor.setRgb(0, 0, 0);
     opts->titlebarAlignment=ALIGN_FULL_CENTER;
     opts->titlebarEffect=EFFECT_SHADOW;
+    opts->centerTabText=false;
 #if defined QT_VERSION && (QT_VERSION >= 0x040000)
     opts->xbar=false;
     opts->dwtSettings=QTC_DWT_BUTTONS_AS_PER_TITLEBAR|QTC_DWT_ROUND_TOP_ONLY;
@@ -2801,6 +2809,9 @@ bool static writeConfig(KConfig *cfg, const Options &opts, const Options &def, b
         CFG_WRITE_ENTRY(squareLvSelection)
         CFG_WRITE_ENTRY(invertBotTab)
         CFG_WRITE_ENTRY(menubarHiding)
+        CFG_WRITE_ENTRY(boldProgress)
+        CFG_WRITE_ENTRY(coloredTbarMo)
+        CFG_WRITE_ENTRY(borderSelection)
 #if defined QT_VERSION && (QT_VERSION >= 0x040000)
         CFG_WRITE_ENTRY(xbar)
         CFG_WRITE_ENTRY_NUM(dwtSettings)
@@ -2854,6 +2865,7 @@ bool static writeConfig(KConfig *cfg, const Options &opts, const Options &def, b
         CFG_WRITE_ENTRY(mapKdeIcons)
         CFG_WRITE_ENTRY(shading)
         CFG_WRITE_ENTRY(titlebarAlignment)
+        CFG_WRITE_ENTRY(centerTabText)
 #if defined QT_VERSION && (QT_VERSION >= 0x040000)
         QTC_WRITE_STRING_LIST_ENTRY(noBgndGradientApps)
         QTC_WRITE_STRING_LIST_ENTRY(noBgndImageApps)

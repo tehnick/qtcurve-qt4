@@ -130,7 +130,7 @@ class CStylePreview : public KXmlGuiWindow, public Ui::StylePreview
         aboutData = new KAboutData("qtcurve", 0, ki18n("QtCurve"), VERSION,
                                    ki18n("Unified widet style."),
                                    KAboutData::License_GPL,
-                                   ki18n("(C) Craig Drummond, 2003-2009"),
+                                   ki18n("(C) Craig Drummond, 2003-2010"),
                                    KLocalizedString());
         aboutData->setProgramIconName("preferences-desktop-theme");
         componentData = new KComponentData(aboutData);
@@ -636,7 +636,7 @@ QtCurveConfig::QtCurveConfig(QWidget *parent)
                gradPreview(NULL)
 {
     setupUi(this);
-    titleLabel->setText("QtCurve " VERSION " - (C) Craig Drummond, 2003-2009");
+    titleLabel->setText("QtCurve " VERSION " - (C) Craig Drummond, 2003-2010");
     insertShadeEntries(shadeSliders, SW_SLIDER);
     insertShadeEntries(shadeMenubars, SW_MENUBAR);
     insertShadeEntries(shadeCheckRadio, SW_CHECK_RADIO);
@@ -778,6 +778,7 @@ QtCurveConfig::QtCurveConfig(QWidget *parent)
     connect(tabMouseOver, SIGNAL(currentIndexChanged(int)), SLOT(tabMoChanged()));
     connect(stdSidebarButtons, SIGNAL(toggled(bool)), SLOT(updateChanged()));
     connect(toolbarTabs, SIGNAL(toggled(bool)), SLOT(updateChanged()));
+    connect(centerTabText, SIGNAL(toggled(bool)), SLOT(updateChanged()));
     connect(borderMenuitems, SIGNAL(toggled(bool)), SLOT(updateChanged()));
     connect(popupBorder, SIGNAL(toggled(bool)), SLOT(updateChanged()));
     connect(progressAppearance, SIGNAL(currentIndexChanged(int)), SLOT(updateChanged()));
@@ -855,6 +856,9 @@ QtCurveConfig::QtCurveConfig(QWidget *parent)
     connect(titlebarAlignment, SIGNAL(currentIndexChanged(int)), SLOT(updateChanged()));
     connect(titlebarEffect, SIGNAL(currentIndexChanged(int)), SLOT(updateChanged()));
     connect(titlebarIcon, SIGNAL(currentIndexChanged(int)), SLOT(updateChanged()));
+    connect(boldProgress, SIGNAL(toggled(bool)), SLOT(updateChanged()));
+    connect(coloredTbarMo, SIGNAL(toggled(bool)), SLOT(updateChanged()));
+    connect(borderSelection, SIGNAL(toggled(bool)), SLOT(updateChanged()));
 
     connect(titlebarButtons_button, SIGNAL(toggled(bool)), SLOT(updateChanged()));
     connect(titlebarButtons_custom, SIGNAL(toggled(bool)), SLOT(updateChanged()));
@@ -1169,7 +1173,7 @@ void QtCurveConfig::setupStack()
     new CStackItem(stackList, i18n("Progressbars"), i++);
     new CStackItem(stackList, i18n("Default Button"),i++);
     new CStackItem(stackList, i18n("Mouse-over"), i++);
-    new CStackItem(stackList, i18n("Listviews"), i++);
+    new CStackItem(stackList, i18n("Item Views"), i++);
     new CStackItem(stackList, i18n("Scrollviews"), i++);
     new CStackItem(stackList, i18n("Tabs"), i++);
     new CStackItem(stackList, i18n("Checks and Radios"), i++);
@@ -2080,6 +2084,7 @@ void QtCurveConfig::setOptions(Options &opts)
     opts.tabMouseOver=(ETabMo)tabMouseOver->currentIndex();
     opts.stdSidebarButtons=stdSidebarButtons->isChecked();
     opts.toolbarTabs=toolbarTabs->isChecked();
+    opts.centerTabText=centerTabText->isChecked();
     opts.borderMenuitems=borderMenuitems->isChecked();
     opts.popupBorder=popupBorder->isChecked();
     opts.progressAppearance=(EAppearance)progressAppearance->currentIndex();
@@ -2129,6 +2134,9 @@ void QtCurveConfig::setOptions(Options &opts)
     opts.fadeLines=fadeLines->isChecked();
     opts.menuIcons=menuIcons->isChecked();
     opts.stdBtnSizes=stdBtnSizes->isChecked();
+    opts.boldProgress=boldProgress->isChecked();
+    opts.coloredTbarMo=coloredTbarMo->isChecked();
+    opts.borderSelection=borderSelection->isChecked();
     opts.forceAlternateLvCols=forceAlternateLvCols->isChecked();
     opts.squareLvSelection=squareLvSelection->isChecked();
     opts.titlebarAlignment=(EAlign)titlebarAlignment->currentIndex();
@@ -2270,6 +2278,8 @@ void QtCurveConfig::setWidgetOptions(const Options &opts)
     stdSidebarButtons->setChecked(opts.stdSidebarButtons);
     toolbarTabs->setChecked(opts.toolbarTabs);
     toolbarTabs_false->setChecked(!opts.toolbarTabs);
+    centerTabText->setChecked(opts.centerTabText);
+    centerTabText_false->setChecked(!opts.centerTabText);
     borderMenuitems->setChecked(opts.borderMenuitems);
     popupBorder->setChecked(opts.popupBorder);
     progressAppearance->setCurrentIndex(opts.progressAppearance);
@@ -2293,6 +2303,11 @@ void QtCurveConfig::setWidgetOptions(const Options &opts)
     fadeLines->setChecked(opts.fadeLines);
     menuIcons->setChecked(opts.menuIcons);
     stdBtnSizes->setChecked(opts.stdBtnSizes);
+    boldProgress->setChecked(opts.boldProgress);
+    boldProgress_false->setChecked(!opts.boldProgress);
+    coloredTbarMo->setChecked(opts.coloredTbarMo);
+    coloredTbarMo_false->setChecked(!opts.coloredTbarMo);
+    borderSelection->setChecked(opts.borderSelection);
     forceAlternateLvCols->setChecked(opts.forceAlternateLvCols);
     squareLvSelection->setChecked(opts.squareLvSelection);
     titlebarAlignment->setCurrentIndex(opts.titlebarAlignment);
@@ -2470,6 +2485,7 @@ bool QtCurveConfig::settingsChanged(const Options &opts)
          tabMouseOver->currentIndex()!=opts.tabMouseOver ||
          stdSidebarButtons->isChecked()!=opts.stdSidebarButtons ||
          toolbarTabs->isChecked()!=opts.toolbarTabs ||
+         centerTabText->isChecked()!=opts.centerTabText ||
          borderMenuitems->isChecked()!=opts.borderMenuitems ||
          popupBorder->isChecked()!=opts.popupBorder ||
          defBtnIndicator->currentIndex()!=(int)opts.defBtnIndicator ||
@@ -2507,6 +2523,9 @@ bool QtCurveConfig::settingsChanged(const Options &opts)
          fadeLines->isChecked()!=opts.fadeLines ||
          menuIcons->isChecked()!=opts.menuIcons ||
          stdBtnSizes->isChecked()!=opts.stdBtnSizes ||
+         boldProgress->isChecked()!=opts.boldProgress ||
+         coloredTbarMo->isChecked()!=opts.coloredTbarMo ||
+         borderSelection->isChecked()!=opts.borderSelection ||
          forceAlternateLvCols->isChecked()!=opts.forceAlternateLvCols ||
          squareLvSelection->isChecked()!=opts.squareLvSelection ||
          titlebarAlignment->currentIndex()!=opts.titlebarAlignment ||

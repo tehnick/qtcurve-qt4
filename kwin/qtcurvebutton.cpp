@@ -51,6 +51,7 @@ QtCurveButton::QtCurveButton(ButtonType type, QtCurveClient *parent)
     setFocusPolicy(Qt::NoFocus);
     setAttribute(Qt::WA_OpaquePaintEvent, false);
     setAttribute(Qt::WA_Hover, true);
+    reset(DecorationReset);
 }
 
 void QtCurveButton::reset(unsigned long changed)
@@ -59,6 +60,11 @@ void QtCurveButton::reset(unsigned long changed)
     {
         switch (type())
         {
+#if KDE_IS_VERSION(4, 3, 85)
+            case ItemCloseButton:
+                itsIconType = CloseTabIcon;
+                break;
+#endif
             case CloseButton:
                 itsIconType = CloseIcon;
                 break;
@@ -146,7 +152,12 @@ void QtCurveButton::drawButton(QPainter *painter)
     QPixmap  buffer(width(), height());
     buffer.fill(Qt::transparent);
     QPainter bP(&buffer);
-    
+#if KDE_IS_VERSION(4, 3, 85)
+    bool     isTabClose(ItemCloseButton==type());
+
+    if(isTabClose && drawFrame && !(sunken || itsHover))
+        drawFrame=false;
+#endif
 //     if(CloseButton==type())
 //         buttonColor=midColor(QColor(180,64,32), buttonColor);
 
@@ -162,6 +173,9 @@ void QtCurveButton::drawButton(QPainter *painter)
             case MinButton:
                 versionHack=QTC_TBAR_VERSION_HACK+TITLEBAR_MIN;
                 break;
+#if KDE_IS_VERSION(4, 3, 85)
+            case ItemCloseButton:
+#endif
             case CloseButton:
                 versionHack=QTC_TBAR_VERSION_HACK+TITLEBAR_CLOSE;
                 break;
@@ -251,7 +265,11 @@ void QtCurveButton::drawButton(QPainter *painter)
             bP.drawPixmap(dX+1, dY+1, icon);
         }
 
-        if(CloseButton==type() && itsHover && !(flags&QTC_TITLEBAR_BUTTON_COLOR) && !customCol)
+        if( (CloseButton==type()
+#if KDE_IS_VERSION(4, 3, 85)
+              || isTabClose
+#endif
+             ) && itsHover && !(flags&QTC_TITLEBAR_BUTTON_COLOR) && !customCol)
             col=CLOSE_COLOR;
 
         if(faded)
@@ -295,6 +313,10 @@ QBitmap IconEngine::icon(ButtonIcon icon, int size, QStyle *style)
 
     switch(icon)
     {
+#if KDE_IS_VERSION(4, 3, 85)
+        case CloseTabIcon:
+            r.adjust(1, 1, -1, -1);
+#endif
         case CloseIcon:
         {
             int lineWidth = 1;

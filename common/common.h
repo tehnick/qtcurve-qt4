@@ -58,10 +58,6 @@ static int lstat(const char* fileName, struct stat* s)
 #define QTC_INCREASE_SB_SLIDER
 
 /*
-    Control whether toolbar, window decoration, and dock window, buttons should have coloured mouse-over
-*/
-#define QTC_DONT_COLOUR_MOUSEOVER_TBAR_BUTTONS
-/*
     Control shading used for glass variants.
     0 => As used in 0.51.1 +
     1 => As used in 0.51
@@ -382,10 +378,11 @@ typedef enum
     QtC_TitleBarEffect
 } QtCMetrics;
 
-#define QtC_StateKWin         ((QStyle::StateFlag)0x10000000)
-#define QtC_StateKWinShaded   ((QStyle::StateFlag)0x20000000)
-#define QtC_StateKWinNotFull  ((QStyle::StateFlag)0x40000000)
-#define QtC_StateKWinNoBorder ((QStyle::StateFlag)0x80000000)
+#define QtC_StateKWin            ((QStyle::StateFlag)0x10000000)
+#define QtC_StateKWinNotFull     ((QStyle::StateFlag)0x20000000)
+#define QtC_StateKWinNoBorder    ((QStyle::StateFlag)0x40000000)
+#define QtC_StateKWinCompositing ((QStyle::StateFlag)0x80000000)
+#define QtC_StateKWinTabDrag     ((QStyle::StateFlag)0x00000001)
 
 #define CLOSE_COLOR              QColor(191, 82, 82)
 #define QTC_DARK_WINDOW_TEXT(A)  ((A).red()<230 || (A).green()<230 || (A).blue()<230)
@@ -956,7 +953,10 @@ typedef struct
                      forceAlternateLvCols,
                      squareLvSelection,
                      invertBotTab,
-                     menubarHiding;
+                     menubarHiding,
+                     boldProgress,
+                     coloredTbarMo,
+                     borderSelection;
     EGlow            glowProgress;
     ELvLines         lvLines;
     EGradType        bgndGrad,
@@ -1026,6 +1026,7 @@ typedef struct
 #if defined __cplusplus
     EAlign           titlebarAlignment;
     EEffect          titlebarEffect;
+    bool             centerTabText;
 #endif
     double           customShades[NUM_STD_SHADES];
 #ifdef __cplusplus

@@ -81,6 +81,9 @@ namespace KWinQtCurve
 QtCurveHandler::QtCurveHandler()
               : itsTitleBarPad(0)
               , itsStyle(NULL)
+#if KDE_IS_VERSION(4, 3, 0)
+              , itsCustomShadows(false)
+#endif
 {
     setStyle();
     reset(0);
@@ -214,6 +217,16 @@ bool QtCurveHandler::supports(Ability ability) const
         case AbilityColorTitleFore:
         case AbilityColorFrame:
             return true;
+#if KDE_IS_VERSION(4, 3, 0)
+        case AbilityUsesAlphaChannel:
+            return true; // !Handler()->outerBorder(); ???
+        case AbilityProvidesShadow:
+            return itsCustomShadows;
+#endif
+#if KDE_IS_VERSION(4, 3, 85)
+        case AbilityClientGrouping:
+            return true;
+#endif
         default:
             return false;
     };
@@ -245,7 +258,10 @@ bool QtCurveHandler::readConfig()
          oldRoundBottom=itsRoundBottom,
          oldOuterBorder=itsOuterBorder;
     int  oldTitleBarPad=itsTitleBarPad;
-    
+#if KDE_IS_VERSION(4, 3, 0)
+    bool oldCustomShadows(itsCustomShadows);
+#endif
+
     itsMenuClose = config.readEntry("CloseOnMenuDoubleClick", true);
     itsShowResizeGrip = config.readEntry("ShowResizeGrip", false);
     itsRoundBottom = config.readEntry("RoundBottom", true);
@@ -255,11 +271,36 @@ bool QtCurveHandler::readConfig()
     itsTitleBarPad = config.readEntry("TitleBarPad", 0);
 
     itsTitleHeight+=2*itsTitleBarPad;
+#if KDE_IS_VERSION(4, 3, 0)
+    bool shadowChanged(false);
+
+    itsCustomShadows = config.readEntry("CustomShadows", false);
+
+    if(itsCustomShadows)
+    {
+        QtCurveShadowConfiguration actShadow(QPalette::Active),
+                                   inactShadow(QPalette::Inactive);
+
+        actShadow.load(&configFile);
+        inactShadow.load(&configFile);
+
+        shadowChanged=itsCustomShadows &&
+                       (itsShadowCache.shadowConfigurationChanged(actShadow) ||
+                        itsShadowCache.shadowConfigurationChanged(inactShadow));
+
+        itsShadowCache.setShadowConfiguration(actShadow);
+        itsShadowCache.setShadowConfiguration(inactShadow);
+    }
+#endif
 
     return oldMenuClose!=itsMenuClose ||
            oldShowResizeGrip!=itsShowResizeGrip ||
            oldRoundBottom!=itsRoundBottom ||
            oldOuterBorder!=itsOuterBorder ||
+#if KDE_IS_VERSION(4, 3, 0)
+           oldCustomShadows!=itsCustomShadows ||
+           shadowChanged ||
+#endif
            oldTitleBarPad!=itsTitleBarPad;
 }
 

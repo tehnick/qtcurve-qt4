@@ -1161,7 +1161,9 @@ QtCurveStyle::QtCurveStyle()
         opts.titlebarButtons&=~QTC_TITLEBAR_BUTTON_COLOR;
     
     if(IMG_PLAIN_RINGS==opts.bgndImage.type || IMG_BORDERED_RINGS==opts.bgndImage.type ||
-       IMG_PLAIN_RINGS==opts.menuBgndImage.type || IMG_BORDERED_RINGS==opts.menuBgndImage.type)
+       IMG_SQUARE_RINGS==opts.bgndImage.type ||
+       IMG_PLAIN_RINGS==opts.menuBgndImage.type || IMG_BORDERED_RINGS==opts.menuBgndImage.type ||
+       IMG_SQUARE_RINGS==opts.menuBgndImage.type)
         calcRingAlphas(&opts, &itsBackgroundCols[ORIGINAL_SHADE]);
 
 #if !defined QTC_QT_ONLY
@@ -1338,7 +1340,9 @@ void QtCurveStyle::polish(QPalette &palette)
     {
         shadeColors(palette.color(QPalette::Active, QPalette::Background), itsBackgroundCols);
         if(IMG_PLAIN_RINGS==opts.bgndImage.type || IMG_BORDERED_RINGS==opts.bgndImage.type ||
-           IMG_PLAIN_RINGS==opts.menuBgndImage.type || IMG_BORDERED_RINGS==opts.menuBgndImage.type)
+           IMG_SQUARE_RINGS==opts.bgndImage.type ||
+           IMG_PLAIN_RINGS==opts.menuBgndImage.type || IMG_BORDERED_RINGS==opts.menuBgndImage.type ||
+           IMG_SQUARE_RINGS==opts.menuBgndImage.type)
         {
             calcRingAlphas(&opts, &itsBackgroundCols[ORIGINAL_SHADE]);
             if(itsUsePixmapCache)
@@ -8381,15 +8385,27 @@ QRect QtCurveStyle::subElementRect(SubElement element, const QStyleOption *optio
                 }
 
                 // left widget
-                if (tabV2.leftButtonSize.isNull())
-                    rect.setLeft(rect.left()+constTabPad);
-                else if(tabV2.leftButtonSize.width()>0)
-                    rect.setLeft(rect.left() + constTabPad + 2 +
-                                (verticalTabs ? tabV2.leftButtonSize.height() : tabV2.leftButtonSize.width()));
-                else if(tabV2.icon.isNull())
-                    rect.setLeft(rect.left()+constTabPad);
+                if(opts.centerTabText)
+                {
+                    if (!tabV2.leftButtonSize.isEmpty())  // left widget
+                        rect.setLeft(rect.left() + constTabPad +
+                                     (verticalTabs ? tabV2.leftButtonSize.height() : tabV2.leftButtonSize.width()));
+                    if (!tabV2.rightButtonSize.isEmpty()) // right widget
+                        rect.setRight(rect.right() - constTabPad -
+                                     (verticalTabs ? tabV2.rightButtonSize.height() : tabV2.rightButtonSize.width()));
+                }
                 else
-                    rect.setLeft(rect.left() + 2);
+                {
+                    if (tabV2.leftButtonSize.isNull())
+                        rect.setLeft(rect.left()+constTabPad);
+                    else if(tabV2.leftButtonSize.width()>0)
+                        rect.setLeft(rect.left() + constTabPad + 2 +
+                                    (verticalTabs ? tabV2.leftButtonSize.height() : tabV2.leftButtonSize.width()));
+                    else if(tabV2.icon.isNull())
+                        rect.setLeft(rect.left()+constTabPad);
+                    else
+                        rect.setLeft(rect.left() + 2);
+                }
 
                 // icon
                 if (!tabV2.icon.isNull())
@@ -8404,7 +8420,8 @@ QRect QtCurveStyle::subElementRect(SubElement element, const QStyleOption *optio
                                                             (tabV2.state & State_Enabled) ? QIcon::Normal
                                                             : QIcon::Disabled);
                     int offset = 4;
-                    if (tabV2.leftButtonSize.isNull())
+                    
+                    if (!opts.centerTabText && tabV2.leftButtonSize.isNull())
                         offset += 2;
 
                     QRect iconRect = QRect(rect.left() + offset, rect.center().y() - tabIconSize.height() / 2,
@@ -8415,9 +8432,10 @@ QRect QtCurveStyle::subElementRect(SubElement element, const QStyleOption *optio
                 }
 
                 // right widget
-                if (!tabV2.rightButtonSize.isNull() && tabV2.rightButtonSize.width()>0)
+                if (!opts.centerTabText && !tabV2.rightButtonSize.isNull() && tabV2.rightButtonSize.width()>0)
                     rect.setRight(rect.right() - constTabPad - 2 -
                                   (verticalTabs ? tabV2.rightButtonSize.height() : tabV2.rightButtonSize.width()));
+
 
                 if (!verticalTabs)
                     rect = visualRect(option->direction, option->rect, rect);
@@ -9900,6 +9918,8 @@ void QtCurveStyle::drawBackground(QWidget *widget, bool isWindow) const
                                  opts.bgndImage.width==opts.bgndImage.width &&
                                  opts.bgndImage.file==opts.menuBgndImage.file)))
                     ? opts.bgndImage : opts.menuBgndImage;
+    int      imgWidth=IMG_FILE==img.type ? img.width : QTC_RINGS_WIDTH(img.type),
+             imgHeight=IMG_FILE==img.type ? img.height : QTC_RINGS_HEIGHT(img.type);
 
     switch(img.type)
     {
@@ -9916,7 +9936,7 @@ void QtCurveStyle::drawBackground(QWidget *widget, bool isWindow) const
         case IMG_BORDERED_RINGS:
             if(img.pix.isNull())
             {
-                img.pix=QPixmap(QTC_RINGS_WIDTH, QTC_RINGS_HEIGHT);
+                img.pix=QPixmap(imgWidth, imgHeight);
                 img.pix.fill(Qt::transparent);
                 QPainter pixPainter(&img.pix);
 
@@ -9934,8 +9954,35 @@ void QtCurveStyle::drawBackground(QWidget *widget, bool isWindow) const
                 drawBgndRing(pixPainter, 310, 220, 80, 0, isWindow);
                 pixPainter.end();
             }
-
             p.drawPixmap(widget->width()-img.pix.width(), y+1, img.pix);
+            break;
+        case IMG_SQUARE_RINGS:
+            if(img.pix.isNull())
+            {
+                img.pix=QPixmap(imgWidth, imgHeight);
+                img.pix.fill(Qt::transparent);
+                QPainter pixPainter(&img.pix);
+                QColor   col(Qt::white);
+                double   halfWidth=QTC_RINGS_SQUARE_LINE_WIDTH/2.0;
+
+                col.setAlphaF(QTC_RINGS_SQUARE_ALPHA);
+                pixPainter.setRenderHint(QPainter::Antialiasing);
+                pixPainter.setPen(QPen(col, QTC_RINGS_SQUARE_LINE_WIDTH, Qt::SolidLine, Qt::SquareCap, Qt::RoundJoin));
+                pixPainter.drawPath(buildPath(QRectF(halfWidth+0.5, halfWidth+0.5,
+                                                     QTC_RINGS_SQUARE_SMALL_SIZE, QTC_RINGS_SQUARE_SMALL_SIZE),
+                                              WIDGET_OTHER, ROUNDED_ALL, QTC_RINGS_SQUARE_RADIUS));
+                pixPainter.drawPath(buildPath(QRectF(halfWidth+0.5+((imgWidth-QTC_RINGS_SQUARE_LARGE_SIZE-QTC_RINGS_SQUARE_LINE_WIDTH)/2.0),
+                                                     halfWidth+0.5+((imgHeight-QTC_RINGS_SQUARE_LARGE_SIZE-QTC_RINGS_SQUARE_LINE_WIDTH)/2.0),
+                                                     QTC_RINGS_SQUARE_LARGE_SIZE, QTC_RINGS_SQUARE_LARGE_SIZE),
+                                              WIDGET_OTHER, ROUNDED_ALL, QTC_RINGS_SQUARE_RADIUS));
+                pixPainter.drawPath(buildPath(QRectF(halfWidth+0.5+(imgWidth-(QTC_RINGS_SQUARE_SMALL_SIZE+QTC_RINGS_SQUARE_LINE_WIDTH)),
+                                                     halfWidth+0.5+(imgHeight-(QTC_RINGS_SQUARE_SMALL_SIZE+QTC_RINGS_SQUARE_LINE_WIDTH)),
+                                                     QTC_RINGS_SQUARE_SMALL_SIZE, QTC_RINGS_SQUARE_SMALL_SIZE),
+                                              WIDGET_OTHER, ROUNDED_ALL, QTC_RINGS_SQUARE_RADIUS));
+                pixPainter.end();
+            }
+            p.drawPixmap(widget->width()-img.pix.width(), y+1, img.pix);
+            break;    
     }
 }
 

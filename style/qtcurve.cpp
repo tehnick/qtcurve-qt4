@@ -587,6 +587,19 @@ static QColor checkColour(const QStyleOption *option, QPalette::ColorRole role)
     return col;
 }
 
+static QColor blendColors(const QColor &foreground, const QColor &background, double alpha)
+{
+    QColor col(foreground);
+
+    col.setAlpha(255);
+
+#if defined QTC_QT_ONLY
+    return ColorUtils_mix(&background, &foreground, alpha);
+#else
+    return KColorUtils::mix(background, foreground, alpha);
+#endif
+}
+
 // from windows style
 static const int windowsItemFrame    =  2; // menu item frame width
 static const int windowsItemHMargin  =  3; // menu item hor text margin
@@ -2799,7 +2812,7 @@ int QtCurveStyle::styleHint(StyleHint hint, const QStyleOption *option, const QW
                         mask->region += QRegion(r.x()+1, r.y()+3, 1, r.height()-2);
                         mask->region += QRegion(r.x()+2, r.y()+2, 1, r.height()-1);
                         mask->region += QRegion(r.x()+3, r.y()+1, 2, r.height());
-                        mask->region += QRegion(r.x()+r.width()-1, r.y()+4, 1, r.height()-5);
+                        mask->region += QRegion(r.x()+r.width()-1, r.y()+5, 1, r.height()-5);
                         mask->region += QRegion(r.x()+r.width()-2, r.y()+3, 1, r.height()-2);
                         mask->region += QRegion(r.x()+r.width()-3, r.y()+2, 1, r.height()-1);
                         mask->region += QRegion(r.x()+r.width()-5, r.y()+1, 2, r.height()-0);
@@ -3231,15 +3244,8 @@ void QtCurveStyle::drawPrimitive(PrimitiveElement element, const QStyleOption *o
                              (opts.unifyCombo && qobject_cast<const QComboBox *>(widget) && ((const QComboBox *)widget)->isEditable()))))
                 r.adjust(1, 1, 1, 1);
             if(col.alpha()<255 && PE_IndicatorArrowRight==element && widget && widget->inherits("KUrlButton"))
-            {
-#if defined QTC_QT_ONLY
-                QColor bgnd=palette.background().color();
-                col=ColorUtils_mix(&bgnd, &col, col.alphaF());
-#else
-                col=KColorUtils::mix(palette.background().color(), col, col.alphaF());
-#endif
-                col.setAlpha(255);
-            }
+                col=blendColors(col, palette.background().color(), col.alphaF());
+
             drawArrow(painter, r, element, col, false);
             break;
         }
@@ -7445,7 +7451,9 @@ void QtCurveStyle::drawComplexControl(ComplexControl control, const QStyleOption
 
                 opt.state=State_Horizontal|State_Enabled|State_Raised|(active ? State_Active : State_None);
 
-#if KDE_IS_VERSION(4, 3, 0)
+#ifdef QTC_QT_ONLY
+                QPainterPath path;
+#elif KDE_IS_VERSION(4, 3, 0)
                 QPainterPath path(opts.round<ROUND_SLIGHT
                                     ? QPainterPath()
                                     : buildPath(QRectF(state&QtC_StateKWinNoBorder ? r : r.adjusted(1, 1, -1, 0)),
@@ -7625,12 +7633,17 @@ void QtCurveStyle::drawComplexControl(ComplexControl control, const QStyleOption
 
                     if(EFFECT_NONE!=opts.titlebarEffect)
                     {
-                        shadow.setAlphaF(WINDOW_TEXT_SHADOW_ALPHA(opts.titlebarEffect));
-                        painter->setPen(shadow);
+                        //shadow.setAlphaF(WINDOW_TEXT_SHADOW_ALPHA(opts.titlebarEffect));
+                        //painter->setPen(shadow);
+                        painter->setPen(blendColors(WINDOW_SHADOW_COLOR(opts.titlebarEffect), titleCols[ORIGINAL_SHADE],
+                                                    WINDOW_TEXT_SHADOW_ALPHA(opts.titlebarEffect)));
                         painter->drawText(textRect.adjusted(1, 1, 1, 1), str, textOpt);
 
                         if (!active && QTC_DARK_WINDOW_TEXT(textColor))
-                            textColor.setAlpha((textColor.alpha() * 180) >> 8);
+                        {
+                            //textColor.setAlpha((textColor.alpha() * 180) >> 8);
+                            textColor=blendColors(textColor, titleCols[ORIGINAL_SHADE], ((255 * 180) >> 8)/256.0);
+                        }
                     }
                     painter->setPen(textColor);
                     painter->drawText(textRect, str, textOpt);
@@ -9577,6 +9590,9 @@ void QtCurveStyle::drawLightBevelReal(QPainter *p, const QRect &rOrig, const QSt
     if(doEtch)
         r.adjust(1, 1, -1, -1);
 
+    if(WIDGET_TROUGH==w && !opts.borderSbarGroove)
+        doBorder=false;
+
     p->setRenderHint(QPainter::Antialiasing, true);
     
     if(r.width()>0 && r.height()>0)
@@ -9586,7 +9602,9 @@ void QtCurveStyle::drawLightBevelReal(QPainter *p, const QRect &rOrig, const QSt
         else
         {
             drawBevelGradient(fill, p, r,
-                              buildPath(r, w, round, getRadius(&opts, r.width()-2, r.height()-2, w, RADIUS_INTERNAL)),
+                              doBorder
+                                ? buildPath(r, w, round, getRadius(&opts, r.width()-2, r.height()-2, w, RADIUS_INTERNAL))
+                                : buildPath(QRectF(r), w, round, getRadius(&opts, r.width()-2, r.height()-2, w, RADIUS_INTERNAL)),
                               horiz, sunken, app, w, useCache);
 
             if(!sunken)
@@ -9965,19 +9983,21 @@ void QtCurveStyle::drawBackground(QWidget *widget, bool isWindow) const
                 QColor   col(Qt::white);
                 double   halfWidth=QTC_RINGS_SQUARE_LINE_WIDTH/2.0;
 
-                col.setAlphaF(QTC_RINGS_SQUARE_ALPHA);
+                col.setAlphaF(QTC_RINGS_SQUARE_SMALL_ALPHA);
                 pixPainter.setRenderHint(QPainter::Antialiasing);
                 pixPainter.setPen(QPen(col, QTC_RINGS_SQUARE_LINE_WIDTH, Qt::SolidLine, Qt::SquareCap, Qt::RoundJoin));
                 pixPainter.drawPath(buildPath(QRectF(halfWidth+0.5, halfWidth+0.5,
                                                      QTC_RINGS_SQUARE_SMALL_SIZE, QTC_RINGS_SQUARE_SMALL_SIZE),
                                               WIDGET_OTHER, ROUNDED_ALL, QTC_RINGS_SQUARE_RADIUS));
-                pixPainter.drawPath(buildPath(QRectF(halfWidth+0.5+((imgWidth-QTC_RINGS_SQUARE_LARGE_SIZE-QTC_RINGS_SQUARE_LINE_WIDTH)/2.0),
-                                                     halfWidth+0.5+((imgHeight-QTC_RINGS_SQUARE_LARGE_SIZE-QTC_RINGS_SQUARE_LINE_WIDTH)/2.0),
-                                                     QTC_RINGS_SQUARE_LARGE_SIZE, QTC_RINGS_SQUARE_LARGE_SIZE),
-                                              WIDGET_OTHER, ROUNDED_ALL, QTC_RINGS_SQUARE_RADIUS));
                 pixPainter.drawPath(buildPath(QRectF(halfWidth+0.5+(imgWidth-(QTC_RINGS_SQUARE_SMALL_SIZE+QTC_RINGS_SQUARE_LINE_WIDTH)),
                                                      halfWidth+0.5+(imgHeight-(QTC_RINGS_SQUARE_SMALL_SIZE+QTC_RINGS_SQUARE_LINE_WIDTH)),
                                                      QTC_RINGS_SQUARE_SMALL_SIZE, QTC_RINGS_SQUARE_SMALL_SIZE),
+                                              WIDGET_OTHER, ROUNDED_ALL, QTC_RINGS_SQUARE_RADIUS));
+                col.setAlphaF(QTC_RINGS_SQUARE_LARGE_ALPHA);
+                pixPainter.setPen(QPen(col, QTC_RINGS_SQUARE_LINE_WIDTH, Qt::SolidLine, Qt::SquareCap, Qt::RoundJoin));
+                pixPainter.drawPath(buildPath(QRectF(halfWidth+0.5+((imgWidth-QTC_RINGS_SQUARE_LARGE_SIZE-QTC_RINGS_SQUARE_LINE_WIDTH)/2.0),
+                                                     halfWidth+0.5+((imgHeight-QTC_RINGS_SQUARE_LARGE_SIZE-QTC_RINGS_SQUARE_LINE_WIDTH)/2.0),
+                                                     QTC_RINGS_SQUARE_LARGE_SIZE, QTC_RINGS_SQUARE_LARGE_SIZE),
                                               WIDGET_OTHER, ROUNDED_ALL, QTC_RINGS_SQUARE_RADIUS));
                 pixPainter.end();
             }
@@ -10272,26 +10292,12 @@ void QtCurveStyle::drawMdiIcon(QPainter *painter, const QColor &color, const QCo
 
         if(!sunken && !faded && EFFECT_NONE!=opts.titlebarEffect)
     //         // && hover && !(opts.titlebarButtons&QTC_TITLEBAR_BUTTON_HOVER_SYMBOL) && !customCol)
-        {
-#if defined QTC_QT_ONLY
-            QColor sh=ColorUtils_mix(&bgnd, &shadow, shadow.alphaF());
-#else
-            QColor sh=KColorUtils::mix(bgnd, shadow, shadow.alphaF());
-#endif
-
-            sh.setAlpha(255);
-            drawIcon(painter, sh, r.adjusted(1, 1, 1, 1), sunken, icon, stdSize);
-        }
+            drawIcon(painter, blendColors(shadow, bgnd, shadow.alphaF()), r.adjusted(1, 1, 1, 1), sunken, icon, stdSize);
 
         QColor col(color);
 
-#if defined QTC_QT_ONLY
         if(faded)
-            col=ColorUtils_mix(&bgnd, &col, HOVER_BUTTON_ALPHA(col));
-#else
-        if(faded)
-            col=KColorUtils::mix(bgnd, col, HOVER_BUTTON_ALPHA(col));
-#endif
+            col=blendColors(col, bgnd, HOVER_BUTTON_ALPHA(col));
 
         drawIcon(painter, col, r, sunken, icon, stdSize);
     }

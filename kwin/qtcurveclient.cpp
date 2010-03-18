@@ -105,10 +105,6 @@ static QPainterPath createPath(const QRect &r, bool fullRound, bool inner=false)
 
 static QColor blendColors(const QColor &foreground, const QColor &background, double alpha)
 {
-    QColor col(foreground);
-
-    col.setAlpha(255);
-
     return KColorUtils::mix(background, foreground, alpha);
 }
 
@@ -144,7 +140,7 @@ bool QtCurveClient::decorationBehaviour(DecorationBehaviour behaviour) const
     switch (behaviour)
     {
         case DB_MenuClose:
-            return Handler()->menuClose();
+            return true;
         case DB_WindowMask:
             return false;
         default:
@@ -520,8 +516,16 @@ void QtCurveClient::paintTitle(QPainter *painter, const QRect &capRect, const QR
                 }
                 else
                 {
+//                     iconX=(((textRect.width()-textWidth)/2.0)+0.5)+
+//                             (shadowSize ? (Qt::AlignHCenter==hAlign ? shadowSize : capRect.x()) : 0)+
+//                             (isTab ? capRect.x() : 0);
+
+                    int adjustment=textRect==capRect ? capRect.x() : 0;
+
                     iconX=(((textRect.width()-textWidth)/2.0)+0.5)+
-                            (shadowSize ? (Qt::AlignHCenter==hAlign ? shadowSize : capRect.x()) : 0)+
+                            (shadowSize
+                                ? (Qt::AlignHCenter==hAlign ? shadowSize : capRect.x())
+                                : (isTab ? 0 : adjustment))+
                             (isTab ? capRect.x() : 0);
                     textRect.setX(iconX+pix.width()+constTitlePad);
                     alignment=Qt::AlignVCenter|Qt::AlignLeft;
@@ -561,7 +565,10 @@ void QtCurveClient::paintTitle(QPainter *painter, const QRect &capRect, const QR
 //             shadow.setAlphaF(WINDOW_TEXT_SHADOW_ALPHA(effect));
 //             painter->setPen(shadow);
             painter->setPen(blendColors(WINDOW_SHADOW_COLOR(effect), bgnd, WINDOW_TEXT_SHADOW_ALPHA(effect)));
-            painter->drawText(textRect.adjusted(1, 1, 1, 1), alignment, str);
+            painter->drawText(EFFECT_SHADOW==effect
+                                ? textRect.adjusted(1, 1, 1, 1)
+                                : textRect.adjusted(0, 1, 0, 1), 
+                              alignment, str);
 
             if (!isActive() && QTC_DARK_WINDOW_TEXT(color))
             {
@@ -618,10 +625,14 @@ void QtCurveClient::updateWindowShape()
         clearMask();
     else
     {
-        QRect r(Handler()->customShadows()
+        QRect r(
+#if KDE_IS_VERSION(4, 3, 0)
+                Handler()->customShadows()
                     ? widget()->rect().adjusted(layoutMetric(LM_OuterPaddingLeft), layoutMetric(LM_OuterPaddingTop),
                                                -layoutMetric(LM_OuterPaddingRight), 0) // -layoutMetric(LM_OuterPaddingBottom))
-                    : widget()->rect());
+                    : 
+#endif
+                      widget()->rect());
 
         setMask(getMask(Handler()->wStyle()->pixelMetric((QStyle::PixelMetric)QtC_Round, NULL, NULL), r));
     }

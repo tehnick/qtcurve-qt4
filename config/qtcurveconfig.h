@@ -44,11 +44,12 @@ class CGradientPreview : public QWidget
     public:
 
     CGradientPreview(QtCurveConfig *c, QWidget *p);
+    ~CGradientPreview();
 
     QSize sizeHint() const;
     QSize minimumSizeHint() const;
     void paintEvent(QPaintEvent *);
-    void setGrad(const GradientStopCont &s);
+    void setGrad(const Gradient &g);
 
     public Q_SLOTS:
 
@@ -56,9 +57,10 @@ class CGradientPreview : public QWidget
 
     private:
 
-    QtCurveConfig    *cfg;
-    QColor           color;
-    GradientStopCont stops;
+    QtCurveConfig *cfg;
+    QColor        color;
+    Gradient      grad;
+    QStyle        *style;
 };
 
 struct Preset
@@ -116,6 +118,7 @@ class QtCurveConfig : public QWidget, private Ui::QtCurveConfigBase
     void menuStripeChanged();
     void comboBtnChanged();
     void sortedLvChanged();
+    void crColorChanged();
     void stripedProgressChanged();
     void shadingChanged();
     void activeTabAppearanceChanged();
@@ -129,8 +132,14 @@ class QtCurveConfig : public QWidget, private Ui::QtCurveConfigBase
     void xbarChanged();
     void colorTitlebarOnlyChanged();
     void titlebarBlendChanged();
+    void thinSbarGrooveChanged();
+    void borderSbarGrooveChanged();
+    void borderProgressChanged();
+    void squareProgressChanged();
+    void fillProgressChanged();
     void changeStack();
     void gradChanged(int i);
+    void borderChanged(int i);
     void editItem(QTreeWidgetItem *i, int col);
     void itemChanged(QTreeWidgetItem *i, int col);
     void addGradStop();
@@ -140,8 +149,9 @@ class QtCurveConfig : public QWidget, private Ui::QtCurveConfigBase
     void exportKDE3();
     void exportQt();
     void updatePreview();
+    void copyGradient(QAction *act);
 
-    private:
+    public:
 
     bool savePreset(const QString &name);
     QString getPresetName(const QString &cap, QString label, QString def, QString name=QString());

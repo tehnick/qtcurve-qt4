@@ -1,4 +1,4 @@
-/*
+ /*
   QtCurve (C) Craig Drummond, 2003 - 2010 craig.p.drummond@googlemail.com
 
   ----
@@ -91,6 +91,8 @@ static EDefBtnIndicator toInd(const char *str, EDefBtnIndicator def)
             return IND_GLOW;
         if(0==memcmp(str, "darken", 6))
             return IND_DARKEN;
+        if(0==memcmp(str, "origselected", 12))
+            return IND_SELECTED;
     }
 
     return def;
@@ -301,6 +303,8 @@ static EStripe toStripe(const char *str, EStripe def)
             return STRIPE_NONE;
         if(0==memcmp(str, "diagonal", 8))
             return STRIPE_DIAGONAL;
+        if(0==memcmp(str, "fade", 4))
+            return STRIPE_FADE;
     }
 
     return def;
@@ -320,6 +324,8 @@ static ESliderStyle toSlider(const char *str, ESliderStyle def)
             return SLIDER_PLAIN_ROTATED;
         if(0==memcmp(str, "triangular", 10))
             return SLIDER_TRIANGULAR;
+        if(0==memcmp(str, "circular", 8))
+            return SLIDER_CIRCULAR;
     }
 
     return def;
@@ -412,7 +418,8 @@ static EGradientBorder toGradientBorder(const char *str)
             return GB_3D_FULL;
         if(0==memcmp(str, "3d", 2) || 0==memcmp(str, "false", 5))
             return GB_3D;
-
+        if(0==memcmp(str, "shine", 5))
+            return GB_SHINE;
     }
     return GB_3D;
 }
@@ -1264,6 +1271,8 @@ static bool readConfig(const char *file, Options *opts, Options *defOpts)
 #endif
 
             /* Check if the config file expects old default values... */
+            if(version<QTC_MAKE_VERSION(1, 2))
+                def->crSize=QTC_CR_SMALL_SIZE;
             if(version<QTC_MAKE_VERSION(1, 0))
             {
                 def->roundAllTabs=false;
@@ -1387,6 +1396,7 @@ static bool readConfig(const char *file, Options *opts, Options *defOpts)
             QTC_CFG_READ_SHADE(shadeMenubars, true, false, &opts->customMenubarsColor)
             QTC_CFG_READ_SHADE(shadeCheckRadio, false, false, &opts->customCheckRadioColor)
             QTC_CFG_READ_SHADE(sortedLv, true, false, &opts->customSortedLvColor)
+            QTC_CFG_READ_SHADE(crColor,  true, false, &opts->customCrBgndColor)
             QTC_CFG_READ_APPEARANCE(menubarAppearance, false)
             QTC_CFG_READ_APPEARANCE(menuitemAppearance, true)
             QTC_CFG_READ_APPEARANCE(toolbarAppearance, false)
@@ -1452,7 +1462,6 @@ static bool readConfig(const char *file, Options *opts, Options *defOpts)
             QTC_CFG_READ_BOOL(colorMenubarMouseOver)
             QTC_CFG_READ_INT_BOOL(crHighlight, opts->highlightFactor)
             QTC_CFG_READ_BOOL(crButton)
-            QTC_CFG_READ_BOOL(crColor)
             QTC_CFG_READ_BOOL(smallRadio)
             QTC_CFG_READ_BOOL(fillProgress)
             QTC_CFG_READ_BOOL(comboSplitter)
@@ -1460,8 +1469,10 @@ static bool readConfig(const char *file, Options *opts, Options *defOpts)
             QTC_CFG_READ_BOOL(highlightScrollViews)
             QTC_CFG_READ_BOOL(etchEntry)
             QTC_CFG_READ_INT_BOOL(splitterHighlight, opts->highlightFactor)
+            QTC_CFG_READ_INT(crSize)
             QTC_CFG_READ_BOOL(flatSbarButtons)
             QTC_CFG_READ_BOOL(borderSbarGroove)
+            QTC_CFG_READ_BOOL(borderProgress)
             QTC_CFG_READ_BOOL(popupBorder)
             QTC_CFG_READ_BOOL(unifySpinBtns)
             QTC_CFG_READ_BOOL(unifySpin)
@@ -1478,6 +1489,9 @@ static bool readConfig(const char *file, Options *opts, Options *defOpts)
             QTC_CFG_READ_BOOL(boldProgress)
             QTC_CFG_READ_BOOL(coloredTbarMo)
             QTC_CFG_READ_BOOL(borderSelection)
+            QTC_CFG_READ_BOOL(squareProgress)
+            QTC_CFG_READ_BOOL(squareEntry)
+            QTC_CFG_READ_BOOL(stripedSbar)
 #if defined QTC_CONFIG_DIALOG || (defined QT_VERSION && (QT_VERSION >= 0x040000))
             QTC_CFG_READ_BOOL(stdBtnSizes)
             QTC_CFG_READ_BOOL(titlebarBorder)
@@ -1891,6 +1905,17 @@ static bool readConfig(const char *file, Options *opts, Options *defOpts)
             if(opts->animatedProgress && !opts->stripedProgress)
                 opts->animatedProgress=false;
 
+#if defined __cplusplus && defined QT_VERSION && QT_VERSION < 0x040000 && !defined QTC_CONFIG_DIALOG
+            opts->crSize=QTC_CR_SMALL_SIZE;
+            if(SLIDER_CIRCULAR==opts->sliderStyle)
+                opts->sliderStyle=SLIDER_ROUND;
+            if(STRIPE_FADE==opts->stripedProgress)
+                opts->stripedProgress=STRIPE_PLAIN;
+#endif
+            /* For now, only 2 sizes... */
+            if(opts->crSize!=QTC_CR_SMALL_SIZE && opts->crSize!=QTC_CR_LARGE_SIZE)
+                opts->crSize=QTC_CR_SMALL_SIZE;
+
 /*
 ??
             if(SHADE_CUSTOM==opts->shadeMenubars || SHADE_BLEND_SELECTED==opts->shadeMenubars || !opts->borderMenuitems)
@@ -1914,8 +1939,8 @@ static bool readConfig(const char *file, Options *opts, Options *defOpts)
             if(EFFECT_NONE==opts->buttonEffect)
                 opts->etchEntry=false;
 
-            if(opts->squareScrollViews)
-                opts->highlightScrollViews=false;
+//             if(opts->squareScrollViews)
+//                 opts->highlightScrollViews=false;
 
             if(!opts->framelessGroupBoxes)
                 opts->groupBoxLine=false;
@@ -1945,6 +1970,10 @@ static bool readConfig(const char *file, Options *opts, Options *defOpts)
             opts->tabAppearance=MODIFY_AGUA(opts->tabAppearance);
             opts->activeTabAppearance=MODIFY_AGUA(opts->activeTabAppearance);
             opts->menuitemAppearance=MODIFY_AGUA(opts->menuitemAppearance);
+
+            if(!opts->borderProgress && (!opts->fillProgress || !opts->squareProgress))
+                opts->borderProgress=true;
+
 #ifdef __cplusplus
             opts->titlebarAppearance=MODIFY_AGUA(opts->titlebarAppearance);
             opts->inactiveTitlebarAppearance=MODIFY_AGUA(opts->inactiveTitlebarAppearance);
@@ -2039,6 +2068,7 @@ static void defaultSettings(Options *opts)
     opts->highlightFactor=DEFAULT_HIGHLIGHT_FACTOR;
     opts->crHighlight=DEFAULT_CR_HIGHLIGHT_FACTOR;
     opts->splitterHighlight=DEFAULT_SPLITTER_HIGHLIGHT_FACTOR;
+    opts->crSize=QTC_CR_LARGE_SIZE;
     opts->menuDelay=DEFAULT_MENU_DELAY;
     opts->sliderWidth=DEFAULT_SLIDER_WIDTH;
     opts->selectionAppearance=APPEARANCE_HARSH_GRADIENT;
@@ -2121,7 +2151,7 @@ static void defaultSettings(Options *opts)
     opts->groupBoxLine=true;
     opts->colorMenubarMouseOver=true;
     opts->crButton=true;
-    opts->crColor=false;
+    opts->crColor=SHADE_NONE;
     opts->smallRadio=true;
     opts->fillProgress=true;
     opts->comboSplitter=false;
@@ -2130,6 +2160,7 @@ static void defaultSettings(Options *opts)
     opts->etchEntry=false;
     opts->flatSbarButtons=true;
     opts->borderSbarGroove=true;
+    opts->borderProgress=true;
     opts->popupBorder=true;
     opts->unifySpinBtns=false;
     opts->unifySpin=true;
@@ -2146,6 +2177,9 @@ static void defaultSettings(Options *opts)
     opts->boldProgress=true;
     opts->coloredTbarMo=false;
     opts->borderSelection=false;
+    opts->squareProgress=false;
+    opts->squareEntry=false;
+    opts->stripedSbar=false;
 #if defined QTC_CONFIG_DIALOG || (defined QT_VERSION && (QT_VERSION >= 0x040000))
     opts->stdBtnSizes=false;
     opts->titlebarBorder=true;
@@ -2244,6 +2278,8 @@ static const char *toStr(EDefBtnIndicator ind)
             return "glow";
         case IND_DARKEN:
             return "darken";
+        case IND_SELECTED:
+            return "origselected";
         default:
             return "colored";
     }
@@ -2447,6 +2483,8 @@ static const char *toStr(EStripe s)
             return "none";
         case STRIPE_DIAGONAL:
             return "diagonal";
+        case STRIPE_FADE:
+            return "fade";
     }
 }
 
@@ -2462,6 +2500,8 @@ static const char *toStr(ESliderStyle s)
             return "r-round";
         case SLIDER_PLAIN_ROTATED:
             return "r-plain";
+        case SLIDER_CIRCULAR:
+            return "circular";
         default:
         case SLIDER_ROUND:
             return "round";
@@ -2524,6 +2564,8 @@ static const char *toStr(EGradientBorder g)
             return "light";
         case GB_3D_FULL:
             return "3dfull";
+        case GB_SHINE:
+            return "shine";
         default:
         case GB_3D:
             return "3d";
@@ -2792,7 +2834,7 @@ bool static writeConfig(KConfig *cfg, const Options &opts, const Options &def, b
         CFG_WRITE_ENTRY(colorMenubarMouseOver)
         CFG_WRITE_ENTRY_NUM(crHighlight)
         CFG_WRITE_ENTRY(crButton)
-        CFG_WRITE_ENTRY(crColor)
+        CFG_WRITE_SHADE_ENTRY(crColor, customCrBgndColor)
         CFG_WRITE_ENTRY(smallRadio)
         CFG_WRITE_ENTRY(fillProgress)
         CFG_WRITE_ENTRY(comboSplitter)
@@ -2801,8 +2843,10 @@ bool static writeConfig(KConfig *cfg, const Options &opts, const Options &def, b
         CFG_WRITE_ENTRY(etchEntry)
         CFG_WRITE_ENTRY_NUM(splitterHighlight)
         CFG_WRITE_ENTRY_NUM(expanderHighlight)
+        CFG_WRITE_ENTRY_NUM(crSize)
         CFG_WRITE_ENTRY(flatSbarButtons)
         CFG_WRITE_ENTRY(borderSbarGroove)
+        CFG_WRITE_ENTRY(borderProgress)
         CFG_WRITE_ENTRY(popupBorder)
         CFG_WRITE_ENTRY(unifySpinBtns)
         CFG_WRITE_ENTRY(unifySpin)
@@ -2819,6 +2863,9 @@ bool static writeConfig(KConfig *cfg, const Options &opts, const Options &def, b
         CFG_WRITE_ENTRY(boldProgress)
         CFG_WRITE_ENTRY(coloredTbarMo)
         CFG_WRITE_ENTRY(borderSelection)
+        CFG_WRITE_ENTRY(squareProgress)
+        CFG_WRITE_ENTRY(squareEntry)
+        CFG_WRITE_ENTRY(stripedSbar)
 #if defined QT_VERSION && (QT_VERSION >= 0x040000)
         CFG_WRITE_ENTRY(xbar)
         CFG_WRITE_ENTRY_NUM(dwtSettings)

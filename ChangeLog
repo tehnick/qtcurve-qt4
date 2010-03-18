@@ -1,3 +1,48 @@
+1.2.0
+-----
+ 1. Draw etch effect on radios if using a button effect, and not using button-like
+    check/radios.
+ 2. If drawing square non-gtk style scrollviews, use a dark/light borders.
+ 3. If drawing square scrollviews, set frame width to 1 if using thin scrollbar
+    groove.
+ 4. Add options to draw square progress and entry fields when rounding.
+ 5. Add option to control whether progressbars have a border on all sides, or just
+    top/bottom.
+ 6. Add option to colour default buttons using highlight colour.
+ 7. Expand selected check/radio colour option so as to be able to specift colour.
+ 8. Add circular slider style.
+ 9. Add glow to mouse over of slider handles (not scrollbars).
+10. Add option to draw stripes on scrollbar sliders.
+11. Add a 'faded' style porgressbar stripe option.
+12. Add option to draw agua shine on custom gradients.
+13. Allow to draw focus highlight for square scrollviews.
+14. Improve appearance of button style check and radio buttons.
+15. Add option to control whether scrollbar groove has a border or not.
+16. Dont use pixmaps to draw rounded slider, or radio buttons.
+17. Add option to increase size of check/radios - default is now 15pixels.
+18. Really fix Qt only compile.
+19. Increase default shadow sizes.
+20. If using gtk style combos and bordering menu items, increase frame width by
+    1 pixel.
+21. Remove border from preview colour square in KDE colour selection dialog.
+22. Only offset vertical position of etch text.
+23. OpenOffice.org improvements:
+     - only draw check of checkboxes in menus
+     - draw check for radios in menus
+     - draw frames (general, line edits, scrollviews)
+     - fix pressed behaviour of toolbar buttons
+     - fix drawing of full width scrollbar
+     - reduce padding within frames
+     - dont etch entries or scrollviews
+     - fix spin buttons appearing disabled
+     - only apply menu fix to oo.o menus, not file selector menus
+     - use square entry fields
+24. Set Qt toolbar font to KDE setting - but not for lineedits and comboboxes.
+25. Fix text position in non-unified editable combos.
+26. In settings dialog, add the ability to copy gradient settings to new
+    custom gradient.
+27. In settings dialog, draw borders, etc, around preview.
+
 1.1.1
 -----
 1. Alter alpha settings of square rings.

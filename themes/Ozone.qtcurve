@@ -16,3 +16,5 @@ lvLines=old
 glowProgress=middle
 boldProgress=false
 centerTabText=true
+smallRadio=true
+crSize=15

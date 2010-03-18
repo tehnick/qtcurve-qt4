@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>755</width>
-    <height>509</height>
+    <height>522</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -265,25 +265,25 @@
        <item row="5" column="1">
         <widget class="QComboBox" name="round">
          <property name="whatsThis">
-          <string>Set how 'rounded' widget can be. The 'max' round setting only applies to buttons.</string>
+          <string>Set how 'rounded' widgets can be. The 'max' round setting only applies to buttons.</string>
          </property>
         </widget>
        </item>
-       <item row="6" column="0">
+       <item row="7" column="0">
         <widget class="QLabel" name="label_9">
          <property name="text">
           <string>Button effect:</string>
          </property>
         </widget>
        </item>
-       <item row="6" column="1">
+       <item row="7" column="1">
         <widget class="QComboBox" name="buttonEffect">
          <property name="whatsThis">
           <string>Control what effect should be applied to buttons, combo boxes, etc.</string>
          </property>
         </widget>
        </item>
-       <item row="7" column="1">
+       <item row="8" column="1">
         <widget class="QCheckBox" name="thinnerBtns">
          <property name="whatsThis">
           <string>Make buttons, and other widgets, slightly thinner.</string>
@@ -293,7 +293,7 @@
          </property>
         </widget>
        </item>
-       <item row="8" column="1">
+       <item row="9" column="1">
         <widget class="QCheckBox" name="etchEntry">
          <property name="whatsThis">
           <string>When the 'Button effect' is set to etched or shadowed, then this option controls whether line-edits and scrollviews (such as listviews and treeviews) should have an etched look.</string>
@@ -303,21 +303,21 @@
          </property>
         </widget>
        </item>
-       <item row="9" column="0">
+       <item row="10" column="0">
         <widget class="QLabel" name="label_25">
          <property name="text">
           <string>Focus rectangle:</string>
          </property>
         </widget>
        </item>
-       <item row="9" column="1">
+       <item row="10" column="1">
         <widget class="QComboBox" name="focus">
          <property name="whatsThis">
           <string>Controls how QtCurve indicates that a widget has keyboard focus.</string>
          </property>
         </widget>
        </item>
-       <item row="10" column="0" colspan="2">
+       <item row="11" column="0" colspan="2">
         <widget class="QGroupBox" name="groupBox_4">
          <property name="title">
           <string/>
@@ -329,7 +329,7 @@
           <item>
            <widget class="QCheckBox" name="drawStatusBarFrames">
             <property name="whatsThis">
-             <string>Control whether QtCurve should draw frames around items in statusbars.</string>
+             <string>Controls whether QtCurve should draw frames around items in statusbars.</string>
             </property>
             <property name="text">
              <string>Draw statusbar frames</string>
@@ -383,7 +383,17 @@
         <widget class="QComboBox" name="bgndImage">
          <property name="whatsThis">
           <string>&lt;p&gt;This adds a background image to the top-right of dialogs and windows.
-            &lt;ul&gt;&lt;li&gt;No background image - No image&lt;/li&gt;&lt;li&gt;Bordered rings - 'Air' like rings with borders&lt;/li&gt;&lt;li&gt;Plain rings - 'Air' like rings, but without any border.&lt;/li&gt;&lt;li&gt;&lt;/ul&gt;&lt;/p&gt;</string>
+            &lt;ul&gt;&lt;li&gt;No background image - No image.&lt;/li&gt;&lt;li&gt;Bordered rings - 'Air' like rings with borders.&lt;/li&gt;&lt;li&gt;Plain rings - 'Air' like rings, but without any border.&lt;/li&gt;&lt;li&gt;Square rings - 3 simple rounded sqaures.&lt;/li&gt;&lt;/ul&gt;&lt;/p&gt;</string>
+         </property>
+        </widget>
+       </item>
+       <item row="6" column="1">
+        <widget class="QCheckBox" name="squareEntry">
+         <property name="whatsThis">
+          <string>Controls whether text entry fields should respect the general round setting, or always be square.</string>
+         </property>
+         <property name="text">
+          <string>Square entries.</string>
          </property>
         </widget>
        </item>
@@ -582,7 +592,7 @@
        <item row="1" column="1">
         <widget class="QComboBox" name="splitters">
          <property name="whatsThis">
-          <string>Sets the makring used to indicate that the widget is a splitter.</string>
+          <string>Sets the marking used to indicate that the widget is a splitter.</string>
          </property>
         </widget>
        </item>
@@ -596,7 +606,7 @@
        <item row="2" column="1">
         <widget class="KIntNumInput" name="splitterHighlight">
          <property name="whatsThis">
-          <string>Defines by how much the theme should brighen (or darken) the color of background of the splitter when the mosue hovers over.</string>
+          <string>Defines by how much the theme should brighen (or darken) the background of the splitter when the mouse hovers over.</string>
          </property>
          <property name="suffix">
           <string>%</string>
@@ -631,7 +641,7 @@
        <item row="1" column="1">
         <widget class="QComboBox" name="shadeSliders">
          <property name="whatsThis">
-          <string>Controls the  color setting of both scrollbar sliders and other sliders.</string>
+          <string>Controls the color setting of both scrollbar sliders and other sliders.</string>
          </property>
         </widget>
        </item>
@@ -651,7 +661,7 @@
          </property>
         </widget>
        </item>
-       <item row="3" column="1">
+       <item row="4" column="1">
         <widget class="QCheckBox" name="colorSliderMouseOver">
          <property name="whatsThis">
           <string>Controls whether the coloration happens all the time, or only when the mouse hovers over the slider.</string>
@@ -661,28 +671,28 @@
          </property>
         </widget>
        </item>
-       <item row="4" column="0">
+       <item row="5" column="0">
         <widget class="QLabel" name="label_13">
          <property name="text">
           <string>Style:</string>
          </property>
         </widget>
        </item>
-       <item row="4" column="1">
+       <item row="5" column="1">
         <widget class="QComboBox" name="sliderStyle">
          <property name="whatsThis">
           <string>Controls the appearance of standard sliders - i.e. not scrollbar sliders. 'Triangular' is very similar to plastik's sliders.</string>
          </property>
         </widget>
        </item>
-       <item row="5" column="0">
+       <item row="6" column="0">
         <widget class="QLabel" name="label_50">
          <property name="text">
           <string>Used slider groove:</string>
          </property>
         </widget>
        </item>
-       <item row="5" column="1">
+       <item row="6" column="1">
         <widget class="QCheckBox" name="fillSlider">
          <property name="whatsThis">
           <string>Indicates whether the used part of a slider's groove should be filled or not. (Does not affect scrollbar sliders).</string>
@@ -692,28 +702,28 @@
          </property>
         </widget>
        </item>
-       <item row="6" column="1">
+       <item row="7" column="1">
         <widget class="QComboBox" name="sliderFill">
          <property name="whatsThis">
           <string>Controls the gradient setting used for the used part of a standard sliders' groove.</string>
          </property>
         </widget>
        </item>
-       <item row="7" column="0">
+       <item row="8" column="0">
         <widget class="QLabel" name="label_30">
          <property name="text">
           <string>Groove appearance:</string>
          </property>
         </widget>
        </item>
-       <item row="7" column="1">
+       <item row="8" column="1">
         <widget class="QComboBox" name="grooveAppearance">
          <property name="whatsThis">
           <string>Controls the gradient setting used for both scrollbar sliders, and other sliders.</string>
          </property>
         </widget>
        </item>
-       <item row="8" column="1">
+       <item row="9" column="1">
         <widget class="QCheckBox" name="thinSbarGroove">
          <property name="whatsThis">
           <string>Controls whether scrollbar slider grooves should be the same thickness as the slider, or be thinner (and more like the groove of a standard slider).</string>
@@ -723,14 +733,21 @@
          </property>
         </widget>
        </item>
-       <item row="9" column="0">
+       <item row="10" column="1">
+        <widget class="QCheckBox" name="borderSbarGroove">
+         <property name="text">
+          <string>Bordered</string>
+         </property>
+        </widget>
+       </item>
+       <item row="11" column="0">
         <widget class="QLabel" name="label_14">
          <property name="text">
           <string>Scrollbar buttons:</string>
          </property>
         </widget>
        </item>
-       <item row="9" column="1">
+       <item row="11" column="1">
         <widget class="QComboBox" name="scrollbarType">
          <property name="whatsThis">
           <string>&lt;p&gt;This controls the position, and number, of buttons on a scrollbar.
@@ -738,7 +755,7 @@
          </property>
         </widget>
        </item>
-       <item row="10" column="1">
+       <item row="12" column="1">
         <widget class="QCheckBox" name="flatSbarButtons">
          <property name="whatsThis">
           <string>If enabled, then scrollbar buttons are not drawn and only the arrows will appear.</string>
@@ -748,42 +765,42 @@
          </property>
         </widget>
        </item>
-       <item row="11" column="0">
+       <item row="13" column="0">
         <widget class="QLabel" name="label_32">
          <property name="text">
           <string>Background:</string>
          </property>
         </widget>
        </item>
-       <item row="11" column="1">
+       <item row="13" column="1">
         <widget class="QComboBox" name="sbarBgndAppearance">
          <property name="whatsThis">
           <string>Configures the background gradient to be used with 'Flat' scrollbar buttons.</string>
          </property>
         </widget>
        </item>
-       <item row="12" column="0">
+       <item row="14" column="0">
         <widget class="QLabel" name="label_15">
          <property name="text">
           <string>Slider thumbs:</string>
          </property>
         </widget>
        </item>
-       <item row="12" column="1">
+       <item row="14" column="1">
         <widget class="QComboBox" name="sliderThumbs">
          <property name="whatsThis">
           <string>Defines what markings should be placed in the center of scrollbar sliders (and plain style sliders).</string>
          </property>
         </widget>
        </item>
-       <item row="13" column="0">
+       <item row="15" column="0">
         <widget class="QLabel" name="label_15a">
          <property name="text">
           <string>Slider width:</string>
          </property>
         </widget>
        </item>
-       <item row="13" column="1">
+       <item row="15" column="1">
         <widget class="KIntNumInput" name="sliderWidth">
          <property name="whatsThis">
           <string>Controls the width of scrollbar sliders, and plain style sliders.</string>
@@ -796,10 +813,23 @@
          </property>
         </widget>
        </item>
+       <item row="3" column="1">
+        <widget class="QCheckBox" name="stripedSbar">
+         <property name="whatsThis">
+          <string>If enabled, a fading stripe will be added.</string>
+         </property>
+         <property name="text">
+          <string>Striped</string>
+         </property>
+        </widget>
+       </item>
       </layout>
      </widget>
      <widget class="QWidget" name="page_4">
       <layout class="QFormLayout" name="formLayout_5">
+       <property name="fieldGrowthPolicy">
+        <enum>QFormLayout::ExpandingFieldsGrow</enum>
+       </property>
        <item row="0" column="0">
         <widget class="QLabel" name="label_16">
          <property name="text">
@@ -850,7 +880,7 @@
           <string>Enable this option to remove the 1 pixel border around the filled element.</string>
          </property>
          <property name="text">
-          <string>No border</string>
+          <string>Fill groove</string>
          </property>
         </widget>
        </item>
@@ -875,14 +905,39 @@
          </property>
         </widget>
        </item>
-       <item row="7" column="0">
+       <item row="7" column="1">
+        <widget class="QCheckBox" name="borderProgress">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="whatsThis">
+          <string>Eanble this option to have a border around the progress bar groove and contents.</string>
+         </property>
+         <property name="text">
+          <string>Border all sides</string>
+         </property>
+        </widget>
+       </item>
+       <item row="9" column="0">
         <widget class="QLabel" name="label_85">
          <property name="text">
           <string>Text:</string>
          </property>
+         <property name="alignment">
+          <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
+         </property>
+         <property name="margin">
+          <number>1</number>
+         </property>
+         <property name="indent">
+          <number>-1</number>
+         </property>
         </widget>
        </item>
-       <item row="7" column="1">
+       <item row="9" column="1">
         <layout class="QVBoxLayout" name="verticalLayout_12">
          <property name="spacing">
           <number>0</number>
@@ -908,6 +963,16 @@
           </widget>
          </item>
         </layout>
+       </item>
+       <item row="8" column="1">
+        <widget class="QCheckBox" name="squareProgress">
+         <property name="whatsThis">
+          <string>Controls whether progress bars should respect the general round setting, or always be square.</string>
+         </property>
+         <property name="text">
+          <string>Always draw square - regardless of the general round setting.</string>
+         </property>
+        </widget>
        </item>
       </layout>
      </widget>
@@ -958,7 +1023,7 @@
        <item row="1" column="0">
         <widget class="QLabel" name="textLabel1_8">
          <property name="whatsThis">
-          <string>This controls the % that widgets will be highlighted by when the mouse hovers over them</string>
+          <string>This controls the % that widgets will be highlighted by when the mouse hovers over them.</string>
          </property>
          <property name="text">
           <string>Highlight by:</string>
@@ -992,7 +1057,7 @@
        <item row="0" column="1">
         <widget class="QComboBox" name="lvAppearance">
          <property name="whatsThis">
-          <string>Defines the gradient to ge used in the header of listviews and treeviews.</string>
+          <string>Defines the gradient to be used in the header of listviews and treeviews.</string>
          </property>
         </widget>
        </item>
@@ -1061,9 +1126,6 @@
        </item>
        <item row="5" column="0">
         <widget class="QLabel" name="textLabel1_8_2_4">
-         <property name="whatsThis">
-          <string>This controls the % that widgets will be highlighted by when the mouse hovers over them</string>
-         </property>
          <property name="text">
           <string>Selection appearance (KDE4 &amp; Gtk2):</string>
          </property>
@@ -1254,6 +1316,12 @@
          <property name="text">
           <string>Round tabs:</string>
          </property>
+         <property name="alignment">
+          <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
+         </property>
+         <property name="margin">
+          <number>1</number>
+         </property>
         </widget>
        </item>
        <item row="6" column="1">
@@ -1308,6 +1376,12 @@
          <property name="text">
           <string>Border:</string>
          </property>
+         <property name="alignment">
+          <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
+         </property>
+         <property name="margin">
+          <number>1</number>
+         </property>
         </widget>
        </item>
        <item row="7" column="1">
@@ -1358,6 +1432,12 @@
         <widget class="QLabel" name="label_62">
          <property name="text">
           <string>Inactive tab inner border:</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
+         </property>
+         <property name="margin">
+          <number>1</number>
          </property>
         </widget>
        </item>
@@ -1410,6 +1490,12 @@
          <property name="text">
           <string>Shade of bottom tabs:</string>
          </property>
+         <property name="alignment">
+          <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
+         </property>
+         <property name="margin">
+          <number>1</number>
+         </property>
         </widget>
        </item>
        <item row="9" column="1">
@@ -1455,10 +1541,16 @@
          <property name="text">
           <string>Tabs within toolbars:</string>
          </property>
+         <property name="alignment">
+          <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
+         </property>
+         <property name="margin">
+          <number>1</number>
+         </property>
         </widget>
        </item>
        <item row="10" column="1">
-        <widget class="QFrame" name="frame_6">
+        <widget class="QFrame" name="frame_6a">
          <property name="frameShape">
           <enum>QFrame::NoFrame</enum>
          </property>
@@ -1499,6 +1591,12 @@
         <widget class="QLabel" name="label_86">
          <property name="text">
           <string>Text:</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
+         </property>
+         <property name="margin">
+          <number>1</number>
          </property>
         </widget>
        </item>
@@ -1544,6 +1642,9 @@
      </widget>
      <widget class="QWidget" name="page_9">
       <layout class="QFormLayout" name="formLayout_10">
+       <property name="fieldGrowthPolicy">
+        <enum>QFormLayout::ExpandingFieldsGrow</enum>
+       </property>
        <item row="0" column="0">
         <widget class="QLabel" name="label_22">
          <property name="text">
@@ -1574,14 +1675,20 @@
          </property>
         </widget>
        </item>
-       <item row="2" column="0">
+       <item row="3" column="0">
         <widget class="QLabel" name="label_53">
          <property name="text">
           <string>Checkmarks:</string>
          </property>
+         <property name="alignment">
+          <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
+         </property>
+         <property name="margin">
+          <number>1</number>
+         </property>
         </widget>
        </item>
-       <item row="2" column="1">
+       <item row="3" column="1">
         <widget class="QFrame" name="frame_3">
          <property name="frameShape">
           <enum>QFrame::NoFrame</enum>
@@ -1625,14 +1732,20 @@
          </layout>
         </widget>
        </item>
-       <item row="3" column="0">
+       <item row="4" column="0">
         <widget class="QLabel" name="label_71">
          <property name="text">
           <string>Radio 'dot':</string>
          </property>
+         <property name="alignment">
+          <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
+         </property>
+         <property name="margin">
+          <number>1</number>
+         </property>
         </widget>
        </item>
-       <item row="3" column="1">
+       <item row="4" column="1">
         <widget class="QFrame" name="frame_7">
          <property name="frameShape">
           <enum>QFrame::NoFrame</enum>
@@ -1673,14 +1786,14 @@
          </layout>
         </widget>
        </item>
-       <item row="4" column="0">
+       <item row="5" column="0">
         <widget class="QLabel" name="label_54">
          <property name="text">
           <string>Background mouse-over highlight:</string>
          </property>
         </widget>
        </item>
-       <item row="4" column="1">
+       <item row="5" column="1">
         <widget class="KIntNumInput" name="crHighlight">
          <property name="whatsThis">
           <string>Defines by how much the theme should brighen (or darken) the background of the text associated with a checkbox, or radio button, when the mouse hovers over it.</string>
@@ -1690,14 +1803,14 @@
          </property>
         </widget>
        </item>
-       <item row="5" column="0">
+       <item row="6" column="0">
         <widget class="QLabel" name="label_70">
          <property name="text">
           <string>Emblem:</string>
          </property>
         </widget>
        </item>
-       <item row="5" column="1">
+       <item row="6" column="1">
         <widget class="QCheckBox" name="crButton">
          <property name="whatsThis">
           <string>Controls whether the background of the checkbox, or radio button, should appear sunken like or button like.</string>
@@ -1707,13 +1820,38 @@
          </property>
         </widget>
        </item>
-       <item row="6" column="1">
-        <widget class="QCheckBox" name="crColor">
-         <property name="whatsThis">
-          <string>Controls whether the background of a selected checkbox, or radio button, should be tinted with the 'highlight' color.</string>
-         </property>
+       <item row="2" column="0">
+        <widget class="QLabel" name="label_87">
          <property name="text">
-          <string>Color when selected</string>
+          <string>Size:</string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="1">
+        <widget class="QComboBox" name="crSize">
+         <property name="whatsThis">
+          <string>Configures the size of checkboxes and radio buttons.</string>
+         </property>
+        </widget>
+       </item>
+       <item row="7" column="1">
+        <widget class="QComboBox" name="crColor">
+         <property name="whatsThis">
+          <string>Sets the color of selected checkboxes and radio buttons when these are set to 'button like'.</string>
+         </property>
+        </widget>
+       </item>
+       <item row="8" column="1">
+        <widget class="KColorButton" name="customCrBgndColor">
+         <property name="whatsThis">
+          <string>Sets the custom color.</string>
+         </property>
+        </widget>
+       </item>
+       <item row="7" column="0">
+        <widget class="QLabel" name="label_88">
+         <property name="text">
+          <string>Selected emblem:</string>
          </property>
         </widget>
        </item>
@@ -2434,7 +2572,7 @@
         <widget class="QComboBox" name="menuBgndImage">
          <property name="whatsThis">
           <string>&lt;p&gt;This adds a background image to menus.
-            &lt;ul&gt;&lt;li&gt;No background image - No image&lt;/li&gt;&lt;li&gt;Bordered rings - 'Air' like rings with borders&lt;/li&gt;&lt;li&gt;Plain rings - 'Air' like rings, but without any border.&lt;/li&gt;&lt;li&gt;&lt;/ul&gt;&lt;/p&gt;</string>
+            &lt;ul&gt;&lt;li&gt;No background image - No image.&lt;/li&gt;&lt;li&gt;Bordered rings - 'Air' like rings with borders.&lt;/li&gt;&lt;li&gt;Plain rings - 'Air' like rings, but without any border.&lt;/li&gt;&lt;li&gt;Square rings - 3 simple rounded sqaures.&lt;/li&gt;&lt;/ul&gt;&lt;/p&gt;</string>
          </property>
         </widget>
        </item>
@@ -2592,6 +2730,12 @@
          <property name="text">
           <string>Colored mouse-over:</string>
          </property>
+         <property name="alignment">
+          <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
+         </property>
+         <property name="margin">
+          <number>1</number>
+         </property>
         </widget>
        </item>
        <item row="4" column="1">
@@ -2724,7 +2868,7 @@
        <item row="1" column="1">
         <widget class="QCheckBox" name="reorderGtkButtons">
          <property name="whatsThis">
-          <string>&lt;p&gt;If this is enabled and 'Use Gtk button order' is not, QtCurve will attempt to manually set hte order of buttonsiin Gtk dialogs.&lt;/p&gt;&lt;p&gt;&lt;b&gt;NOTE&lt;b&gt; This is experimental, and may produce unexpected results!&lt;/p&gt;</string>
+          <string>&lt;p&gt;If this is enabled and 'Use Gtk button order' is not, QtCurve will attempt to manually set the order of buttons in Gtk dialogs.&lt;/p&gt;&lt;p&gt;&lt;b&gt;NOTE&lt;b&gt; This is experimental, and may produce unexpected results!&lt;/p&gt;</string>
          </property>
          <property name="text">
           <string>Manually re-order Gtk buttons</string>
@@ -2879,7 +3023,7 @@
         </widget>
        </item>
        <item row="4" column="0">
-        <widget class="QLabel" name="label_83">
+        <widget class="QLabel" name="label_83a">
          <property name="text">
           <string>Save menubar visibility:</string>
          </property>
@@ -2946,214 +3090,250 @@
       </layout>
      </widget>
      <widget class="QWidget" name="page_13">
-      <layout class="QVBoxLayout">
-       <item>
+      <layout class="QGridLayout" name="gridLayout_2">
+       <item row="0" column="0">
         <widget class="QComboBox" name="gradCombo">
          <property name="whatsThis">
           <string>Select the custom gradient to be configured.</string>
          </property>
         </widget>
        </item>
-       <item>
-        <widget class="QGroupBox" name="groupBox">
-         <property name="title">
-          <string>Settings</string>
+       <item row="0" column="1">
+        <widget class="QToolButton" name="copyGradientButton">
+         <property name="text">
+          <string/>
          </property>
-         <layout class="QGridLayout">
-          <item row="0" column="0" rowspan="2">
-           <widget class="QTreeWidget" name="gradStops">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Minimum" vsizetype="Expanding">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
-            <property name="indentation">
-             <number>0</number>
-            </property>
-            <property name="rootIsDecorated">
-             <bool>false</bool>
-            </property>
-            <column>
-             <property name="text">
-              <string>Position (%)</string>
+         <property name="autoRaise">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="0" colspan="2">
+        <widget class="QSplitter" name="splitter">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+         <widget class="QGroupBox" name="groupBox">
+          <property name="title">
+           <string>Settings</string>
+          </property>
+          <layout class="QGridLayout">
+           <item row="0" column="0" rowspan="2">
+            <widget class="QTreeWidget" name="gradStops">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Minimum" vsizetype="Expanding">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
              </property>
-            </column>
-            <column>
-             <property name="text">
-              <string>Value (%)</string>
+             <property name="indentation">
+              <number>0</number>
              </property>
-            </column>
-           </widget>
-          </item>
-          <item row="2" column="0">
-           <widget class="QComboBox" name="gradBorder">
-            <property name="whatsThis">
-             <string>&lt;p&gt;Defines the inner border used when drawing buttons, etc, with this gradient.&lt;/p&gt;
+             <property name="rootIsDecorated">
+              <bool>false</bool>
+             </property>
+             <column>
+              <property name="text">
+               <string>Position (%)</string>
+              </property>
+             </column>
+             <column>
+              <property name="text">
+               <string>Value (%)</string>
+              </property>
+             </column>
+            </widget>
+           </item>
+           <item row="2" column="0">
+            <widget class="QComboBox" name="gradBorder">
+             <property name="whatsThis">
+              <string>&lt;p&gt;Defines the inner border used when drawing buttons, etc, with this gradient.&lt;/p&gt;
 &lt;ul&gt;
 &lt;li&gt;&lt;i&gt;No border&lt;/i&gt; - no inner border is drawn, and the gradient will extend to the outer edges.&lt;/li&gt;
 &lt;li&gt;&lt;i&gt;Light border&lt;/i&gt; - A 'light' line is drawn around all edges.&lt;/li&gt;
 &lt;li&gt;&lt;i&gt;3D border (light only)&lt;/i&gt; - A 'light' line is drawn around the top and left edges.&lt;/li&gt;
 &lt;li&gt;&lt;i&gt;3D border (light only)&lt;/i&gt; - A 'light' line is drawn around the top and left edges, and a darker one around the bottom and right edges.&lt;/li&gt;
+&lt;li&gt;&lt;i&gt;Shine&lt;/i&gt; - A shaine is added the top (or left) when this gradient is drawn on buttons or scrollbars.&lt;/li&gt;
 &lt;/ul&gt;
 &lt;p&gt;&lt;i&gt;Note: This setting is not used when drawing the preview below.&lt;/i&gt;&lt;/p&gt;
 
 </string>
-            </property>
-           </widget>
-          </item>
-          <item row="0" column="2">
-           <widget class="QGroupBox" name="groupBox_2">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="MinimumExpanding" vsizetype="Preferred">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
-            <property name="title">
-             <string>Gradient Stop</string>
-            </property>
-            <layout class="QVBoxLayout" name="verticalLayout">
-             <property name="spacing">
-              <number>-1</number>
              </property>
-             <property name="bottomMargin">
-              <number>0</number>
+            </widget>
+           </item>
+           <item row="0" column="2">
+            <widget class="QGroupBox" name="groupBox_2">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="MinimumExpanding" vsizetype="Preferred">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
              </property>
-             <item>
-              <layout class="QFormLayout" name="formLayout_12">
-               <item row="0" column="0">
-                <widget class="QLabel" name="label_5">
-                 <property name="text">
-                  <string>Position:</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="0" column="1">
-                <widget class="KIntNumInput" name="stopPosition">
-                 <property name="whatsThis">
-                  <string>Set the position of the gradient value. 0% means the top of horizontal gradients, and the left for vertical gradients.</string>
-                 </property>
-                 <property name="maximum">
-                  <number>100</number>
-                 </property>
-                 <property name="suffix">
-                  <string>%</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="1" column="0">
-                <widget class="QLabel" name="label_6">
-                 <property name="text">
-                  <string>Value:</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="1" column="1">
-                <widget class="KIntNumInput" name="stopValue">
-                 <property name="whatsThis">
-                  <string>Sets the strength of the gradient at the defined position. 110% would lighten a color by 10%, 90% would darken it by 10%, and 100% would be the original color.</string>
-                 </property>
-                 <property name="maximum">
-                  <number>200</number>
-                 </property>
-                 <property name="suffix">
-                  <string>%</string>
-                 </property>
-                </widget>
-               </item>
-              </layout>
-             </item>
-             <item>
-              <layout class="QHBoxLayout" name="horizontalLayout">
-               <item>
-                <widget class="KPushButton" name="updateButton">
-                 <property name="sizePolicy">
-                  <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
-                   <horstretch>0</horstretch>
-                   <verstretch>0</verstretch>
-                  </sizepolicy>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <widget class="KPushButton" name="addButton">
-                 <property name="sizePolicy">
-                  <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
-                   <horstretch>0</horstretch>
-                   <verstretch>0</verstretch>
-                  </sizepolicy>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <widget class="KPushButton" name="removeButton">
-                 <property name="sizePolicy">
-                  <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
-                   <horstretch>0</horstretch>
-                   <verstretch>0</verstretch>
-                  </sizepolicy>
-                 </property>
-                </widget>
-               </item>
-              </layout>
-             </item>
-             <item>
-              <widget class="QLabel" name="label_3">
-               <property name="sizePolicy">
-                <sizepolicy hsizetype="Preferred" vsizetype="MinimumExpanding">
-                 <horstretch>0</horstretch>
-                 <verstretch>0</verstretch>
-                </sizepolicy>
-               </property>
-               <property name="text">
-                <string>&lt;p&gt;&lt;b&gt;NOTE: &lt;/b&gt;&lt;/p&gt;
+             <property name="title">
+              <string>Gradient Stop</string>
+             </property>
+             <layout class="QVBoxLayout" name="verticalLayout">
+              <property name="spacing">
+               <number>-1</number>
+              </property>
+              <property name="bottomMargin">
+               <number>0</number>
+              </property>
+              <item>
+               <layout class="QFormLayout" name="formLayout_12">
+                <property name="fieldGrowthPolicy">
+                 <enum>QFormLayout::ExpandingFieldsGrow</enum>
+                </property>
+                <item row="0" column="0">
+                 <widget class="QLabel" name="label_5">
+                  <property name="text">
+                   <string>Position:</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="0">
+                 <widget class="QLabel" name="label_6">
+                  <property name="text">
+                   <string>Value:</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="1">
+                 <widget class="KIntNumInput" name="stopPosition">
+                  <property name="sizePolicy">
+                   <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
+                    <horstretch>0</horstretch>
+                    <verstretch>0</verstretch>
+                   </sizepolicy>
+                  </property>
+                  <property name="whatsThis">
+                   <string>Set the position of the gradient value. 0% means the top of horizontal gradients, and the left for vertical gradients.</string>
+                  </property>
+                  <property name="maximum">
+                   <number>100</number>
+                  </property>
+                  <property name="suffix">
+                   <string>%</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="1">
+                 <widget class="KIntNumInput" name="stopValue">
+                  <property name="sizePolicy">
+                   <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
+                    <horstretch>0</horstretch>
+                    <verstretch>0</verstretch>
+                   </sizepolicy>
+                  </property>
+                  <property name="whatsThis">
+                   <string>Sets the strength of the gradient at the defined position. 110% would lighten a color by 10%, 90% would darken it by 10%, and 100% would be the original color.</string>
+                  </property>
+                  <property name="maximum">
+                   <number>200</number>
+                  </property>
+                  <property name="suffix">
+                   <string>%</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </item>
+              <item>
+               <layout class="QHBoxLayout" name="horizontalLayout">
+                <item>
+                 <widget class="KPushButton" name="updateButton">
+                  <property name="sizePolicy">
+                   <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
+                    <horstretch>0</horstretch>
+                    <verstretch>0</verstretch>
+                   </sizepolicy>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="KPushButton" name="addButton">
+                  <property name="sizePolicy">
+                   <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
+                    <horstretch>0</horstretch>
+                    <verstretch>0</verstretch>
+                   </sizepolicy>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="KPushButton" name="removeButton">
+                  <property name="sizePolicy">
+                   <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
+                    <horstretch>0</horstretch>
+                    <verstretch>0</verstretch>
+                   </sizepolicy>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </item>
+              <item>
+               <widget class="QLabel" name="label_3">
+                <property name="sizePolicy">
+                 <sizepolicy hsizetype="Preferred" vsizetype="MinimumExpanding">
+                  <horstretch>0</horstretch>
+                  <verstretch>0</verstretch>
+                 </sizepolicy>
+                </property>
+                <property name="text">
+                 <string>&lt;p&gt;&lt;b&gt;NOTE: &lt;/b&gt;&lt;/p&gt;
 &lt;p&gt;&lt;i&gt;&lt;u&gt;Position&lt;/u&gt; has a range of 0% to 100% - 0% being top/left, and 100% being bottom/right.&lt;/i&gt;&lt;/p&gt;
 &lt;p&gt;&lt;i&gt;&lt;u&gt;Value&lt;/u&gt; has a range of 0% to 200%. A value of 120% implies lightening by 20%, and a value of 80% implies darkening by 20%&lt;/i&gt;&lt;/p&gt;</string>
-               </property>
-               <property name="alignment">
-                <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
-               </property>
-               <property name="wordWrap">
-                <bool>true</bool>
-               </property>
-              </widget>
-             </item>
-            </layout>
-           </widget>
-          </item>
-         </layout>
-        </widget>
-       </item>
-       <item>
-        <widget class="QGroupBox" name="gradPreviewBox">
-         <property name="sizePolicy">
-          <sizepolicy hsizetype="Preferred" vsizetype="Maximum">
-           <horstretch>0</horstretch>
-           <verstretch>0</verstretch>
-          </sizepolicy>
-         </property>
-         <property name="title">
-          <string>Preview</string>
-         </property>
-         <layout class="QHBoxLayout">
-          <item>
-           <widget class="QWidget" name="previewWidgetContainer" native="true"/>
-          </item>
-          <item>
-           <widget class="KColorButton" name="previewColor">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
-            <property name="whatsThis">
-             <string>Set the color to be used in the preview.</string>
-            </property>
-           </widget>
-          </item>
-         </layout>
+                </property>
+                <property name="alignment">
+                 <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+             </layout>
+             <zorder>label_3</zorder>
+             <zorder></zorder>
+             <zorder>stopValue</zorder>
+             <zorder>stopPosition</zorder>
+             <zorder></zorder>
+             <zorder>label_6</zorder>
+             <zorder>label_5</zorder>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+         <widget class="QGroupBox" name="gradPreviewBox">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Preferred" vsizetype="Maximum">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="title">
+           <string>Preview</string>
+          </property>
+          <layout class="QHBoxLayout">
+           <item>
+            <widget class="QWidget" name="previewWidgetContainer" native="true"/>
+           </item>
+           <item>
+            <widget class="KColorButton" name="previewColor">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="whatsThis">
+              <string>Set the color to be used in the preview.</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
         </widget>
        </item>
       </layout>
@@ -3345,6 +3525,7 @@
   <tabstop>bgndImage</tabstop>
   <tabstop>sunkenAppearance</tabstop>
   <tabstop>round</tabstop>
+  <tabstop>squareEntry</tabstop>
   <tabstop>buttonEffect</tabstop>
   <tabstop>thinnerBtns</tabstop>
   <tabstop>etchEntry</tabstop>
@@ -3369,12 +3550,14 @@
   <tabstop>sliderAppearance</tabstop>
   <tabstop>shadeSliders</tabstop>
   <tabstop>customSlidersColor</tabstop>
+  <tabstop>stripedSbar</tabstop>
   <tabstop>colorSliderMouseOver</tabstop>
   <tabstop>sliderStyle</tabstop>
   <tabstop>fillSlider</tabstop>
   <tabstop>sliderFill</tabstop>
   <tabstop>grooveAppearance</tabstop>
   <tabstop>thinSbarGroove</tabstop>
+  <tabstop>borderSbarGroove</tabstop>
   <tabstop>scrollbarType</tabstop>
   <tabstop>flatSbarButtons</tabstop>
   <tabstop>sbarBgndAppearance</tabstop>
@@ -3386,6 +3569,8 @@
   <tabstop>fillProgress</tabstop>
   <tabstop>progressGrooveAppearance</tabstop>
   <tabstop>progressGrooveColor</tabstop>
+  <tabstop>borderProgress</tabstop>
+  <tabstop>squareProgress</tabstop>
   <tabstop>boldProgress_false</tabstop>
   <tabstop>boldProgress</tabstop>
   <tabstop>defBtnIndicator</tabstop>
@@ -3423,6 +3608,7 @@
   <tabstop>centerTabText</tabstop>
   <tabstop>shadeCheckRadio</tabstop>
   <tabstop>customCheckRadioColor</tabstop>
+  <tabstop>crSize</tabstop>
   <tabstop>xCheck_false</tabstop>
   <tabstop>xCheck</tabstop>
   <tabstop>smallRadio_false</tabstop>
@@ -3430,6 +3616,7 @@
   <tabstop>crHighlight</tabstop>
   <tabstop>crButton</tabstop>
   <tabstop>crColor</tabstop>
+  <tabstop>customCrBgndColor</tabstop>
   <tabstop>titlebarAppearance</tabstop>
   <tabstop>inactiveTitlebarAppearance</tabstop>
   <tabstop>titlebarAlignment</tabstop>
@@ -3535,12 +3722,12 @@
    <slot>setEnabled(bool)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>261</x>
-     <y>58</y>
+     <x>357</x>
+     <y>410</y>
     </hint>
     <hint type="destinationlabel">
-     <x>261</x>
-     <y>58</y>
+     <x>360</x>
+     <y>325</y>
     </hint>
    </hints>
   </connection>
@@ -3551,8 +3738,8 @@
    <slot>exportKDE3()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>344</x>
-     <y>43</y>
+     <x>266</x>
+     <y>57</y>
     </hint>
     <hint type="destinationlabel">
      <x>662</x>
@@ -3567,12 +3754,44 @@
    <slot>exportQt()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>440</x>
-     <y>76</y>
+     <x>266</x>
+     <y>57</y>
     </hint>
     <hint type="destinationlabel">
      <x>532</x>
      <y>-1</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>crButton</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>crColor</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>440</x>
+     <y>264</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>440</x>
+     <y>290</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>crButton</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>customCrBgndColor</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>473</x>
+     <y>261</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>425</x>
+     <y>322</y>
     </hint>
    </hints>
   </connection>

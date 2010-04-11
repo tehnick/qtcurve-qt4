@@ -88,7 +88,7 @@ static QPainterPath createPath(const QRect &r, bool fullRound, bool inner=false)
     double       radius((fullRound ? 6.0 : 2.0) - (inner ? 1.0 : 0.0)),
                  dr(radius * 2);
     QRect        fr(inner ? r.adjusted(1, 1, -1, -1) : r);
-    QRectF       rf(fr.x()-0.5, fr.y()+5.5, fr.width()+0.5, fr.height() - 5.5);
+    QRectF       rf(fr.x(), fr.y()+6, fr.width(), fr.height() - 6);
     QPainterPath path;
 
     path.moveTo(rf.right(), rf.top() + radius);
@@ -156,11 +156,11 @@ int QtCurveClient::layoutMetric(LayoutMetric lm, bool respectWindowState,
         case LM_BorderLeft:
         case LM_BorderRight:
         case LM_BorderBottom:
-            return respectWindowState && isMaximized() ? 0 : Handler()->borderSize();
+            return respectWindowState && isMaximized() ? 0 : Handler()->borderSize(LM_BorderBottom==lm);
         case LM_TitleEdgeTop:
             return respectWindowState && isMaximized() ? 0 : Handler()->borderEdgeSize();
         case LM_TitleEdgeBottom:
-            return /*respectWindowState && isMaximized() ? 1 : */ Handler()->borderEdgeSize();
+            return respectWindowState && isMaximized() && Handler()->borderlessMax() ? 0 :  Handler()->borderEdgeSize();
         case LM_TitleEdgeLeft:
         case LM_TitleEdgeRight:
             return respectWindowState && isMaximized() ? 0 : Handler()->borderEdgeSize();
@@ -170,7 +170,11 @@ int QtCurveClient::layoutMetric(LayoutMetric lm, bool respectWindowState,
         case LM_ButtonWidth:
         case LM_ButtonHeight:
         case LM_TitleHeight:
-            return respectWindowState && isToolWindow() ? Handler()->titleHeightTool() : Handler()->titleHeight();
+            return respectWindowState && isMaximized() && Handler()->borderlessMax()
+                        ? 0
+                        : respectWindowState && isToolWindow()
+                            ? Handler()->titleHeightTool()
+                            : Handler()->titleHeight();
         case LM_ButtonSpacing:
             return 0;
         case LM_ButtonMarginTop:
@@ -260,8 +264,7 @@ void QtCurveClient::paintEvent(QPaintEvent *e)
                                         NULL, NULL)),
                          roundBottom(Handler()->roundBottom()),
                          outerBorder(Handler()->outerBorder());
-    const int            borderSize(Handler()->borderSize()),
-                         border(Handler()->borderEdgeSize()),
+    const int            border(Handler()->borderEdgeSize()),
                          titleHeight(layoutMetric(LM_TitleHeight)),
                          titleEdgeTop(layoutMetric(LM_TitleEdgeTop)),
                          titleEdgeBottom(layoutMetric(LM_TitleEdgeBottom)),
@@ -278,15 +281,7 @@ void QtCurveClient::paintEvent(QPaintEvent *e)
     {
         if(compositing)
         {
-            TileSet *tileSet(0);
-    //         if(configuration().useOxygenShadows() && glowIsAnimated() && !isForcedActive())
-    //       {
-    //
-    //         int frame = ;
-    //         tileSet = shadowCache().tileSet(this, frame);=
-    //       }
-    //       else
-            tileSet = Handler()->shadowCache().tileSet(this);
+            TileSet *tileSet=Handler()->shadowCache().tileSet(this, roundBottom);
 
             if(!isMaximized())
                 tileSet->render(r.adjusted(5, 5, -5, -5), &painter, TileSet::Ring);
@@ -765,39 +760,41 @@ bool QtCurveClient::eventFilter(QObject *o, QEvent *e)
         Handler()->setStyle();
 
 #if KDE_IS_VERSION(4, 3, 85)
-    if(QtCurveButton *btn = dynamic_cast<QtCurveButton *>(o))
+    if(Handler()->grouping())
     {
-        if(QEvent::MouseButtonPress==e->type())
-            return true; // No-op
-        else if(QEvent::MouseButtonRelease==e->type())
+        if(QtCurveButton *btn = dynamic_cast<QtCurveButton *>(o))
         {
-            const QMouseEvent *me = static_cast<QMouseEvent *>(e);
-            if(Qt::LeftButton==me->button() && btn->rect().contains(me->pos()))
-                closeClientGroupItem(itsCloseButtons.indexOf(btn));
-            return true;
+            if(QEvent::MouseButtonPress==e->type())
+                return true; // No-op
+            else if(QEvent::MouseButtonRelease==e->type())
+            {
+                const QMouseEvent *me = static_cast<QMouseEvent *>(e);
+                if(Qt::LeftButton==me->button() && btn->rect().contains(me->pos()))
+                    closeClientGroupItem(itsCloseButtons.indexOf(btn));
+                return true;
+            }
         }
+
+        bool state = false;
+        if(QEvent::MouseButtonPress==e->type())
+            state = mouseButtonPressEvent(static_cast<QMouseEvent *>(e));
+        else if(QEvent::MouseButtonRelease==e->type() && widget()==o)
+            state = mouseButtonReleaseEvent(static_cast<QMouseEvent *>(e));
+        else if(QEvent::MouseMove==e->type())
+            state = mouseMoveEvent(static_cast<QMouseEvent *>(e));
+        else if(QEvent::DragEnter==e->type() && widget()==o)
+            state = dragEnterEvent(static_cast<QDragEnterEvent *>(e));
+        else if(QEvent::DragMove==e->type() && widget()==o)
+            state = dragMoveEvent(static_cast<QDragMoveEvent *>(e));
+        else if(QEvent::DragLeave==e->type() && widget()==o)
+            state = dragLeaveEvent(static_cast<QDragLeaveEvent *>(e));
+        else if(QEvent::Drop==e->type() && widget()==o)
+            state = dropEvent(static_cast<QDropEvent *>(e));
+
+        return state || KCommonDecorationUnstable::eventFilter(o, e);
     }
-
-    bool state = false;
-    if(QEvent::MouseButtonPress==e->type())
-        state = mouseButtonPressEvent(static_cast<QMouseEvent *>(e));
-    else if(QEvent::MouseButtonRelease==e->type() && widget()==o)
-        state = mouseButtonReleaseEvent(static_cast<QMouseEvent *>(e));
-    else if(QEvent::MouseMove==e->type())
-        state = mouseMoveEvent(static_cast<QMouseEvent *>(e));
-    else if(QEvent::DragEnter==e->type() && widget()==o)
-        state = dragEnterEvent(static_cast<QDragEnterEvent *>(e));
-    else if(QEvent::DragMove==e->type() && widget()==o)
-        state = dragMoveEvent(static_cast<QDragMoveEvent *>(e));
-    else if(QEvent::DragLeave==e->type() && widget()==o)
-        state = dragLeaveEvent(static_cast<QDragLeaveEvent *>(e));
-    else if(QEvent::Drop==e->type() && widget()==o)
-        state = dropEvent(static_cast<QDropEvent *>(e));
-
-    return state || KCommonDecorationUnstable::eventFilter(o, e);
-#else
-    return KCommonDecoration::eventFilter(o, e);
 #endif
+    return KCommonDecoration::eventFilter(o, e);
 }
 
 #if KDE_IS_VERSION(4, 3, 85)

@@ -46,8 +46,8 @@ typedef qulonglong QtcKey;
 // #include <kstyle.h>
 // #define QTC_BASE_STYLE KStyle
 // #else
-#include <QWindowsStyle>
-#define QTC_BASE_STYLE QWindowsStyle
+#include <QCommonStyle>
+#define QTC_BASE_STYLE QCommonStyle
 // #endif
 
 class QStyleOptionSlider;
@@ -55,7 +55,7 @@ class QLabel;
 class QMenuBar;
 class QScrollBar;
 
-class QtCurveStyle : public QWindowsStyle
+class QtCurveStyle : public QCommonStyle
 {
     Q_OBJECT
     Q_CLASSINFO("X-KDE-CustomElements", "true")
@@ -122,6 +122,8 @@ class QtCurveStyle : public QWindowsStyle
     void drawPrimitive(PrimitiveElement element, const QStyleOption *option, QPainter *painter, const QWidget *widget) const;
     void drawControl(ControlElement control, const QStyleOption *option, QPainter *painter, const QWidget *widget) const;
     void drawComplexControl(ComplexControl control, const QStyleOptionComplex *option, QPainter *painter, const QWidget *widget) const;
+    void drawItemTextWithRole(QPainter *painter, const QRect &rect, int flags, const QPalette &pal, bool enabled, const QString &text,
+                              QPalette::ColorRole textRole) const;
     void drawItemText(QPainter *painter, const QRect &rect, int flags, const QPalette &pal, bool enabled, const QString &text,
                       QPalette::ColorRole textRole = QPalette::NoRole) const;
     QSize sizeFromContents(ContentsType type, const QStyleOption *option, const QSize &size, const QWidget *widget) const;
@@ -203,6 +205,7 @@ class QtCurveStyle : public QWindowsStyle
     const QColor * borderColors(const QStyleOption *option, const QColor *use) const;
     const QColor * getSidebarButtons() const;
     void setMenuColors(const QColor &bgnd);
+    const QColor * menuColors(const QStyleOption *option, bool active) const;
     bool           coloredMdiButtons(bool active, bool mouseOver) const;
     const QColor * getMdiColors(const QStyleOption *option, bool active) const;
     void           readMdiPositions() const;
@@ -219,6 +222,7 @@ class QtCurveStyle : public QWindowsStyle
     void           shade(const color &ca, color *cb, double k) const;
     QColor         getLowerEtchCol(const QWidget *widget) const;
     QPalette::ColorRole getTextRole(const QWidget *w, const QPainter *p, QPalette::ColorRole def) const;
+    int            getFrameRound(const QWidget *widget) const;
 
     private Q_SLOTS:
 
@@ -238,6 +242,9 @@ class QtCurveStyle : public QWindowsStyle
     void           setDecorationColors();
     void           applyKdeSettings(bool pal);
 #endif
+#ifdef Q_WS_X11
+    bool           isWindowDragWidget(QObject *o);
+#endif
 
     private:
 
@@ -252,10 +259,12 @@ class QtCurveStyle : public QWindowsStyle
                                        *itsComboBtnCols,
                                        *itsCheckRadioSelCols,
                                        *itsSortedLvColors,
+                                       *itsOOMenuCols,
                                        itsButtonCols[TOTAL_SHADES+1],
                                        itsLighterPopupMenuBgndCol,
                                        itsCheckRadioCol;
     bool                               itsSaveMenuBarStatus,
+                                       itsSaveStatusBarStatus,
                                        itsUsePixmapCache,
                                        itsIsPreview;
     mutable QColor                     *itsSidebarButtonsCols;
@@ -281,6 +290,10 @@ class QtCurveStyle : public QWindowsStyle
     // Required for Q3Header hover...
     QPoint                             itsPos;
     QWidget                            *itsHoverWidget;
+#ifdef Q_WS_X11
+    QWidget                            *itsDragWidget;
+    bool                               itsDragWidgetHadMouseTracking;
+#endif
 #if QT_VERSION < 0x040500
     mutable Version                    itsQtVersion;
 #endif

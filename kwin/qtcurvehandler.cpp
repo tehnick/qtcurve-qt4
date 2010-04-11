@@ -225,7 +225,7 @@ bool QtCurveHandler::supports(Ability ability) const
 #endif
 #if KDE_IS_VERSION(4, 3, 85)
         case AbilityClientGrouping:
-            return true;
+            return itsGrouping;
 #endif
         default:
             return false;
@@ -255,18 +255,35 @@ bool QtCurveHandler::readConfig()
 
     bool oldShowResizeGrip=itsShowResizeGrip,
          oldRoundBottom=itsRoundBottom,
-         oldOuterBorder=itsOuterBorder;
+         oldDrawBottom=itsDrawBottom,
+         oldOuterBorder=itsOuterBorder,
+         oldBorderlessMax=itsBorderlessMax;
     int  oldTitleBarPad=itsTitleBarPad;
 #if KDE_IS_VERSION(4, 3, 0)
     bool oldCustomShadows(itsCustomShadows);
 #endif
+#if KDE_IS_VERSION(4, 3, 85)
+    bool oldGrouping=itsGrouping;
+#endif
 
     itsShowResizeGrip = config.readEntry("ShowResizeGrip", false);
     itsRoundBottom = config.readEntry("RoundBottom", true);
+    itsDrawBottom = config.readEntry("DrawBottom", false);
+
+    if(itsDrawBottom && BorderTiny!=KDecoration::options()->preferredBorderSize(this))
+        itsDrawBottom=false;
+
+    if(itsRoundBottom && BorderTiny==KDecoration::options()->preferredBorderSize(this) && !itsDrawBottom)
+        itsRoundBottom=false;
+
+    if(itsShowResizeGrip && (BorderTiny!=KDecoration::options()->preferredBorderSize(this) || itsDrawBottom))
+        itsShowResizeGrip=false;
+
     itsOuterBorder = config.hasKey("NoBorder")
                         ? !config.readEntry("NoBorder", false)
                         : config.readEntry("OuterBorder", true);
     itsTitleBarPad = config.readEntry("TitleBarPad", 0);
+    itsBorderlessMax = config.readEntry("BorderlessMax", false);
 
     if(itsTitleBarPad<0 || itsTitleBarPad>10)
         itsTitleBarPad=0;
@@ -290,15 +307,26 @@ bool QtCurveHandler::readConfig()
 
         itsShadowCache.setShadowConfiguration(actShadow);
         itsShadowCache.setShadowConfiguration(inactShadow);
+
+        if(shadowChanged || itsRoundBottom!=oldRoundBottom)
+            itsShadowCache.reset();
     }
+#endif
+#if KDE_IS_VERSION(4, 3, 85)
+    itsGrouping = config.readEntry("Grouping", true);
 #endif
 
     return oldShowResizeGrip!=itsShowResizeGrip ||
            oldRoundBottom!=itsRoundBottom ||
+           oldDrawBottom!=itsDrawBottom ||
            oldOuterBorder!=itsOuterBorder ||
+           oldBorderlessMax!=itsBorderlessMax ||
 #if KDE_IS_VERSION(4, 3, 0)
            oldCustomShadows!=itsCustomShadows ||
            shadowChanged ||
+#endif
+#if KDE_IS_VERSION(4, 3, 85)
+           oldGrouping!=itsGrouping ||
 #endif
            oldTitleBarPad!=itsTitleBarPad;
 }

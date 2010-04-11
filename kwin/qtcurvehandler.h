@@ -90,19 +90,23 @@ class QtCurveHandler : public QObject,
     int                   titleHeightTool() const { return itsTitleHeightTool; }
     const QFont &         titleFont()             { return itsTitleFont; }
     const QFont &         titleFontTool()         { return itsTitleFontTool; }
-    int                   borderSize() const      { return itsBorderSize; }
+    int                   borderSize(bool bot=false) const { return bot && itsDrawBottom && itsBorderSize<=1
+                                                                ? itsBorderSize+4 : itsBorderSize; }
     bool                  coloredShadow() const   { return itsColoredShadow; }
     bool                  showResizeGrip() const  { return itsShowResizeGrip; }
-    bool                  roundBottom() const     { return itsRoundBottom && itsBorderSize>1; }
+    bool                  roundBottom() const     { return itsRoundBottom && (itsBorderSize>1 || itsDrawBottom); }
     bool                  outerBorder() const     { return itsOuterBorder; }
     QStyle *              wStyle() const          { return itsStyle ? itsStyle : QApplication::style(); }
     int                   borderEdgeSize() const;
     int                   titleBarPad() const     { return itsTitleBarPad; }
+    bool                  borderlessMax() const   { return itsBorderlessMax; }
 #if KDE_IS_VERSION(4, 3, 0)
     bool                  customShadows() const    { return itsCustomShadows; }
     QtCurveShadowCache &  shadowCache()            { return itsShadowCache; }
 #endif
-
+#if KDE_IS_VERSION(4, 3, 85)
+    bool                  grouping() const         { return itsGrouping; }
+#endif
     QList<QtCurveHandler::BorderSize>  borderSizes() const;
 
     private:
@@ -114,8 +118,11 @@ class QtCurveHandler : public QObject,
     bool    itsColoredShadow,
             itsShowResizeGrip,
             itsRoundBottom,
-            itsOuterBorder;
+            itsDrawBottom,
+            itsOuterBorder,
+            itsBorderlessMax;
     int     itsBorderSize,
+            itsBotBorderSize,
             itsTitleHeight,
             itsTitleHeightTool,
             itsTimeStamp,
@@ -127,6 +134,9 @@ class QtCurveHandler : public QObject,
 #if KDE_IS_VERSION(4, 3, 0)
     bool               itsCustomShadows;
     QtCurveShadowCache itsShadowCache;
+#endif
+#if KDE_IS_VERSION(4, 3, 85)
+    bool    itsGrouping;
 #endif
 };
 

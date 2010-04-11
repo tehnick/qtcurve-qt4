@@ -197,7 +197,7 @@ static EAppearance toAppearance(const char *str, EAppearance def, bool allowFade
     return def;
 }
 
-static EShade toShade(const char *str, bool allowDarken, EShade def, bool menuShade, color *col)
+static EShade toShade(const char *str, bool allowMenu, EShade def, bool menuShade, color *col)
 {
     if(str)
     {
@@ -206,8 +206,10 @@ static EShade toShade(const char *str, bool allowDarken, EShade def, bool menuSh
             return SHADE_BLEND_SELECTED;
         if(0==memcmp(str, "origselected", 12))
             return SHADE_SELECTED;
-        if(allowDarken && (0==memcmp(str, "darken", 6) || (menuShade && 0==memcmp(str, "true", 4))))
+        if(allowMenu && (0==memcmp(str, "darken", 6) || (menuShade && 0==memcmp(str, "true", 4))))
             return SHADE_DARKEN;
+        if(allowMenu && 0==memcmp(str, "wborder", 7))
+            return SHADE_WINDOW_BORDER;
         if(0==memcmp(str, "custom", 6))
             return SHADE_CUSTOM;
         if('#'==str[0] && col)
@@ -523,7 +525,7 @@ static const char * getHome()
 
 #ifdef __cplusplus
 
-#ifdef QTC_QT_ONLY
+#if defined QTC_QT_ONLY || QT_VERSION < 0x040000
 #if QT_VERSION < 0x040000
 #include <qdir.h>
 #include <qfile.h>
@@ -566,9 +568,10 @@ bool makeDir(const QString& dir, int mode)
             if (lstat(baseEncoded, &st) == 0)
                 (void)unlink(baseEncoded); // try removing
 
-            if (mkdir(baseEncoded, static_cast<mode_t>(mode)) != 0) {
+            if (mkdir(baseEncoded, static_cast<mode_t>(mode)) != 0)
+            {
 #if QT_VERSION >= 0x040000
-                baseEncoded.prepend( "trying to create local folder " );
+                baseEncoded.prepend("trying to create local folder ");
                 perror(baseEncoded.constData());
 #else
                 perror("trying to create QtCurve config folder ");
@@ -650,7 +653,7 @@ static const char *qtcConfDir()
         if(0!=lstat(cfgDir, &info))
         {
 #ifdef __cplusplus
-#ifdef QTC_QT_ONLY
+#if defined QTC_QT_ONLY || QT_VERSION < 0x040000
             makeDir(cfgDir, 0755);
 #else
             KStandardDirs::makeDir(cfgDir, 0755);
@@ -668,21 +671,28 @@ static const char *qtcConfDir()
 
 #if (!defined QT_VERSION || QT_VERSION >= 0x040000) && !defined QTC_CONFIG_DIALOG
 
-#define QTC_MENU_FILE_PREFIX "menubar-"
+#define QTC_MENU_FILE_PREFIX   "menubar-"
+#define QTC_STATUS_FILE_PREFIX "statusbar-"
+
+#define qtcMenuBarHidden(A)         qtcBarHidden((A), QTC_MENU_FILE_PREFIX)
+#define qtcSetMenuBarHidden(A, H)   qtcSetBarHidden((A), (H), QTC_MENU_FILE_PREFIX)
+#define qtcStatusBarHidden(A)       qtcBarHidden((A), QTC_STATUS_FILE_PREFIX)
+#define qtcSetStatusBarHidden(A, H) qtcSetBarHidden((A), (H), QTC_STATUS_FILE_PREFIX)
 
 #ifdef __cplusplus
-static bool qtcMenuBarHidden(const QString &app)
+static bool qtcBarHidden(const QString &app, const char *prefix)
 {
-    return QFile::exists(QFile::decodeName(qtcConfDir())+QTC_MENU_FILE_PREFIX+app);
+    return QFile::exists(QFile::decodeName(qtcConfDir())+prefix+app);
 }
 
-static void qtcSetMenuBarHidden(const QString &app, bool hidden)
+static void qtcSetBarHidden(const QString &app, bool hidden, const char *prefix)
 {
     if(!hidden)
-        QFile::remove(QFile::decodeName(qtcConfDir())+QTC_MENU_FILE_PREFIX+app);
+        QFile::remove(QFile::decodeName(qtcConfDir())+prefix+app);
     else
-        QFile(QFile::decodeName(qtcConfDir())+QTC_MENU_FILE_PREFIX+app).open(QIODevice::WriteOnly);
+        QFile(QFile::decodeName(qtcConfDir())+prefix+app).open(QIODevice::WriteOnly);
 }
+
 #else
 static bool qtcFileExists(const char *name)
 {
@@ -691,31 +701,31 @@ static bool qtcFileExists(const char *name)
     return 0==lstat(name, &info) && S_ISREG(info.st_mode);
 }
 
-static char * qtcGetMenuBarFileName(const char *app)
+static char * qtcGetBarFileName(const char *app, const char *prefix)
 {
     char *filename=NULL;
 
     if(!filename)
     {
-        filename=(char *)malloc(strlen(qtcConfDir())+strlen(QTC_MENU_FILE_PREFIX)+strlen(app)+1);
-        sprintf(filename, "%s"QTC_MENU_FILE_PREFIX"%s", qtcConfDir(), app);
+        filename=(char *)malloc(strlen(qtcConfDir())+strlen(prefix)+strlen(app)+1);
+        sprintf(filename, "%s%s%s", qtcConfDir(), prefix, app);
     }
 
     return filename;
 }
 
-static bool qtcMenuBarHidden(const char *app)
+static bool qtcBarHidden(const char *app, const char *prefix)
 {
-    return qtcFileExists(qtcGetMenuBarFileName(app));
+    return qtcFileExists(qtcGetBarFileName(app, prefix));
 }
 
-static void qtcSetMenuBarHidden(const char *app, bool hidden)
+static void qtcSetBarHidden(const char *app, bool hidden, const char *prefix)
 {
     if(!hidden)
-        unlink(qtcGetMenuBarFileName(app));
+        unlink(qtcGetBarFileName(app, prefix));
     else
     {
-        FILE *f=fopen(qtcGetMenuBarFileName(app), "w");
+        FILE *f=fopen(qtcGetBarFileName(app, prefix), "w");
 
         if(f)
             fclose(f);
@@ -1200,33 +1210,47 @@ static bool readConfig(const char *file, Options *opts, Options *defOpts)
 #ifdef __cplusplus
     if(file.isEmpty())
     {
-        const char *cfgDir=qtcConfDir();
+        const char *env=getenv("QTCURVE_CONFIG_FILE");
 
-        if(cfgDir)
+        if(NULL!=env)
+            return readConfig(env, opts, defOpts);
+        else
         {
-            QString filename(QFile::decodeName(cfgDir)+QTC_FILE);
+            const char *cfgDir=qtcConfDir();
 
-            if(!QFile::exists(filename))
-                filename=QFile::decodeName(cfgDir)+"../"QTC_OLD_FILE;
-            return readConfig(filename, opts, defOpts);
+            if(cfgDir)
+            {
+                QString filename(QFile::decodeName(cfgDir)+QTC_FILE);
+
+                if(!QFile::exists(filename))
+                    filename=QFile::decodeName(cfgDir)+"../"QTC_OLD_FILE;
+                return readConfig(filename, opts, defOpts);
+            }
         }
     }
 #else
     if(!file)
     {
-        const char *cfgDir=qtcConfDir();
+        const char *env=getenv("QTCURVE_CONFIG_FILE");
 
-        if(cfgDir)
+        if(NULL!=env)
+            return readConfig(env, opts, defOpts);
+        else
         {
-            char *filename=(char *)malloc(strlen(cfgDir)+strlen(QTC_OLD_FILE)+4);
-            bool rv=false;
+            const char *cfgDir=qtcConfDir();
 
-            sprintf(filename, "%s"QTC_FILE, cfgDir);
-            if(!qtcFileExists(filename))
-                sprintf(filename, "%s../"QTC_OLD_FILE, cfgDir);
-            rv=readConfig(filename, opts, defOpts);
-            free(filename);
-            return rv;
+            if(cfgDir)
+            {
+                char *filename=(char *)malloc(strlen(cfgDir)+strlen(QTC_OLD_FILE)+4);
+                bool rv=false;
+
+                sprintf(filename, "%s"QTC_FILE, cfgDir);
+                if(!qtcFileExists(filename))
+                    sprintf(filename, "%s../"QTC_OLD_FILE, cfgDir);
+                rv=readConfig(filename, opts, defOpts);
+                free(filename);
+                return rv;
+            }
         }
     }
 #endif
@@ -1486,12 +1510,14 @@ static bool readConfig(const char *file, Options *opts, Options *defOpts)
             QTC_CFG_READ_BOOL(squareLvSelection)
             QTC_CFG_READ_BOOL(invertBotTab)
             QTC_CFG_READ_BOOL(menubarHiding)
+            QTC_CFG_READ_BOOL(statusbarHiding)
             QTC_CFG_READ_BOOL(boldProgress)
             QTC_CFG_READ_BOOL(coloredTbarMo)
             QTC_CFG_READ_BOOL(borderSelection)
             QTC_CFG_READ_BOOL(squareProgress)
             QTC_CFG_READ_BOOL(squareEntry)
             QTC_CFG_READ_BOOL(stripedSbar)
+            QTC_CFG_READ_BOOL(windowDrag)
 #if defined QTC_CONFIG_DIALOG || (defined QT_VERSION && (QT_VERSION >= 0x040000))
             QTC_CFG_READ_BOOL(stdBtnSizes)
             QTC_CFG_READ_BOOL(titlebarBorder)
@@ -1565,6 +1591,7 @@ static bool readConfig(const char *file, Options *opts, Options *defOpts)
 #endif 
 #if defined QT_VERSION && (QT_VERSION >= 0x040000)
             QTC_READ_STRING_LIST(menubarApps)
+            QTC_READ_STRING_LIST(statusbarApps)
             QTC_READ_STRING_LIST(useQtFileDialogApps)
 #endif
 
@@ -1944,6 +1971,9 @@ static bool readConfig(const char *file, Options *opts, Options *defOpts)
 
             if(!opts->framelessGroupBoxes)
                 opts->groupBoxLine=false;
+
+            if(SHADE_WINDOW_BORDER==opts->shadeMenubars)
+                opts->shadeMenubarOnlyWhenActive=true;
 #endif
 #ifndef __cplusplus
             if(!defOpts)
@@ -2174,12 +2204,14 @@ static void defaultSettings(Options *opts)
     opts->squareLvSelection=false;
     opts->invertBotTab=true;
     opts->menubarHiding=false;
+    opts->statusbarHiding=false;
     opts->boldProgress=true;
     opts->coloredTbarMo=false;
     opts->borderSelection=false;
     opts->squareProgress=false;
     opts->squareEntry=false;
     opts->stripedSbar=false;
+    opts->windowDrag=false;
 #if defined QTC_CONFIG_DIALOG || (defined QT_VERSION && (QT_VERSION >= 0x040000))
     opts->stdBtnSizes=false;
     opts->titlebarBorder=true;
@@ -2212,6 +2244,7 @@ static void defaultSettings(Options *opts)
     opts->xbar=false;
     opts->dwtSettings=QTC_DWT_BUTTONS_AS_PER_TITLEBAR|QTC_DWT_ROUND_TOP_ONLY;
     opts->menubarApps << "amarok" << "arora" << "kaffeine" << "kcalc" << "smplayer";
+    opts->statusbarApps << "kde";
     opts->useQtFileDialogApps << "googleearth-bin";
 #endif
     opts->noDlgFixApps << "kate" << "plasma" << "plasma-desktop" << "plasma-netbook";
@@ -2401,6 +2434,8 @@ static QString toStr(EShade exp, const QColor &col)
             return "origselected";
         case SHADE_DARKEN:
             return "darken";
+        case SHADE_WINDOW_BORDER:
+            return "wborder";
     }
 }
 
@@ -2860,12 +2895,14 @@ bool static writeConfig(KConfig *cfg, const Options &opts, const Options &def, b
         CFG_WRITE_ENTRY(squareLvSelection)
         CFG_WRITE_ENTRY(invertBotTab)
         CFG_WRITE_ENTRY(menubarHiding)
+        CFG_WRITE_ENTRY(statusbarHiding)
         CFG_WRITE_ENTRY(boldProgress)
         CFG_WRITE_ENTRY(coloredTbarMo)
         CFG_WRITE_ENTRY(borderSelection)
         CFG_WRITE_ENTRY(squareProgress)
         CFG_WRITE_ENTRY(squareEntry)
         CFG_WRITE_ENTRY(stripedSbar)
+        CFG_WRITE_ENTRY(windowDrag)
 #if defined QT_VERSION && (QT_VERSION >= 0x040000)
         CFG_WRITE_ENTRY(xbar)
         CFG_WRITE_ENTRY_NUM(dwtSettings)
@@ -2926,6 +2963,7 @@ bool static writeConfig(KConfig *cfg, const Options &opts, const Options &def, b
         QTC_WRITE_STRING_LIST_ENTRY(noDlgFixApps)
         QTC_WRITE_STRING_LIST_ENTRY(noMenuStripeApps)
         QTC_WRITE_STRING_LIST_ENTRY(menubarApps)
+        QTC_WRITE_STRING_LIST_ENTRY(statusbarApps)
         QTC_WRITE_STRING_LIST_ENTRY(useQtFileDialogApps)
 #endif
 

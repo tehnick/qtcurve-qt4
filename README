@@ -24,8 +24,8 @@ The following options may be supplied to cmake:
         by default - use this config option to re-enable the code.
 
     -DQTC_STYLE_SUPPORT=true
-       Support QtCurve style files. These are stored as
-       <kde prefix>/share/apps/kstyle/themes/qtc_<stylename>.themerc
+        Support QtCurve style files. These are stored as
+        <kde prefix>/share/apps/kstyle/themes/qtc_<stylename>.themerc
 
 XBar/MacMenu
 ------------

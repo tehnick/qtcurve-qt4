@@ -21,8 +21,8 @@
   Boston, MA 02110-1301, USA.
 */
 
-#define QTC_COMMON_FUNCTIONS
-#define QTC_CONFIG_DIALOG
+#define COMMON_FUNCTIONS
+#define CONFIG_DIALOG
 
 #include <ui_qtcurveconfigbase.h>
 #include <QMap>
@@ -137,6 +137,10 @@ class QtCurveConfig : public QWidget, private Ui::QtCurveConfigBase
     void borderProgressChanged();
     void squareProgressChanged();
     void fillProgressChanged();
+    void bgndAppearanceChanged();
+    void menuBgndAppearanceChanged();
+    void titlebarButtonsRoundChanged();
+    void titlebarButtonsSunkenBackgroundChanged();
     void changeStack();
     void gradChanged(int i);
     void borderChanged(int i);
@@ -168,6 +172,7 @@ class QtCurveConfig : public QWidget, private Ui::QtCurveConfigBase
     void setOptions(Options &opts);
     void setWidgetOptions(const Options &opts);
     int  getDwtSettingsFlags();
+    int  getSquareFlags();
     bool diffTitleBarButtonColors(const Options &opts);
     bool settingsChanged(const Options &opts);
     bool settingsChanged() { return settingsChanged(presets[currentText].opts); }

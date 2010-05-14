@@ -34,6 +34,7 @@
 #include <kdecoration.h>
 #include <kdecorationfactory.h>
 #include "config.h"
+#include "qtcurveconfig.h"
 
 #if KDE_IS_VERSION(4, 3, 0)
 #include "qtcurveshadowcache.h"
@@ -66,6 +67,9 @@ enum ButtonIcon
     NumButtonIcons
 };
 
+class QtCurveClient;
+class QtCurveDBus;
+
 class QtCurveHandler : public QObject,
 #if KDE_IS_VERSION(4, 3, 0)
                        public KDecorationFactoryUnstable
@@ -80,34 +84,43 @@ class QtCurveHandler : public QObject,
     QtCurveHandler();
     ~QtCurveHandler();
     void setStyle();
-    virtual bool reset( unsigned long changed );
+    virtual bool reset(unsigned long changed);
 
-    virtual KDecoration * createDecoration( KDecorationBridge* );
-    virtual bool supports( Ability ability ) const;
+    virtual KDecoration * createDecoration(KDecorationBridge *);
+    virtual bool supports(Ability ability) const;
 
     const QBitmap &       buttonBitmap(ButtonIcon type, const QSize &size, bool toolWindow);
-    int                   titleHeight() const     { return itsTitleHeight; }
-    int                   titleHeightTool() const { return itsTitleHeightTool; }
-    const QFont &         titleFont()             { return itsTitleFont; }
-    const QFont &         titleFontTool()         { return itsTitleFontTool; }
-    int                   borderSize(bool bot=false) const { return bot && itsDrawBottom && itsBorderSize<=1
-                                                                ? itsBorderSize+4 : itsBorderSize; }
-    bool                  coloredShadow() const   { return itsColoredShadow; }
-    bool                  showResizeGrip() const  { return itsShowResizeGrip; }
-    bool                  roundBottom() const     { return itsRoundBottom && (itsBorderSize>1 || itsDrawBottom); }
-    bool                  outerBorder() const     { return itsOuterBorder; }
-    QStyle *              wStyle() const          { return itsStyle ? itsStyle : QApplication::style(); }
+    int                   titleHeight() const        { return itsTitleHeight; }
+    int                   titleHeightTool() const    { return itsTitleHeightTool; }
+    const QFont &         titleFont()                { return itsTitleFont; }
+    const QFont &         titleFontTool()               { return itsTitleFontTool; }
+    int                   borderSize(bool bot=false) const { return bot && QtCurveConfig::BORDER_NO_SIDES==itsConfig.borderSize()
+                                                                ? itsBorderSize+5 : itsBorderSize; }
+    bool                  showResizeGrip() const     { return QtCurveConfig::BORDER_NONE==itsConfig.borderSize(); }
+    bool                  roundBottom() const        { return itsConfig.roundBottom() && itsConfig.borderSize()>QtCurveConfig::BORDER_NONE; }
+    bool                  outerBorder() const        { return itsConfig.outerBorder(); }
+    QStyle *              wStyle() const             { return itsStyle ? itsStyle : QApplication::style(); }
     int                   borderEdgeSize() const;
-    int                   titleBarPad() const     { return itsTitleBarPad; }
-    bool                  borderlessMax() const   { return itsBorderlessMax; }
+    int                   titleBarPad() const        { return itsConfig.titleBarPad(); }
+    bool                  borderlessMax() const      { return itsConfig.borderlessMax(); }
+    int                   opacity(bool active) const { return itsConfig.opacity(active); }
+    bool                  opaqueBorder() const       { return itsConfig.opaqueBorder(); }
 #if KDE_IS_VERSION(4, 3, 0)
-    bool                  customShadows() const    { return itsCustomShadows; }
-    QtCurveShadowCache &  shadowCache()            { return itsShadowCache; }
+    bool                  customShadows() const      { return itsConfig.customShadows(); }
+    QtCurveShadowCache &  shadowCache()              { return itsShadowCache; }
 #endif
 #if KDE_IS_VERSION(4, 3, 85)
-    bool                  grouping() const         { return itsGrouping; }
+    bool                  grouping() const           { return itsConfig.grouping(); }
 #endif
-    QList<QtCurveHandler::BorderSize>  borderSizes() const;
+    void                  menuBarSize(unsigned int xid, int size);
+    void                  statusBarState(unsigned int xid, bool state);
+    void                  emitToggleMenuBar(int xid);
+    void                  emitToggleStatusBar(int xid);
+    void                  titlebarSizeChanged();
+    void                  addClient(QtCurveClient *c)    { itsClients.append(c); }
+    void                  removeClient(QtCurveClient *c) { itsClients.removeAll(c); }
+    bool                  wasLastMenu(int id)            { return id==itsLastMenuXid; }
+    bool                  wasLastStatus(int id)          { return id==itsLastStatusXid; }
 
     private:
 
@@ -115,28 +128,22 @@ class QtCurveHandler : public QObject,
 
     private:
 
-    bool    itsColoredShadow,
-            itsShowResizeGrip,
-            itsRoundBottom,
-            itsDrawBottom,
-            itsOuterBorder,
-            itsBorderlessMax;
-    int     itsBorderSize,
-            itsBotBorderSize,
-            itsTitleHeight,
-            itsTitleHeightTool,
-            itsTimeStamp,
-            itsTitleBarPad;
-    QFont   itsTitleFont,
-            itsTitleFontTool;
-    QStyle  *itsStyle;
-    QBitmap itsBitmaps[2][NumButtonIcons];
+    int                    itsBorderSize,
+                           itsBotBorderSize,
+                           itsTitleHeight,
+                           itsTitleHeightTool,
+                           itsTimeStamp,
+                           itsLastMenuXid,
+                           itsLastStatusXid;
+    QFont                  itsTitleFont,
+                           itsTitleFontTool;
+    QStyle                 *itsStyle;
+    QBitmap                itsBitmaps[2][NumButtonIcons];
+    QtCurveConfig          itsConfig;
+    QList<QtCurveClient *> itsClients;
+    QtCurveDBus            *itsDBus;
 #if KDE_IS_VERSION(4, 3, 0)
-    bool               itsCustomShadows;
-    QtCurveShadowCache itsShadowCache;
-#endif
-#if KDE_IS_VERSION(4, 3, 85)
-    bool    itsGrouping;
+    QtCurveShadowCache     itsShadowCache;
 #endif
 };
 

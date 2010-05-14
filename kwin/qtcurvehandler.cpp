@@ -31,15 +31,20 @@
 #include <QStyleFactory>
 #include <QStyle>
 #include <QDir>
+#include <QFile>
+#include <QTextStream>
+#include <QApplication>
+#include <QDBusConnection>
 #include "qtcurvehandler.h"
 #include "qtcurveclient.h"
 #include "qtcurvebutton.h"
-#include <QApplication>
+#include "qtcurvedbus.h"
 #include <KConfig>
 #include <KConfigGroup>
 #include <KColorUtils>
 #include <KColorScheme>
 #include <KGlobalSettings>
+#include <KSaveFile>
 #include <unistd.h>
 #include <sys/types.h>
 #include <kde_file.h>
@@ -79,14 +84,16 @@ namespace KWinQtCurve
 {
 
 QtCurveHandler::QtCurveHandler()
-              : itsTitleBarPad(0)
+              : itsLastMenuXid(0)
+              , itsLastStatusXid(0)
               , itsStyle(NULL)
-#if KDE_IS_VERSION(4, 3, 0)
-              , itsCustomShadows(false)
-#endif
+              , itsDBus(NULL)
 {
     setStyle();
     reset(0);
+
+    itsDBus=new QtCurveDBus(this);
+    QDBusConnection::sessionBus().registerObject("/QtCurve", this);
 }
 
 QtCurveHandler::~QtCurveHandler()
@@ -109,14 +116,18 @@ void QtCurveHandler::setStyle()
         itsStyle=QStyleFactory::create("QtCurve");
 #endif
 
-    // Need to use or ouwn style instance, as want to update this when settings change...
+    // Need to use our own style instance, as want to update this when settings change...
     if(!itsStyle)
     {
         KConfig      kglobals("kdeglobals", KConfig::CascadeConfig);
         KConfigGroup general(&kglobals, "General");
         QString      styleName=general.readEntry("widgetStyle", QString()).toLower();
 
-        itsStyle=QStyleFactory::create(styleName.isEmpty() || styleName=="qtcurve" || !styleName.startsWith("qtc_")
+        itsStyle=QStyleFactory::create(styleName.isEmpty() || (styleName!="qtcurve"
+#ifdef QTC_STYLE_SUPPORT
+                                                                && !styleName.startsWith(THEME_PREFIX)
+#endif
+                                                               )
                                         ? QString("QtCurve") : styleName);
         itsTimeStamp=getTimeStamp(xdgConfigFolder()+"/qtcurve/stylerc");
     }
@@ -141,32 +152,36 @@ bool QtCurveHandler::reset(unsigned long changed)
     // read in the configuration
     bool configChanged=readConfig();
 
-    switch(KDecoration::options()->preferredBorderSize(this))
+    switch(itsConfig.borderSize())
     {
-        case BorderTiny:
+        case QtCurveConfig::BORDER_NONE:
+        case QtCurveConfig::BORDER_NO_SIDES:
             itsBorderSize = 1;
             break;
-        case BorderLarge:
+        case QtCurveConfig::BORDER_TINY:
+            itsBorderSize = 2;
+            break;
+        case QtCurveConfig::BORDER_LARGE:
             itsBorderSize = 8;
             break;
-        case BorderVeryLarge:
+        case QtCurveConfig::BORDER_VERY_LARGE:
             itsBorderSize = 12;
             break;
-        case BorderHuge:
+        case QtCurveConfig::BORDER_HUGE:
             itsBorderSize = 18;
             break;
-        case BorderVeryHuge:
+        case QtCurveConfig::BORDER_VERY_HUGE:
             itsBorderSize = 27;
             break;
-        case BorderOversized:
+        case QtCurveConfig::BORDER_OVERSIZED:
             itsBorderSize = 40;
             break;
-        case BorderNormal:
+        case QtCurveConfig::BORDER_NORMAL:
         default:
             itsBorderSize = 4;
     }
 
-    if(!itsOuterBorder && (itsBorderSize==1 || itsBorderSize>4))
+    if(!outerBorder() && (itsBorderSize==1 || itsBorderSize>4))
         itsBorderSize--;
 
     for (int t=0; t < 2; ++t)
@@ -221,11 +236,11 @@ bool QtCurveHandler::supports(Ability ability) const
         case AbilityUsesAlphaChannel:
             return true; // !Handler()->outerBorder(); ???
         case AbilityProvidesShadow:
-            return itsCustomShadows;
+            return customShadows();
 #endif
 #if KDE_IS_VERSION(4, 3, 85)
         case AbilityClientGrouping:
-            return itsGrouping;
+            return grouping();
 #endif
         default:
             return false;
@@ -234,11 +249,14 @@ bool QtCurveHandler::supports(Ability ability) const
 
 bool QtCurveHandler::readConfig()
 {
-    KConfig configFile("kwinqtcurverc");
+    QtCurveConfig      oldConfig=itsConfig;
+    KConfig            configFile("kwinqtcurverc");
     const KConfigGroup config(&configFile, "General");
+    QFontMetrics       fm(itsTitleFont);  // active font = inactive font
+    int                titleHeightMin = config.readEntry("MinTitleHeight", 16),
+                       oldSize=itsTitleHeight,
+                       oldToolSize=itsTitleHeightTool;
 
-    QFontMetrics fm(itsTitleFont);  // active font = inactive font
-    int titleHeightMin = config.readEntry("MinTitleHeight", 16);
     // The title should stretch with bigger font sizes!
     itsTitleHeight = qMax(titleHeightMin, fm.height() + 4); // 4 px for the shadow etc.
     // have an even title/button size so the button icons are fully centered...
@@ -253,47 +271,40 @@ bool QtCurveHandler::readConfig()
     if (itsTitleHeightTool%2 == 0)
         itsTitleHeightTool++;
 
-    bool oldShowResizeGrip=itsShowResizeGrip,
-         oldRoundBottom=itsRoundBottom,
-         oldDrawBottom=itsDrawBottom,
-         oldOuterBorder=itsOuterBorder,
-         oldBorderlessMax=itsBorderlessMax;
-    int  oldTitleBarPad=itsTitleBarPad;
-#if KDE_IS_VERSION(4, 3, 0)
-    bool oldCustomShadows(itsCustomShadows);
-#endif
-#if KDE_IS_VERSION(4, 3, 85)
-    bool oldGrouping=itsGrouping;
-#endif
+    itsConfig.load(&configFile);
 
-    itsShowResizeGrip = config.readEntry("ShowResizeGrip", false);
-    itsRoundBottom = config.readEntry("RoundBottom", true);
-    itsDrawBottom = config.readEntry("DrawBottom", false);
+    itsTitleHeight+=2*titleBarPad();
 
-    if(itsDrawBottom && BorderTiny!=KDecoration::options()->preferredBorderSize(this))
-        itsDrawBottom=false;
+    QFile in(xdgConfigFolder()+"/qtcurve/"BORDER_SIZE_FILE);
+    int   prevSize(-1), prevToolSize(-1);
 
-    if(itsRoundBottom && BorderTiny==KDecoration::options()->preferredBorderSize(this) && !itsDrawBottom)
-        itsRoundBottom=false;
+    if(in.open(QIODevice::ReadOnly))
+    {
+        QTextStream stream(&in);
+        prevSize=in.readLine().toInt();
+        prevToolSize=in.readLine().toInt();
+        in.close();
+    }
 
-    if(itsShowResizeGrip && (BorderTiny!=KDecoration::options()->preferredBorderSize(this) || itsDrawBottom))
-        itsShowResizeGrip=false;
+    int borderEdge=borderEdgeSize();
+    if(prevSize!=(itsTitleHeight+borderEdge) || prevToolSize!=(itsTitleHeightTool+borderEdge))
+    {
+        KSaveFile sizeFile(xdgConfigFolder()+"/qtcurve/"BORDER_SIZE_FILE);
 
-    itsOuterBorder = config.hasKey("NoBorder")
-                        ? !config.readEntry("NoBorder", false)
-                        : config.readEntry("OuterBorder", true);
-    itsTitleBarPad = config.readEntry("TitleBarPad", 0);
-    itsBorderlessMax = config.readEntry("BorderlessMax", false);
-
-    if(itsTitleBarPad<0 || itsTitleBarPad>10)
-        itsTitleBarPad=0;
-    itsTitleHeight+=2*itsTitleBarPad;
+        if (sizeFile.open())
+        {
+            QTextStream stream(&sizeFile);
+            stream << itsTitleHeight+borderEdge << endl
+                << itsTitleHeightTool+borderEdge;
+            stream.flush();
+            sizeFile.finalize();
+            sizeFile.close();
+        }
+    }
 #if KDE_IS_VERSION(4, 3, 0)
     bool shadowChanged(false);
 
-    itsCustomShadows = config.readEntry("CustomShadows", false);
-
-    if(itsCustomShadows)
+    if(customShadows())
     {
         QtCurveShadowConfiguration actShadow(QPalette::Active),
                                    inactShadow(QPalette::Inactive);
@@ -301,34 +312,29 @@ bool QtCurveHandler::readConfig()
         actShadow.load(&configFile);
         inactShadow.load(&configFile);
 
-        shadowChanged=itsCustomShadows &&
-                       (itsShadowCache.shadowConfigurationChanged(actShadow) ||
-                        itsShadowCache.shadowConfigurationChanged(inactShadow));
+        shadowChanged=itsShadowCache.shadowConfigurationChanged(actShadow) ||
+                      itsShadowCache.shadowConfigurationChanged(inactShadow);
 
         itsShadowCache.setShadowConfiguration(actShadow);
         itsShadowCache.setShadowConfiguration(inactShadow);
 
-        if(shadowChanged || itsRoundBottom!=oldRoundBottom)
+        if(shadowChanged || oldConfig.roundBottom()!=roundBottom())
             itsShadowCache.reset();
     }
 #endif
-#if KDE_IS_VERSION(4, 3, 85)
-    itsGrouping = config.readEntry("Grouping", true);
-#endif
 
-    return oldShowResizeGrip!=itsShowResizeGrip ||
-           oldRoundBottom!=itsRoundBottom ||
-           oldDrawBottom!=itsDrawBottom ||
-           oldOuterBorder!=itsOuterBorder ||
-           oldBorderlessMax!=itsBorderlessMax ||
+    if(itsDBus && (oldSize!=itsTitleHeight || oldToolSize!=itsTitleHeightTool))
+    {
+        itsDBus->emitTbSize(); // KDE4 apps...
+        titlebarSizeChanged(); // Gtk2 apps...
+    }
+
+    return oldSize!=itsTitleHeight ||
+           oldToolSize!=itsTitleHeightTool ||
 #if KDE_IS_VERSION(4, 3, 0)
-           oldCustomShadows!=itsCustomShadows ||
            shadowChanged ||
 #endif
-#if KDE_IS_VERSION(4, 3, 85)
-           oldGrouping!=itsGrouping ||
-#endif
-           oldTitleBarPad!=itsTitleBarPad;
+           itsConfig!=oldConfig;
 }
 
 const QBitmap & QtCurveHandler::buttonBitmap(ButtonIcon type, const QSize &size, bool toolWindow)
@@ -344,29 +350,63 @@ const QBitmap & QtCurveHandler::buttonBitmap(ButtonIcon type, const QSize &size,
     return itsBitmaps[toolWindow][typeIndex];
 }
 
+void QtCurveHandler::titlebarSizeChanged()
+{
+    QList<QtCurveClient *>::ConstIterator it(itsClients.begin()),
+                                          end(itsClients.end());
+
+    for(; it!=end; ++it)
+        (*it)->informAppOfTitlebarSizeChanged();
+}
+
+void QtCurveHandler::menuBarSize(unsigned int xid, int size)
+{
+    QList<QtCurveClient *>::ConstIterator it(itsClients.begin()),
+                                          end(itsClients.end());
+
+    for(; it!=end; ++it)
+        if((*it)->windowId()==xid)
+        {
+            (*it)->menuBarSize(size);
+            break;
+        }
+    itsLastMenuXid=xid;
+}
+
+void QtCurveHandler::statusBarState(unsigned int xid, bool state)
+{
+    QList<QtCurveClient *>::ConstIterator it(itsClients.begin()),
+                                          end(itsClients.end());
+
+    for(; it!=end; ++it)
+        if((*it)->windowId()==xid)
+        {
+            (*it)->statusBarState(state);
+            break;
+        }
+    itsLastStatusXid=xid;
+}
+
+void QtCurveHandler::emitToggleMenuBar(int xid)
+{
+    itsDBus->emitMbToggle(xid);
+}
+
+void QtCurveHandler::emitToggleStatusBar(int xid)
+{
+    itsDBus->emitSbToggle(xid);
+}
+    
 int QtCurveHandler::borderEdgeSize() const
 {
-    QtCurveHandler *that=(QtCurveHandler *)this;
-
     return outerBorder()
-                ? (BorderTiny!=KDecoration::options()->preferredBorderSize(that) &&
+                ? (itsConfig.borderSize()>QtCurveConfig::BORDER_NO_SIDES &&
                     wStyle()->pixelMetric((QStyle::PixelMetric)QtC_Round, NULL, NULL)<ROUND_FULL)
                     ? wStyle()->pixelMetric((QStyle::PixelMetric)QtC_TitleBarBorder, NULL, NULL)
                         ? 2
                         : 1
                     : 3
                 : 1;
-}
-
-QList<QtCurveHandler::BorderSize> QtCurveHandler::borderSizes() const
-{
-    // the list must be sorted
-    return QList<BorderSize>() << BorderTiny
-                               << BorderNormal
-                               << BorderLarge
-                               << BorderVeryLarge
-                               << BorderHuge
-                               << BorderVeryHuge;
 }
 
 // make the handler accessible to other classes...
@@ -387,3 +427,6 @@ extern "C"
         return KWinQtCurve::handler;
     }
 }
+
+#include "qtcurvedbus.moc"
+#include "qtcurvehandler.moc"

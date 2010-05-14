@@ -27,18 +27,26 @@
 #ifndef QTCURVECLIENT_H
 #define QTCURVECLIENT_H
 
+#include "config.h"
+
 #include <kdeversion.h>
+#ifdef QTC_KWIN_MAX_BUTTON_HACK
+#define private public
+#endif
 #include <kcommondecoration.h>
+#ifdef QTC_KWIN_MAX_BUTTON_HACK
+#undef private
+#endif
 #include <QtGui/QPixmap>
 #include <QtGui/QColor>
 #include "qtcurvehandler.h"
-#include "config.h"
 
 namespace KWinQtCurve
 {
 
 class QtCurveSizeGrip;
 class QtCurveButton;
+class QtCurveToggleButton;
 
 class QtCurveClient :
 #if KDE_IS_VERSION(4, 3, 0)
@@ -47,6 +55,8 @@ class QtCurveClient :
                        public KCommonDecoration
 #endif    
 {
+    Q_OBJECT
+
     public:
 
     QtCurveClient(KDecorationBridge *bridge, QtCurveHandler *factory);
@@ -61,6 +71,7 @@ class QtCurveClient :
     void                      maximizeChange();
     void                      shadeChange();
     void                      activeChange();
+    void                      captionChange();
     void                      reset(unsigned long changed);
     void                      paintEvent(QPaintEvent *e);
     void                      paintTitle(QPainter *painter, const QRect &capRect, const QRect &alignFullRect,
@@ -74,6 +85,16 @@ class QtCurveClient :
     void                      updateCaption();
     bool                      eventFilter(QObject *o, QEvent *e);
     bool isMaximized() const { return maximizeMode()==MaximizeFull && !options()->moveResizeMaximizedWindows();  }
+    void                      menuBarSize(int size);
+    void                      statusBarState(bool state);
+    QtCurveToggleButton *     createToggleButton(bool menubar);
+    void                      informAppOfTitlebarSizeChanged();
+    void                      sendToggleToApp(bool menubar);
+
+    public Q_SLOTS:
+
+    void                      toggleMenuBar();
+    void                      toggleStatusBar();
 
     private:
 
@@ -92,6 +113,9 @@ class QtCurveClient :
     QRect                     captionRect() const;
     void                      createSizeGrip();
     void                      deleteSizeGrip();
+    void                      informAppOfActiveChange();
+    const QString &           windowClass(bool normalWindowsOnly=true);
+    int                       getProperty(bool menubar=true);
 
     private:
 
@@ -104,12 +128,16 @@ class QtCurveClient :
 
     static const int constNumButtonStates=2;
 
-    QtCurveSizeGrip *itsResizeGrip;
-    ButtonBgnd      itsButtonBackground[constNumButtonStates];
-    QRect           itsCaptionRect;
-    QString         itsOldCaption;
-    QFont           itsTitleFont;
-
+    QtCurveSizeGrip        *itsResizeGrip;
+    ButtonBgnd             itsButtonBackground[constNumButtonStates];
+    QRect                  itsCaptionRect;
+    QString                itsCaption,
+                           itsWindowClass;
+    QFont                  itsTitleFont;
+    int                    itsMenuBarSize;
+    QtCurveToggleButton    *itsToggleMenuBarButton,
+                           *itsToggleStatusBarButton;
+//     bool                   itsHover;
 #if KDE_IS_VERSION(4, 3, 85)
     QList<QtCurveButton *> itsCloseButtons;
     bool                   itsClickInProgress,

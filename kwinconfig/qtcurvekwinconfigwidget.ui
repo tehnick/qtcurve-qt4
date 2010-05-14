@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>601</width>
-    <height>277</height>
+    <width>492</width>
+    <height>270</height>
    </rect>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
@@ -16,6 +16,12 @@
    </property>
    <item>
     <widget class="QTabWidget" name="tabWidget">
+     <property name="minimumSize">
+      <size>
+       <width>0</width>
+       <height>270</height>
+      </size>
+     </property>
      <property name="currentIndex">
       <number>0</number>
      </property>
@@ -27,69 +33,69 @@
        <item>
         <layout class="QFormLayout" name="formLayout">
          <item row="0" column="0">
+          <widget class="QLabel" name="label_4x">
+           <property name="text">
+            <string>Border size:</string>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="1">
+          <widget class="KComboBox" name="borderSize">
+           <property name="sizeAdjustPolicy">
+            <enum>QComboBox::AdjustToContents</enum>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="0">
           <widget class="QLabel" name="label_4">
            <property name="text">
             <string>Borders:</string>
            </property>
           </widget>
          </item>
-         <item row="0" column="1">
-          <widget class="QCheckBox" name="resizeGrip">
-           <property name="text">
-            <string>Show resize grip (when no bottom border is drawn)</string>
-           </property>
-          </widget>
-         </item>
-         <item row="2" column="1">
+         <item row="1" column="1">
           <widget class="QCheckBox" name="roundBottom">
            <property name="text">
             <string>Round bottom corners (style must be rounded)</string>
            </property>
           </widget>
          </item>
-         <item row="3" column="1">
-          <widget class="QCheckBox" name="drawBottom">
-           <property name="text">
-            <string>Draw bottom even when border size set to Tiny</string>
-           </property>
-          </widget>
-         </item>
-         <item row="1" column="1">
+         <item row="2" column="1">
           <widget class="QCheckBox" name="outerBorder">
            <property name="text">
             <string>Draw dark outer border</string>
            </property>
           </widget>
          </item>
-         <item row="4" column="1">
+         <item row="3" column="1">
           <widget class="QCheckBox" name="borderlessMax">
            <property name="text">
             <string>Remove from maximised windows</string>
            </property>
           </widget>
          </item>
-         <item row="5" column="0">
+         <item row="4" column="0">
           <widget class="QLabel" name="label_2x">
            <property name="text">
             <string>Window grouping:</string>
            </property>
           </widget>
          </item>
-         <item row="5" column="1">
+         <item row="4" column="1">
           <widget class="QCheckBox" name="grouping">
            <property name="text">
             <string>Enabled</string>
            </property>
           </widget>
          </item>
-         <item row="6" column="0">
+         <item row="5" column="0">
           <widget class="QLabel" name="label_2">
            <property name="text">
             <string>Titlebar padding:</string>
            </property>
           </widget>
          </item>
-         <item row="6" column="1">
+         <item row="5" column="1">
           <widget class="KIntSpinBox" name="titleBarPad">
            <property name="suffix">
             <string>px</string>
@@ -124,6 +130,79 @@
          </property>
          <property name="wordWrap">
           <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="opacityTab">
+      <attribute name="title">
+       <string>Opacity</string>
+      </attribute>
+      <layout class="QFormLayout" name="formLayout_2">
+       <item row="0" column="0">
+        <widget class="QLabel" name="label_3">
+         <property name="text">
+          <string>Active windows:</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="1">
+        <widget class="KIntNumInput" name="activeOpacity">
+         <property name="value">
+          <number>100</number>
+         </property>
+         <property name="minimum">
+          <number>0</number>
+         </property>
+         <property name="maximum">
+          <number>100</number>
+         </property>
+         <property name="singleStep">
+          <number>5</number>
+         </property>
+         <property name="suffix">
+          <string>%</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="0">
+        <widget class="QLabel" name="label_7">
+         <property name="text">
+          <string>Inactive windows:</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="1">
+        <widget class="KIntNumInput" name="inactiveOpacity">
+         <property name="value">
+          <number>100</number>
+         </property>
+         <property name="minimum">
+          <number>0</number>
+         </property>
+         <property name="maximum">
+          <number>100</number>
+         </property>
+         <property name="singleStep">
+          <number>5</number>
+         </property>
+         <property name="suffix">
+          <string>%</string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="0">
+        <widget class="QLabel" name="label_8">
+         <property name="text">
+          <string>Side and bottom borders:</string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="1">
+        <widget class="QCheckBox" name="opaqueBorder">
+         <property name="text">
+          <string>Ignore opacity settings</string>
          </property>
         </widget>
        </item>
@@ -197,7 +276,11 @@
            </widget>
           </item>
           <item row="3" column="1">
-           <widget class="QComboBox" name="activeShadowColorType"/>
+           <widget class="KComboBox" name="activeShadowColorType">
+            <property name="sizeAdjustPolicy">
+             <enum>QComboBox::AdjustToContents</enum>
+            </property>
+           </widget>
           </item>
           <item row="4" column="1">
            <widget class="KColorButton" name="activeShadowColor"/>
@@ -261,7 +344,11 @@
            </widget>
           </item>
           <item row="3" column="1">
-           <widget class="QComboBox" name="inactiveShadowColorType"/>
+           <widget class="KComboBox" name="inactiveShadowColorType">
+            <property name="sizeAdjustPolicy">
+             <enum>QComboBox::AdjustToContents</enum>
+            </property>
+           </widget>
           </item>
           <item row="4" column="1">
            <widget class="KColorButton" name="inactiveShadowColor"/>
@@ -284,20 +371,32 @@
    <header>knuminput.h</header>
   </customwidget>
   <customwidget>
+   <class>KComboBox</class>
+   <extends>QComboBox</extends>
+   <header>kcombobox.h</header>
+  </customwidget>
+  <customwidget>
    <class>KColorButton</class>
    <extends>QPushButton</extends>
    <header>kcolorbutton.h</header>
   </customwidget>
+  <customwidget>
+   <class>KIntNumInput</class>
+   <extends>QWidget</extends>
+   <header>knuminput.h</header>
+  </customwidget>
  </customwidgets>
  <tabstops>
   <tabstop>tabWidget</tabstop>
-  <tabstop>resizeGrip</tabstop>
+  <tabstop>borderSize</tabstop>
   <tabstop>roundBottom</tabstop>
-  <tabstop>drawBottom</tabstop>
   <tabstop>outerBorder</tabstop>
   <tabstop>borderlessMax</tabstop>
   <tabstop>grouping</tabstop>
   <tabstop>titleBarPad</tabstop>
+  <tabstop>activeOpacity</tabstop>
+  <tabstop>inactiveOpacity</tabstop>
+  <tabstop>opaqueBorder</tabstop>
   <tabstop>useShadows</tabstop>
   <tabstop>activeShadowSize</tabstop>
   <tabstop>activeShadowHOffset</tabstop>

@@ -7,8 +7,8 @@ set(DEBIAN_PACKAGE_DESCRIPTION "QtCurve for Qt4/KDE4")
 set(DEBIAN_PACKAGE_SECTION "kde4")
 set(CPACK_SOURCE_GENERATOR "TBZ2")
 set(CPACK_PACKAGE_VERSION_MAJOR "1")
-set(CPACK_PACKAGE_VERSION_MINOR "3")
-set(CPACK_PACKAGE_VERSION_PATCH "1")
+set(CPACK_PACKAGE_VERSION_MINOR "4")
+set(CPACK_PACKAGE_VERSION_PATCH "0")
 set(CPACK_PACKAGE_CONTACT "Craig Drummond <craig.p.drummond@googlemail.com>")
 set(QTCURVE_VERSION "${CPACK_PACKAGE_VERSION_MAJOR}.${CPACK_PACKAGE_VERSION_MINOR}")
 set(QTCURVE_VERSION_FULL "${QTCURVE_VERSION}.${CPACK_PACKAGE_VERSION_PATCH}")
@@ -105,4 +105,11 @@ endif (NOT QTC_QT_ONLY)
 
 add_subdirectory(style)
 
-
+if (QTC_KWIN_MAX_BUTTON_HACK)
+    message("\n**************************************************************\n"
+            "Warning: You have enabled the hack to force drawing of maximise\n"
+            "         buttons for windows that can be minimised. This is a 100%\n"
+            "         hack, that may not work or compile, and may even crash\n"
+            "         kwin.\n"
+            "**************************************************************\n")
+endif (QTC_KWIN_MAX_BUTTON_HACK)

@@ -19,7 +19,9 @@
 */
 
 #include <QtGui>
+#ifdef Q_WS_X11
 #include <QtDBus/QtDBus>
+#endif
 #define COMMON_FUNCTIONS
 #include "qtcurve.h"
 #include "pixmaps.h"
@@ -31,11 +33,13 @@
 // in CT_PushButton and CT_ComboBox
 #define MAX_ROUND_BTN_PAD (ROUND_MAX==opts.round ? 3 : 0)
 
+#ifdef Q_WS_X11
 #include "macmenu.h"
 #include <X11/Xlib.h>
 #include <X11/Xatom.h>
 #include "fixx11h.h"
 #include <QX11Info>
+#endif
 
 // TODO! REMOVE THIS WHEN KDE'S ICON SETTINGS ACTUALLY WORK!!!
 #define FIX_DISABLED_ICONS
@@ -1110,8 +1114,10 @@ QtCurveStyle::QtCurveStyle()
 #if !defined QTC_DISABLE_KDEFILEDIALOG_CALLS && !KDE_IS_VERSION(4, 1, 0)
     setFileDialogs();
 #endif
+#ifdef Q_WS_X11
     QDBusConnection::sessionBus().connect(QString(), "/KGlobalSettings", "org.kde.KGlobalSettings",
                                           "notifyChange", this, SLOT(kdeGlobalSettingsChange(int, int)));
+#endif // Q_WS_X11
 #endif
     // To enable preview of QtCurve settings, the style config module will set QTCURVE_PREVIEW_CONFIG
     // to a temporary filename. If this is set, we read the settings from there - and dont not use
@@ -1855,11 +1861,11 @@ void QtCurveStyle::polish(QWidget *widget)
     }
     else if(qobject_cast<QMenuBar *>(widget))
     {
+#ifdef Q_WS_X11
         if (opts.xbar &&
             (!((APP_QTDESIGNER==theThemedApp || APP_KDEVELOP==theThemedApp) && widget->inherits("QDesignerMenuBar"))))
             Bespin::MacMenu::manage((QMenuBar *)widget);
 
-#ifdef Q_WS_X11
         if(BLEND_TITLEBAR || opts.menubarHiding&HIDE_KWIN)
             emitMenuSize((QWidget *)widget, widget->rect().height());
 #endif
@@ -2337,8 +2343,10 @@ void QtCurveStyle::unpolish(QWidget *widget)
         widget->removeEventFilter(this);
     else if(qobject_cast<QMenuBar *>(widget))
     {
+#ifdef Q_WS_X11
         if(opts.xbar)
             Bespin::MacMenu::release((QMenuBar *)widget);
+#endif
 
         widget->setAttribute(Qt::WA_Hover, false);
 
@@ -3261,6 +3269,7 @@ int QtCurveStyle::styleHint(StyleHint hint, const QStyleOption *option, const QW
         case SH_TitleBar_AutoRaise:
             return 1;
         case SH_MainWindow_SpaceBelowMenuBar:
+#ifdef Q_WS_X11
             if(opts.xbar)
                 if (const QMenuBar *menubar = qobject_cast<const QMenuBar*>(widget))
                     if (0==menubar->height() && !menubar->actions().isEmpty())
@@ -3268,7 +3277,7 @@ int QtCurveStyle::styleHint(StyleHint hint, const QStyleOption *option, const QW
                         // NOTICE the final result NEEDS to be > "0" (i.e. "1") to avoid side effects...
                         return -menubar->actionGeometry(menubar->actions().first()).height() + 1;
                     }
-
+#endif
             return 0;
         case SH_DialogButtonLayout:
             return opts.gtkButtonOrder ? QDialogButtonBox::GnomeLayout : QDialogButtonBox::KdeLayout;
@@ -3814,6 +3823,22 @@ void QtCurveStyle::drawPrimitive(PrimitiveElement element, const QStyleOption *o
                 {
                     painter->save();
                     painter->setPen(backgroundColors(option)[STD_BORDER]);
+                    drawRect(painter, r);
+                    painter->restore();
+                }
+                else if((QtC_StateKWin==state || (QtC_StateKWin|State_Active)==state) && fo && 1==fo->lineWidth && 1==fo->midLineWidth)
+                {
+                    const QColor *borderCols(opts.colorTitlebarOnly
+                                                ? backgroundColors(palette.color(QPalette::Active, QPalette::Window))
+                                                : theThemedApp==APP_KWIN
+                                                    ? buttonColors(option)
+                                                    : getMdiColors(option, state&State_Active));
+                    QColor        dark(borderCols[STD_BORDER]);
+
+                    dark.setAlphaF(1.0);
+                    painter->save();
+                    painter->setRenderHint(QPainter::Antialiasing, false);
+                    painter->setPen(dark);
                     drawRect(painter, r);
                     painter->restore();
                 }
@@ -8339,6 +8364,9 @@ void QtCurveStyle::drawComplexControl(ComplexControl control, const QStyleOption
                         textRect=captionRect;
                     }
 
+                    if(alignment&Qt::AlignLeft && constWindowMargin==textRect.x())
+                        textRect.adjust(showIcon ? 4 : 6, 0, 0, 0);
+
                     if(showIcon)
                     {
                         if(alignment&Qt::AlignHCenter)
@@ -12675,6 +12703,7 @@ void QtCurveStyle::titlebarSizeChangedChange()
 #endif
 }
 
+#ifdef Q_WS_X11
 static QMainWindow * getWindow(unsigned int xid)
 {
     QWidgetList                tlw=QApplication::topLevelWidgets();
@@ -12686,19 +12715,24 @@ static QMainWindow * getWindow(unsigned int xid)
             return static_cast<QMainWindow*>(*it);
     return 0L;
 }
+#endif
 
 void QtCurveStyle::toggleMenuBar(unsigned int xid)
 {
+#ifdef Q_WS_X11
     QMainWindow *win=getWindow(xid);
     if(win)
         toggleMenuBar(win);
+#endif
 }
 
 void QtCurveStyle::toggleStatusBar(unsigned int xid)
 {
+#ifdef Q_WS_X11
     QMainWindow *win=getWindow(xid);
     if(win)
         toggleStatusBar(win);
+#endif
 }
     
 void QtCurveStyle::toggleMenuBar(QMainWindow *window)

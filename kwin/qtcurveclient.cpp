@@ -262,10 +262,10 @@ static char typeToChar(ButtonType t)
             return 'A';
         case CloseButton:
             return 'X';
-//         case AboveButton:
-//            return 'F';
-//         case BelowButton:
-//            return 'B';
+        case AboveButton:
+           return 'F';
+        case BelowButton:
+           return 'B';
         case ShadeButton:
             return 'L';
         default:
@@ -344,8 +344,8 @@ KCommonDecorationButton *QtCurveClient::createButton(ButtonType type)
         case MinButton:
         case MaxButton:
         case CloseButton:
-//         case AboveButton:
-//         case BelowButton:
+        case AboveButton:
+        case BelowButton:
         case ShadeButton:
             return new QtCurveButton(type, this);
         default:
@@ -428,18 +428,18 @@ void QtCurveClient::paintEvent(QPaintEvent *e)
                          round=Handler()->wStyle()->pixelMetric((QStyle::PixelMetric)QtC_Round, NULL, NULL),
                          buttonFlags=Handler()->wStyle()->pixelMetric((QStyle::PixelMetric)QtC_TitleBarButtons, NULL, NULL);
     int                  rectX, rectY, rectX2, rectY2, shadowSize(0),
-                         opacity(compositing ? Handler()->opacity(active) : 1.0);
+                         opacity(compositing ? Handler()->opacity(active) : 100);
 
     painter.setClipRegion(e->region());
 
 #if KDE_IS_VERSION(4, 3, 0)
     if(Handler()->customShadows())
     {
+        shadowSize=Handler()->shadowCache().shadowSize();
+
         if(compositing)
         {
             TileSet *tileSet=Handler()->shadowCache().tileSet(this, roundBottom);
-
-            shadowSize=Handler()->shadowCache().shadowSize();
             if(opacity<100)
             {
                 painter.save();
@@ -511,7 +511,7 @@ void QtCurveClient::paintEvent(QPaintEvent *e)
         opt.state|=QtC_StateKWinCompositing;
 
     if(outerBorder)
-    {        
+    {
         if(opacity<100)
         {
             painter.save();
@@ -539,6 +539,21 @@ void QtCurveClient::paintEvent(QPaintEvent *e)
             Handler()->wStyle()->drawPrimitive(QStyle::PE_FrameWindow, &opt, &painter, widget());
         if(opacity<100)
             painter.restore();
+
+        if(Handler()->innerBorder())
+        {
+            QStyleOptionFrame frameOpt;
+            int side(layoutMetric(LM_BorderLeft)),
+                bot(layoutMetric(LM_BorderBottom));
+                
+
+            frameOpt.palette=opt.palette;
+            frameOpt.rect=widget()->rect().adjusted(shadowSize+side, shadowSize+titleBarHeight, -(shadowSize+side), -(shadowSize+bot))
+                                          .adjusted(-1, -1, 1, 1);
+            frameOpt.state=(active ? QStyle::State_Active : QStyle::State_None)|QtC_StateKWin;
+            frameOpt.lineWidth=frameOpt.midLineWidth=1;
+            Handler()->wStyle()->drawPrimitive(QStyle::PE_Frame, &frameOpt, &painter, widget());
+        }
     }
     else
         opt.state|=QtC_StateKWinNoBorder;
@@ -697,7 +712,11 @@ void QtCurveClient::paintEvent(QPaintEvent *e)
 
     //     if(itsHover)
         {
-            if(1==tabCount && active && (itsToggleMenuBarButton||itsToggleStatusBarButton))
+            if(
+#if KDE_IS_VERSION(4, 3, 85)
+                1==tabCount &&
+#endif
+                active && (itsToggleMenuBarButton||itsToggleStatusBarButton))
             {
                 if( (buttonsLeftWidth()+buttonsRightWidth()+constTitlePad+
                     (itsToggleMenuBarButton ? itsToggleMenuBarButton->width() : 0) +

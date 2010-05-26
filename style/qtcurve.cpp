@@ -363,7 +363,9 @@ static void drawTbArrow(const QStyle *style, const QStyleOptionToolButton *toolb
 #define STATE_DWT_BUTTON  (QStyle::StateFlag)0x20000000
 // #define NO_BGND_BUTTON    (QStyle::StateFlag)0x80000000
 
+#ifndef M_PI
 #define M_PI 3.14159265358979323846
+#endif
 
 static const int constMenuPixmapWidth=22;
 
@@ -1082,10 +1084,10 @@ QtCurveStyle::QtCurveStyle()
               itsProgressBarAnimateTimer(0),
               itsAnimateStep(0),
               itsTitlebarHeight(0),
-              itsDBus(0),
               itsPos(-1, -1),
               itsHoverWidget(0L),
 #ifdef Q_WS_X11
+              itsDBus(0),
               itsDragWidget(0L),
               itsDragWidgetHadMouseTracking(false),
 #endif
@@ -1413,26 +1415,28 @@ QtCurveStyle::~QtCurveStyle()
         delete [] itsActiveMdiColors;
     if(itsMdiColors && itsMdiColors!=itsBackgroundCols)
         delete [] itsMdiColors;
-    if(itsDefBtnCols && itsDefBtnCols!=itsSliderCols && itsDefBtnCols!=itsFocusCols && itsDefBtnCols!=itsHighlightCols)
-        delete [] itsDefBtnCols;
-    if(itsSliderCols && itsSliderCols!=itsHighlightCols)
-        delete [] itsSliderCols;
-    if(itsComboBtnCols && itsComboBtnCols!=itsHighlightCols && itsComboBtnCols!=itsSliderCols)
-        delete [] itsComboBtnCols;
-    if(itsSortedLvColors && itsSortedLvColors!=itsHighlightCols && itsSortedLvColors!=itsSliderCols &&
-       itsSortedLvColors!=itsComboBtnCols)
-        delete [] itsSortedLvColors;
     if(itsCheckRadioSelCols && itsCheckRadioSelCols!=itsDefBtnCols && itsCheckRadioSelCols!=itsSliderCols &&
        itsCheckRadioSelCols!=itsComboBtnCols && itsCheckRadioSelCols!=itsSortedLvColors && 
        itsCheckRadioSelCols!=itsButtonCols && itsCheckRadioSelCols!=itsHighlightCols)
         delete [] itsCheckRadioSelCols;
+    if(itsSortedLvColors && itsSortedLvColors!=itsHighlightCols && itsSortedLvColors!=itsSliderCols &&
+       itsSortedLvColors!=itsComboBtnCols)
+        delete [] itsSortedLvColors;
+    if(itsComboBtnCols && itsComboBtnCols!=itsHighlightCols && itsComboBtnCols!=itsSliderCols)
+        delete [] itsComboBtnCols;
+    if(itsDefBtnCols && itsDefBtnCols!=itsSliderCols && itsDefBtnCols!=itsFocusCols && itsDefBtnCols!=itsHighlightCols)
+        delete [] itsDefBtnCols;
+    if(itsSliderCols && itsSliderCols!=itsHighlightCols)
+        delete [] itsSliderCols;
     if(opts.titlebarButtons&TITLEBAR_BUTTON_COLOR)
         for(int i=0; i<NUM_TITLEBAR_BUTTONS; ++i)
             delete [] itsTitleBarButtonsCols[i];
     if(itsOOMenuCols)
-        delete itsOOMenuCols;
+        delete [] itsOOMenuCols;
+#ifdef Q_WS_X11
     if(itsDBus)
         delete itsDBus;
+#endif
 }
 
 static QString getFile(const QString &f)
@@ -1651,7 +1655,7 @@ void QtCurveStyle::polish(QPalette &palette)
         }
         else if(itsOOMenuCols)
         {
-            delete itsOOMenuCols;
+            delete [] itsOOMenuCols;
             itsOOMenuCols=0L;
         }
     }
@@ -3354,6 +3358,18 @@ QPalette QtCurveStyle::standardPalette() const
 #endif
 }
 
+#if defined QTC_QT_ONLY
+#include "dialogpixmaps.h"
+
+static QIcon load(const unsigned int len, const unsigned char *data)
+{
+    QImage img;
+    img.loadFromData(data, len);
+
+    return QIcon(QPixmap::fromImage(img));
+}
+#endif
+
 QIcon QtCurveStyle::standardIconImplementation(StandardPixmap pix, const QStyleOption *option, const QWidget *widget) const
 {
     switch(pix)
@@ -3390,7 +3406,58 @@ QIcon QtCurveStyle::standardIconImplementation(StandardPixmap pix, const QStyleO
             drawIcon(&painter, Qt::color1, QRect(0, 0, pm.width(), pm.height()), false, pix2Icon(pix), true);
             return QIcon(pm);
         }
-#if !defined QTC_QT_ONLY
+#if defined QTC_QT_ONLY
+        case SP_MessageBoxQuestion:
+        case SP_MessageBoxInformation:
+        {
+            static QIcon icn(load(dialog_information_png_len, dialog_information_png_data));
+            return icn;
+        }
+        case SP_MessageBoxWarning:
+        {
+            static QIcon icn(load(dialog_warning_png_len, dialog_warning_png_data));
+            return icn;
+        }
+        case SP_MessageBoxCritical:
+        {
+            static QIcon icn(load(dialog_error_png_len, dialog_error_png_data));
+            return icn;
+        }
+/*
+        case SP_DialogYesButton:
+        case SP_DialogOkButton:
+        {
+            static QIcon icn(load(dialog_ok_png_len, dialog_ok_png_data));
+            return icn;
+        }
+        case SP_DialogNoButton:
+        case SP_DialogCancelButton:
+        {
+            static QIcon icn(load(dialog_cancel_png_len, dialog_cancel_png_data));
+            return icn;
+        }
+        case SP_DialogHelpButton:
+        {
+            static QIcon icn(load(help_contents_png_len, help_contents_png_data));
+            return icn;
+        }
+        case SP_DialogCloseButton:
+        {
+            static QIcon icn(load(dialog_close_png_len, dialog_close_png_data));
+            return icn;
+        }
+        case SP_DialogApplyButton:
+        {
+            static QIcon icn(load(dialog_ok_apply_png_len, dialog_ok_apply_png_data));
+            return icn;
+        }
+        case SP_DialogResetButton:
+        {
+            static QIcon icn(load(document_revert_png_len, document_revert_png_data));
+            return icn;
+        }
+*/
+#else
         case SP_MessageBoxInformation:
             return KIcon("dialog-information");
         case SP_MessageBoxWarning:
@@ -8433,66 +8500,76 @@ void QtCurveStyle::drawComplexControl(ComplexControl control, const QStyleOption
 
                 if ((titleBar->subControls&SC_TitleBarMinButton) && (titleBar->titleBarFlags&Qt::WindowMinimizeButtonHint) &&
                     !(titleBar->titleBarState&Qt::WindowMinimized))
-                    drawMdiControl(painter, titleBar, SC_TitleBarMinButton, widget, TITLEBAR_MIN, iconColor, btnCols, bgndCols, adjust);
+                    drawMdiControl(painter, titleBar, SC_TitleBarMinButton, widget, TITLEBAR_MIN, iconColor, btnCols, bgndCols,
+                                   adjust, active);
 
                 if ((titleBar->subControls&SC_TitleBarMaxButton) && (titleBar->titleBarFlags&Qt::WindowMaximizeButtonHint) &&
                     !(titleBar->titleBarState&Qt::WindowMaximized))
-                    drawMdiControl(painter, titleBar, SC_TitleBarMaxButton, widget, TITLEBAR_MAX, iconColor, btnCols, bgndCols, adjust);
+                    drawMdiControl(painter, titleBar, SC_TitleBarMaxButton, widget, TITLEBAR_MAX, iconColor, btnCols, bgndCols,
+                                   adjust, active);
 
                 if ((titleBar->subControls&SC_TitleBarCloseButton) && (titleBar->titleBarFlags&Qt::WindowSystemMenuHint))
                     drawMdiControl(painter, titleBar, SC_TitleBarCloseButton, widget, TITLEBAR_CLOSE, iconColor, btnCols, bgndCols,
-                                   adjust);
+                                   adjust, active);
 
                 if ((titleBar->subControls&SC_TitleBarNormalButton) &&
                     (((titleBar->titleBarFlags&Qt::WindowMinimizeButtonHint) &&
                     (titleBar->titleBarState&Qt::WindowMinimized)) ||
                     ((titleBar->titleBarFlags&Qt::WindowMaximizeButtonHint) &&
                     (titleBar->titleBarState&Qt::WindowMaximized))))
-                    drawMdiControl(painter, titleBar, SC_TitleBarNormalButton, widget, TITLEBAR_MAX, iconColor, btnCols, bgndCols, adjust);
+                    drawMdiControl(painter, titleBar, SC_TitleBarNormalButton, widget, TITLEBAR_MAX, iconColor, btnCols, bgndCols,
+                                   adjust, active);
 
                 if (titleBar->subControls&SC_TitleBarContextHelpButton && (titleBar->titleBarFlags&Qt::WindowContextHelpButtonHint))
                     drawMdiControl(painter, titleBar, SC_TitleBarContextHelpButton, widget, TITLEBAR_HELP, iconColor, btnCols, bgndCols,
-                                   adjust);
+                                   adjust, active);
 
                 if (titleBar->subControls&SC_TitleBarShadeButton && (titleBar->titleBarFlags&Qt::WindowShadeButtonHint))
                     drawMdiControl(painter, titleBar, SC_TitleBarShadeButton, widget, TITLEBAR_SHADE, iconColor, btnCols, bgndCols,
-                                   adjust);
+                                   adjust, active);
 
                 if (titleBar->subControls&SC_TitleBarUnshadeButton && (titleBar->titleBarFlags&Qt::WindowShadeButtonHint))
                     drawMdiControl(painter, titleBar, SC_TitleBarUnshadeButton, widget, TITLEBAR_SHADE, iconColor, btnCols, bgndCols,
-                                   adjust);
+                                   adjust, active);
 
                 if ((titleBar->subControls&SC_TitleBarSysMenu) && (titleBar->titleBarFlags&Qt::WindowSystemMenuHint))
                 {
                     if(TITLEBAR_ICON_MENU_BUTTON==opts.titlebarIcon)
                     {
-                        QRect rect = subControlRect(CC_TitleBar, titleBar, SC_TitleBarSysMenu, widget);
-                        if (rect.isValid())
+                        bool hover((titleBar->activeSubControls&SC_TitleBarSysMenu) && (titleBar->state&State_MouseOver));
+
+                        if(active || hover || !(opts.titlebarButtons&TITLEBAR_BUTTOM_HIDE_ON_INACTIVE_WINDOW))
                         {
-                            bool sunken((titleBar->activeSubControls&SC_TitleBarSysMenu) && (titleBar->state&State_Sunken)),
-                                 hover((titleBar->activeSubControls&SC_TitleBarSysMenu) && (titleBar->state&State_MouseOver));
-                            int  offset(sunken ? 1 : 0);
-
-                            if(!(opts.titlebarButtons&TITLEBAR_BUTTON_ROUND))
-                                drawMdiButton(painter, rect, hover, sunken,
-                                              coloredMdiButtons(state&State_Active, hover) ? itsTitleBarButtonsCols[TITLEBAR_MENU] : btnCols);
-
-                            if (!titleBar->icon.isNull())
-                                titleBar->icon.paint(painter, rect.adjusted(offset, offset, offset, offset));
-                            else
+                            QRect rect = subControlRect(CC_TitleBar, titleBar, SC_TitleBarSysMenu, widget);
+                            if (rect.isValid())
                             {
-                                QStyleOption tool(0);
+                                bool sunken((titleBar->activeSubControls&SC_TitleBarSysMenu) && (titleBar->state&State_Sunken));
+                                int  offset(sunken ? 1 : 0);
 
-                                tool.palette = palette;
-                                tool.rect = rect;
-                                painter->save();
-                                drawItemPixmap(painter, rect.adjusted(offset, offset, offset, offset), Qt::AlignCenter, standardIcon(SP_TitleBarMenuButton, &tool, widget).pixmap(16, 16));
-                                painter->restore();
+                                if(!(opts.titlebarButtons&TITLEBAR_BUTTON_ROUND))
+                                    drawMdiButton(painter, rect, hover, sunken,
+                                                  coloredMdiButtons(state&State_Active, hover)
+                                                    ? itsTitleBarButtonsCols[TITLEBAR_MENU] : btnCols);
+
+                                if (!titleBar->icon.isNull())
+                                    titleBar->icon.paint(painter, rect.adjusted(offset, offset, offset, offset));
+                                else
+                                {
+                                    QStyleOption tool(0);
+
+                                    tool.palette = palette;
+                                    tool.rect = rect;
+                                    painter->save();
+                                    drawItemPixmap(painter, rect.adjusted(offset, offset, offset, offset), Qt::AlignCenter,
+                                                   standardIcon(SP_TitleBarMenuButton, &tool, widget).pixmap(16, 16));
+                                    painter->restore();
+                                }
                             }
                         }
                     }
                     else
-                        drawMdiControl(painter, titleBar, SC_TitleBarSysMenu, widget, TITLEBAR_MENU, iconColor, btnCols, bgndCols, adjust);
+                        drawMdiControl(painter, titleBar, SC_TitleBarSysMenu, widget, TITLEBAR_MENU, iconColor, btnCols, bgndCols,
+                                       adjust, active);
                 }
 
                 painter->restore();
@@ -8595,7 +8672,8 @@ void QtCurveStyle::drawComplexControl(ComplexControl control, const QStyleOption
                                                     : opt.rect.adjusted(mod, 0, -mod, 0)
                                                 : opt.rect, &opt, widget,
     #ifndef SIMPLE_SCROLLBARS
-                                   SCROLLBAR_NONE==opts.scrollbarType || opts.flatSbarButtons ? ROUNDED_ALL :
+                                   !(opts.square&SQUARE_SB_SLIDER) && (SCROLLBAR_NONE==opts.scrollbarType || opts.flatSbarButtons)
+                                        ? ROUNDED_ALL :
     #endif
                                    ROUNDED_NONE,
                                    itsBackgroundCols[2], itsBackgroundCols, true,
@@ -11154,8 +11232,13 @@ void QtCurveStyle::drawBorder(QPainter *p, const QRect &r, const QStyleOption *o
 
 void QtCurveStyle::drawMdiControl(QPainter *p, const QStyleOptionTitleBar *titleBar, SubControl sc, const QWidget *widget,
                                   ETitleBarButtons btn, const QColor &iconColor, const QColor *btnCols, const QColor *bgndCols,
-                                  int adjust) const
+                                  int adjust, bool activeWindow) const
 {
+    bool hover((titleBar->activeSubControls&sc) && (titleBar->state&State_MouseOver));
+
+    if(!activeWindow && !hover && opts.titlebarButtons&TITLEBAR_BUTTOM_HIDE_ON_INACTIVE_WINDOW)
+        return;
+     
     QRect rect(subControlRect(CC_TitleBar, titleBar, sc, widget));
 
     if (rect.isValid())
@@ -11163,7 +11246,6 @@ void QtCurveStyle::drawMdiControl(QPainter *p, const QStyleOptionTitleBar *title
         rect.adjust(adjust, adjust, -adjust, -adjust);
 
         bool sunken((titleBar->activeSubControls&sc) && (titleBar->state&State_Sunken)),
-             hover((titleBar->activeSubControls&sc) && (titleBar->state&State_MouseOver)),
              colored=coloredMdiButtons(titleBar->state&State_Active, hover),
              useBtnCols(opts.titlebarButtons&TITLEBAR_BUTTON_STD_COLOR &&
                          (hover ||
@@ -11618,9 +11700,10 @@ void QtCurveStyle::drawSbSliderHandle(QPainter *p, const QRect &rOrig, const QSt
     int          min(MIN_SLIDER_SIZE(opts.sliderThumbs));
     const QColor *use(sliderColors(&opt));
 
-    drawLightBevel(p, r, &opt, 0L, slider
+    drawLightBevel(p, r, &opt, 0L, (slider && (!(opts.square&SQUARE_SLIDER) ||
+                                                (SLIDER_ROUND==opts.sliderStyle || SLIDER_ROUND_ROTATED==opts.sliderStyle)))
 #ifndef SIMPLE_SCROLLBARS
-                   || SCROLLBAR_NONE==opts.scrollbarType || opts.flatSbarButtons
+                   || (!slider && !(opts.square&SQUARE_SB_SLIDER) && (SCROLLBAR_NONE==opts.scrollbarType || opts.flatSbarButtons))
 #endif
                     ? ROUNDED_ALL : ROUNDED_NONE,
                    getFill(&opt, use, false, SHADE_DARKEN==opts.shadeSliders), use, true,
@@ -11948,7 +12031,9 @@ void QtCurveStyle::drawSliderGroove(QPainter *p, const QRect &groove, const QRec
 
     if(grv.height()>0 && grv.width()>0)
     {
-        drawLightBevel(p, grv, &opt, widget, ROUNDED_ALL, itsBackgroundCols[slider->state&State_Enabled ? 2 : ORIGINAL_SHADE],
+        drawLightBevel(p, grv, &opt, widget,
+                       opts.square&SQUARE_SLIDER ? ROUNDED_NONE : ROUNDED_ALL,
+                       itsBackgroundCols[slider->state&State_Enabled ? 2 : ORIGINAL_SHADE],
                        itsBackgroundCols, true, WIDGET_SLIDER_TROUGH);
 
         if(opts.fillSlider && slider->maximum!=slider->minimum && slider->state&State_Enabled)
@@ -11967,7 +12052,8 @@ void QtCurveStyle::drawSliderGroove(QPainter *p, const QRect &groove, const QRec
                     grv=QRect(grv.left(), grv.top(), grv.width(), (handle.top() - grv.top())+4);
 
             if(grv.height()>0 && grv.width()>0)
-                drawLightBevel(p, grv, &opt, widget, ROUNDED_ALL, usedCols[ORIGINAL_SHADE], usedCols, true, WIDGET_FILLED_SLIDER_TROUGH);
+                drawLightBevel(p, grv, &opt, widget, opts.square&SQUARE_SLIDER ? ROUNDED_NONE : ROUNDED_ALL,
+                               usedCols[ORIGINAL_SHADE], usedCols, true, WIDGET_FILLED_SLIDER_TROUGH);
         }
     }
 }
@@ -12521,7 +12607,7 @@ const QColor & QtCurveStyle::checkRadioCol(const QStyleOption *opt) const
                 : opt->palette.text().color();
 }
 
-QColor QtCurveStyle::shade(const QColor &a, float k) const
+QColor QtCurveStyle::shade(const QColor &a, double k) const
 {
     QColor mod;
 

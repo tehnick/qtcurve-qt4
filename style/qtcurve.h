@@ -179,7 +179,7 @@ class QtCurveStyle : public QCommonStyle
                     EWidget w=WIDGET_OTHER, EBorder borderProfile=BORDER_FLAT, bool doBlend=true, int borderVal=STD_BORDER) const;
     void drawMdiControl(QPainter *p, const QStyleOptionTitleBar *titleBar, SubControl sc, const QWidget *widget,
                         ETitleBarButtons btn, const QColor &iconColor, const QColor *btnCols, const QColor *bgndCols,
-                        int adjust) const;
+                        int adjust, bool activeWindow) const;
     void drawDwtControl(QPainter *p, const QFlags<State> &state, const QRect &rect, ETitleBarButtons btn, Icon icon,
                         const QColor &iconColor, const QColor *btnCols, const QColor *bgndCols) const;
     bool drawMdiButton(QPainter *painter, const QRect &r, bool hover, bool sunken, const QColor *cols) const;
@@ -224,7 +224,7 @@ class QtCurveStyle : public QCommonStyle
     Version        qtVersion() const;
 #endif
     const QColor & checkRadioCol(const QStyleOption *opt) const;
-    QColor         shade(const QColor &a, float k) const;
+    QColor         shade(const QColor &a, double k) const;
     void           shade(const color &ca, color *cb, double k) const;
     QColor         getLowerEtchCol(const QWidget *widget) const;
     QPalette::ColorRole getTextRole(const QWidget *w, const QPainter *p, QPalette::ColorRole def) const;
@@ -301,12 +301,12 @@ class QtCurveStyle : public QCommonStyle
     mutable QMap<QWidget *, QWidget *> itsReparentedDialogs;
     mutable QList<int>                 itsMdiButtons[2]; // 0=left, 1=right
     mutable int                        itsTitlebarHeight;
-    QDBusInterface                     *itsDBus;
 
     // Required for Q3Header hover...
     QPoint                             itsPos;
     QWidget                            *itsHoverWidget;
 #ifdef Q_WS_X11
+    QDBusInterface                     *itsDBus;
     QWidget                            *itsDragWidget;
     bool                               itsDragWidgetHadMouseTracking;
 #endif

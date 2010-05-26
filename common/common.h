@@ -245,7 +245,7 @@ typedef gchar ** Strings;
 #define MIN_HIGHLIGHT_FACTOR                     -50
 #define MENUBAR_DARK_FACTOR        TO_FACTOR(-3)
 #define INACTIVE_HIGHLIGHT_FACTOR  TO_FACTOR(20)
-#define LV_HEADER_DARK_FACTOR     TO_FACTOR(-10)
+#define LV_HEADER_DARK_FACTOR      TO_FACTOR(-10)
 #define DEF_POPUPMENU_LIGHT_FACTOR                 2
 #define MIN_LIGHTER_POPUP_MENU                  -100
 #define MAX_LIGHTER_POPUP_MENU                   100
@@ -385,7 +385,7 @@ typedef gchar ** Strings;
 #define ETCH_RADIO_BOTTOM_ALPHA  1.0
 // #endif
 
-#define RINGS_INNER_ALPHA(T) qtcRingAlpha[IMG_PLAIN_RINGS==T] //(IMG_PLAIN_RINGS==opts.bgndImage.type ? 0.25 :  0.125)
+#define RINGS_INNER_ALPHA(T) qtcRingAlpha[IMG_PLAIN_RINGS==(T) ? 1 : 0] //(IMG_PLAIN_RINGS==opts.bgndImage.type ? 0.25 :  0.125)
 #define RINGS_OUTER_ALPHA    qtcRingAlpha[2] //0.5
 #define RINGS_WIDTH(T)       (IMG_SQUARE_RINGS==T ? 260 : 450)
 #define RINGS_HEIGHT(T)      (IMG_SQUARE_RINGS==T ? 220 : 360)
@@ -450,18 +450,19 @@ typedef enum
 
 typedef enum
 {
-    TITLEBAR_BUTTON_ROUND             = 0x0001,
-    TITLEBAR_BUTTON_HOVER_FRAME       = 0x0002,
-    TITLEBAR_BUTTON_HOVER_SYMBOL      = 0x0004,
-    TITLEBAR_BUTTON_NO_FRAME          = 0x0008,
-    TITLEBAR_BUTTON_COLOR             = 0x0010,
-    TITLEBAR_BUTTON_COLOR_INACTIVE    = 0x0020,
-    TITLEBAR_BUTTON_COLOR_MOUSE_OVER  = 0x0040,
-    TITLEBAR_BUTTON_STD_COLOR         = 0x0080,
-    TITLEBAR_BUTTON_COLOR_SYMBOL      = 0x0100,
-    TITLEBAR_BUTTON_HOVER_SYMBOL_FULL = 0x0200,
-    TITLEBAR_BUTTON_SUNKEN_BACKGROUND = 0x0400,
-    TITLEBAR_BUTTOM_ARROW_MIN_MAX     = 0x0800
+    TITLEBAR_BUTTON_ROUND                   = 0x0001,
+    TITLEBAR_BUTTON_HOVER_FRAME             = 0x0002,
+    TITLEBAR_BUTTON_HOVER_SYMBOL            = 0x0004,
+    TITLEBAR_BUTTON_NO_FRAME                = 0x0008,
+    TITLEBAR_BUTTON_COLOR                   = 0x0010,
+    TITLEBAR_BUTTON_COLOR_INACTIVE          = 0x0020,
+    TITLEBAR_BUTTON_COLOR_MOUSE_OVER        = 0x0040,
+    TITLEBAR_BUTTON_STD_COLOR               = 0x0080,
+    TITLEBAR_BUTTON_COLOR_SYMBOL            = 0x0100,
+    TITLEBAR_BUTTON_HOVER_SYMBOL_FULL       = 0x0200,
+    TITLEBAR_BUTTON_SUNKEN_BACKGROUND       = 0x0400,
+    TITLEBAR_BUTTOM_ARROW_MIN_MAX           = 0x0800,
+    TITLEBAR_BUTTOM_HIDE_ON_INACTIVE_WINDOW = 0x1000,
 } ETitleBarButtonFlags;
 
 typedef enum
@@ -521,7 +522,9 @@ typedef enum
     SQUARE_SCROLLVIEW         = 0x04,
     SQUARE_LISTVIEW_SELECTION = 0x08,
     SQUARE_FRAME              = 0x10,
-    SQUARE_TAB_FRAME          = 0x20
+    SQUARE_TAB_FRAME          = 0x20,
+    SQUARE_SLIDER             = 0x40,
+    SQUARE_SB_SLIDER          = 0x80
 } ESquare;
 
 typedef enum

@@ -1411,7 +1411,7 @@ QtCurveStyle::~QtCurveStyle()
        itsSidebarButtonsCols!=itsSliderCols &&
        itsSidebarButtonsCols!=itsDefBtnCols)
         delete [] itsSidebarButtonsCols;
-    if(itsActiveMdiColors && itsActiveMdiColors!=itsHighlightCols)
+    if(itsActiveMdiColors && itsActiveMdiColors!=itsHighlightCols && itsActiveMdiColors!=itsBackgroundCols)
         delete [] itsActiveMdiColors;
     if(itsMdiColors && itsMdiColors!=itsBackgroundCols)
         delete [] itsMdiColors;
@@ -1797,6 +1797,7 @@ void QtCurveStyle::polish(QWidget *widget)
            viewport->autoFillBackground() && // Dolphins Folders panel
            //255==viewport->palette().color(itemView->viewport()->backgroundRole()).alpha() && // KFilePlacesView
            !widget->inherits("KFilePlacesView") &&
+           !widget->inherits("QComboBoxListView") &&
            (qobject_cast<QTreeView *>(widget) ||
             (qobject_cast<QListView *>(widget) && QListView::IconMode!=((QListView *)widget)->viewMode())))
             itemView->setAlternatingRowColors(true);
